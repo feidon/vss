@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import time
 from uuid import UUID
 
-from domain.network.model import Node, NodeConnection, NodeType
+from domain.network.model import Node, NodeConnection
 
 
 @dataclass
@@ -13,54 +12,48 @@ class Service:
     name: str
     vehicle_id: UUID
     path: list[Node]
-    stops: list[ServiceStop]
+    timetable: list[TimetableEntry]
 
     def __post_init__(self) -> None:
-        _validate_stop_ordering(self.stops)
-        _validate_stops_in_path(self.stops, self.path)
+        _validate_entry_ordering(self.timetable)
+        _validate_entries_in_path(self.timetable, self.path)
 
     def update_path(self, path: list[Node]) -> None:
-        _validate_stops_in_path(self.stops, path)
+        _validate_entries_in_path(self.timetable, path)
         self.path = list(path)
 
-    def update_stops(self, stops: list[ServiceStop]) -> None:
-        _validate_stop_ordering(stops)
-        _validate_stops_in_path(stops, self.path)
-        self.stops = list(stops)
+    def update_timetable(self, timetable: list[TimetableEntry]) -> None:
+        _validate_entry_ordering(timetable)
+        _validate_entries_in_path(timetable, self.path)
+        self.timetable = list(timetable)
 
-    def validate_connectivity(self, connections: set[NodeConnection]) -> None:
+    def validate_connectivity(self, connections: frozenset[NodeConnection]) -> None:
         if not self.path:
             raise ValueError("Path must contain at least one node")
         for i in range(len(self.path) - 1):
-            link = NodeConnection(
-                from_id=self.path[i].id, to_id=self.path[i + 1].id
-            )
+            link = NodeConnection(from_id=self.path[i].id, to_id=self.path[i + 1].id)
             if link not in connections:
-                raise ValueError(
-                    f"No connection: {self.path[i].id} -> {self.path[i + 1].id}"
-                )
+                raise ValueError(f"No connection: {self.path[i].id} -> {self.path[i + 1].id}")
 
 
 @dataclass(frozen=True)
-class ServiceStop:
+class TimetableEntry:
     order: int
-    platform_id: UUID
-    arrival: time | None
-    departure: time | None
+    node_id: UUID
+    arrival: int
+    departure: int
 
 
-def _validate_stop_ordering(stops: list[ServiceStop]) -> None:
-    orders = [s.order for s in stops]
+def _validate_entry_ordering(entries: list[TimetableEntry]) -> None:
+    orders = [e.order for e in entries]
     if len(orders) != len(set(orders)):
-        raise ValueError("Duplicate stop orders")
+        raise ValueError("Duplicate entry orders")
     if orders != sorted(orders):
-        raise ValueError("Stops must be in ascending order")
+        raise ValueError("Entries must be in ascending order")
 
 
-def _validate_stops_in_path(stops: list[ServiceStop], path: list[Node]) -> None:
-    platform_ids = {n.id for n in path if n.type == NodeType.PLATFORM}
-    for stop in stops:
-        if stop.platform_id not in platform_ids:
-            raise ValueError(
-                f"Stop references platform {stop.platform_id} not in path"
-            )
+def _validate_entries_in_path(entries: list[TimetableEntry], path: list[Node]) -> None:
+    node_ids = {n.id for n in path}
+    for entry in entries:
+        if entry.node_id not in node_ids:
+            raise ValueError(f"Entry references node {entry.node_id} not in path")

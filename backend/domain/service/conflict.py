@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from dataclasses import dataclass
-from datetime import time
 from uuid import UUID
 
-from domain.service.model import Service
+from domain.block.model import Block
+from domain.service.model import Service, TimetableEntry
 
 
 # ── Value Objects ────────────────────────────────────────────
@@ -22,10 +23,10 @@ class VehicleConflict:
 @dataclass(frozen=True)
 class BlockConflict:
     block_id: UUID
-    vehicle_a_id: UUID
-    vehicle_b_id: UUID
-    overlap_start: time
-    overlap_end: time
+    service_a_id: UUID
+    service_b_id: UUID
+    overlap_start: int
+    overlap_end: int
 
 
 # ── Ports ────────────────────────────────────────────────────
@@ -41,30 +42,67 @@ class ServiceQueryPort(ABC):
 
 class BlockQueryPort(ABC):
     @abstractmethod
-    async def get_traversal_time_seconds(self, block_id: UUID) -> int: ...
+    async def find_all(self) -> list[Block]: ...
 
 
 # ── Domain Service ───────────────────────────────────────────
 
 
 class ConflictDetectionService:
-    def __init__(
-        self, service_query: ServiceQueryPort, block_query: BlockQueryPort
-    ) -> None:
+    def __init__(self, service_query: ServiceQueryPort, block_query: BlockQueryPort) -> None:
         self._service_query = service_query
         self._block_query = block_query
 
-    async def detect_vehicle_conflicts(
-        self, vehicle_id: UUID
-    ) -> list[VehicleConflict]:
+    async def detect_vehicle_conflicts(self, vehicle_id: UUID) -> list[VehicleConflict]:
         """Check overlapping time windows and location discontinuity
         across services assigned to the same vehicle."""
-        raise NotImplementedError
+        services = await self._service_query.find_by_vehicle_id(vehicle_id=vehicle_id)
+
+        windows: list[tuple[UUID, int, int, UUID, UUID]] = []
+        for service in services:
+            entries = sorted(service.timetable, key=lambda e: e.order)
+            min_arrival = min(e.arrival for e in entries)
+            max_departure = max(e.departure for e in entries)
+            windows.append((service.id, min_arrival, max_departure, entries[0].node_id, entries[-1].node_id))
+
+        windows.sort(key=lambda w: w[1])
+
+        conflicts: list[VehicleConflict] = []
+        for i in range(1, len(windows)):
+            prev, curr = windows[i - 1], windows[i]
+            if curr[1] < prev[2]:
+                conflicts.append(VehicleConflict(vehicle_id, prev[0], curr[0], "Overlapping time windows"))
+            elif curr[3] != prev[4]:
+                conflicts.append(VehicleConflict(vehicle_id, prev[0], curr[0], "Location discontinuity"))
+
+        return conflicts
 
     async def detect_block_conflicts(self) -> list[BlockConflict]:
         """Check if multiple vehicles occupy the same block
-        during overlapping time windows.
+        during overlapping time windows."""
+        services = await self._service_query.find_all()
+        blocks = await self._block_query.find_all()
+        block_ids = {b.id for b in blocks}
 
-        A vehicle occupies a block for the duration of its
-        configured traversal_time_seconds."""
-        raise NotImplementedError
+        by_block: dict[UUID, list[tuple[UUID, TimetableEntry]]] = defaultdict(list)
+        for service in services:
+            for entry in service.timetable:
+                if entry.node_id in block_ids:
+                    by_block[entry.node_id].append((service.id, entry))
+
+        conflicts: list[BlockConflict] = []
+        for block_id, entries in by_block.items():
+            sorted_entries = sorted(entries, key=lambda x: x[1].arrival)
+            for i in range(1, len(sorted_entries)):
+                prev_sid, prev_entry = sorted_entries[i - 1]
+                curr_sid, curr_entry = sorted_entries[i]
+                if curr_entry.arrival < prev_entry.departure:
+                    conflicts.append(BlockConflict(
+                        block_id=block_id,
+                        service_a_id=prev_sid,
+                        service_b_id=curr_sid,
+                        overlap_start=curr_entry.arrival,
+                        overlap_end=prev_entry.departure,
+                    ))
+
+        return conflicts
