@@ -43,6 +43,10 @@ class TimetableEntry:
     arrival: int
     departure: int
 
+    def __post_init__(self) -> None:
+        if self.arrival > self.departure:
+            raise ValueError(f"Arrival ({self.arrival}) must be <= departure ({self.departure})")
+
 
 def _validate_entry_ordering(entries: list[TimetableEntry]) -> None:
     orders = [e.order for e in entries]
@@ -50,6 +54,9 @@ def _validate_entry_ordering(entries: list[TimetableEntry]) -> None:
         raise ValueError("Duplicate entry orders")
     if orders != sorted(orders):
         raise ValueError("Entries must be in ascending order")
+    for i in range(1, len(entries)):
+        if entries[i].arrival < entries[i - 1].departure:
+            raise ValueError("Entries must be chronologically non-overlapping")
 
 
 def _validate_entries_in_path(entries: list[TimetableEntry], path: list[Node]) -> None:

@@ -60,6 +60,8 @@ class ConflictDetectionService:
 
         windows: list[tuple[UUID, int, int, UUID, UUID]] = []
         for service in services:
+            if not service.timetable:
+                continue
             entries = sorted(service.timetable, key=lambda e: e.order)
             min_arrival = min(e.arrival for e in entries)
             max_departure = max(e.departure for e in entries)
@@ -91,18 +93,20 @@ class ConflictDetectionService:
                     by_block[entry.node_id].append((service.id, entry))
 
         conflicts: list[BlockConflict] = []
-        for block_id, entries in by_block.items():
-            sorted_entries = sorted(entries, key=lambda x: x[1].arrival)
-            for i in range(1, len(sorted_entries)):
-                prev_sid, prev_entry = sorted_entries[i - 1]
-                curr_sid, curr_entry = sorted_entries[i]
-                if curr_entry.arrival < prev_entry.departure:
+        for block_id, block_entries in by_block.items():
+            sorted_entries = sorted(block_entries, key=lambda x: x[1].arrival)
+            for i in range(len(sorted_entries)):
+                sid_i, entry_i = sorted_entries[i]
+                for j in range(i + 1, len(sorted_entries)):
+                    sid_j, entry_j = sorted_entries[j]
+                    if entry_j.arrival >= entry_i.departure:
+                        break
                     conflicts.append(BlockConflict(
                         block_id=block_id,
-                        service_a_id=prev_sid,
-                        service_b_id=curr_sid,
-                        overlap_start=curr_entry.arrival,
-                        overlap_end=prev_entry.departure,
+                        service_a_id=sid_i,
+                        service_b_id=sid_j,
+                        overlap_start=entry_j.arrival,
+                        overlap_end=entry_i.departure,
                     ))
 
         return conflicts
