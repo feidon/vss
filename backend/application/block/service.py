@@ -6,7 +6,7 @@ from domain.block.model import Block
 from domain.block.repository import BlockRepository
 
 
-class BlockApplicationService:
+class BlockAppService:
     def __init__(self, block_repo: BlockRepository) -> None:
         self._block_repo = block_repo
 

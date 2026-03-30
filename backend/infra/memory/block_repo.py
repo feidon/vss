@@ -16,5 +16,8 @@ class InMemoryBlockRepository(BlockRepository):
     async def find_by_id(self, id: UUID) -> Block | None:
         return self._store.get(id)
 
+    async def find_by_ids(self, ids: set[UUID]) -> list[Block]:
+        return [self._store[id] for id in ids if id in self._store]
+
     async def save(self, block: Block) -> None:
         self._store[block.id] = block

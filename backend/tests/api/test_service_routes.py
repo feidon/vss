@@ -3,7 +3,9 @@ from uuid import uuid7
 import pytest
 from fastapi.testclient import TestClient
 
-from api.dependencies import get_service_repo
+from api.dependencies import get_block_repo, get_service_repo
+from domain.block.model import Block
+from infra.memory.block_repo import InMemoryBlockRepository
 from infra.memory.service_repo import InMemoryServiceRepository
 from main import app
 
@@ -14,10 +16,24 @@ def service_repo():
 
 
 @pytest.fixture
-def client(service_repo):
+def block_repo():
+    return InMemoryBlockRepository()
+
+
+@pytest.fixture
+def client(service_repo, block_repo):
     app.dependency_overrides[get_service_repo] = lambda: service_repo
+    app.dependency_overrides[get_block_repo] = lambda: block_repo
     yield TestClient(app)
     app.dependency_overrides.clear()
+
+
+def seed_block(block_repo, **kwargs) -> Block:
+    defaults = dict(id=uuid7(), name="B1", group=1, traversal_time_seconds=30)
+    defaults.update(kwargs)
+    block = Block(**defaults)
+    block_repo._store[block.id] = block
+    return block
 
 
 class TestServiceCRUD:
@@ -74,18 +90,33 @@ class TestServiceCRUD:
 
 
 class TestServicePathUpdate:
-    def test_update_path(self, client):
+    def test_update_path(self, client, block_repo):
+        block = seed_block(block_repo, name="B1")
         create_resp = client.post(
             "/services", json={"name": "S1", "vehicle_id": str(uuid7())}
         )
         sid = create_resp.json()["id"]
-        nid = str(uuid7())
         resp = client.patch(
             f"/services/{sid}/path",
-            json={"path": [{"id": nid, "type": "block"}]},
+            json={"path": [{"id": str(block.id), "type": "block"}]},
         )
         assert resp.status_code == 200
-        assert len(resp.json()["path"]) == 1
+        path = resp.json()["path"]
+        assert len(path) == 1
+        assert path[0]["type"] == "block"
+        assert path[0]["name"] == "B1"
+        assert path[0]["traversal_time_seconds"] == 30
+
+    def test_update_path_unknown_block(self, client):
+        create_resp = client.post(
+            "/services", json={"name": "S1", "vehicle_id": str(uuid7())}
+        )
+        sid = create_resp.json()["id"]
+        resp = client.patch(
+            f"/services/{sid}/path",
+            json={"path": [{"id": str(uuid7()), "type": "block"}]},
+        )
+        assert resp.status_code == 404
 
     def test_update_path_not_found(self, client):
         resp = client.patch(
@@ -96,21 +127,21 @@ class TestServicePathUpdate:
 
 
 class TestServiceTimetableUpdate:
-    def test_update_timetable(self, client):
+    def test_update_timetable(self, client, block_repo):
+        block = seed_block(block_repo)
         create_resp = client.post(
             "/services", json={"name": "S1", "vehicle_id": str(uuid7())}
         )
         sid = create_resp.json()["id"]
-        nid = str(uuid7())
         client.patch(
             f"/services/{sid}/path",
-            json={"path": [{"id": nid, "type": "block"}]},
+            json={"path": [{"id": str(block.id), "type": "block"}]},
         )
         resp = client.patch(
             f"/services/{sid}/timetable",
             json={
                 "timetable": [
-                    {"order": 0, "node_id": nid, "arrival": 0, "departure": 10}
+                    {"order": 0, "node_id": str(block.id), "arrival": 0, "departure": 10}
                 ]
             },
         )
@@ -138,3 +169,28 @@ class TestServiceTimetableUpdate:
             json={"timetable": []},
         )
         assert resp.status_code == 404
+
+    def test_update_timetable_conflict_returns_409(self, client, block_repo):
+        block = seed_block(block_repo)
+        nid = str(block.id)
+        vid = str(uuid7())
+
+        r1 = client.post("/services", json={"name": "S1", "vehicle_id": vid})
+        r2 = client.post("/services", json={"name": "S2", "vehicle_id": vid})
+        s1_id, s2_id = r1.json()["id"], r2.json()["id"]
+
+        client.patch(f"/services/{s1_id}/path", json={"path": [{"id": nid, "type": "block"}]})
+        client.patch(f"/services/{s2_id}/path", json={"path": [{"id": nid, "type": "block"}]})
+
+        client.patch(
+            f"/services/{s1_id}/timetable",
+            json={"timetable": [{"order": 0, "node_id": nid, "arrival": 0, "departure": 100}]},
+        )
+
+        resp = client.patch(
+            f"/services/{s2_id}/timetable",
+            json={"timetable": [{"order": 0, "node_id": nid, "arrival": 50, "departure": 150}]},
+        )
+        assert resp.status_code == 409
+        detail = resp.json()["detail"]
+        assert len(detail["vehicle_conflicts"]) > 0 or len(detail["block_conflicts"]) > 0

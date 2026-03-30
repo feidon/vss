@@ -2,19 +2,19 @@ from uuid import uuid7
 
 import pytest
 
-from application.block.service import BlockApplicationService
+from application.block.service import BlockAppService
 from domain.block.model import Block
 from infra.memory.block_repo import InMemoryBlockRepository
 
 
-class TestBlockApplicationService:
+class TestBlockAppService:
     @pytest.fixture
     def repo(self):
         return InMemoryBlockRepository()
 
     @pytest.fixture
     def service(self, repo):
-        return BlockApplicationService(repo)
+        return BlockAppService(repo)
 
     async def _given_block(self, repo, **kwargs) -> Block:
         defaults = dict(id=uuid7(), name="B1", group=1, traversal_time_seconds=30)
