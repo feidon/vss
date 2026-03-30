@@ -4,9 +4,9 @@ from collections import defaultdict
 from dataclasses import dataclass
 from uuid import UUID
 
-from backend.domain.block.repository import BlockRepository
-from backend.domain.service.repository import ServiceRepository
+from domain.block.repository import BlockRepository
 from domain.service.model import TimetableEntry
+from domain.service.repository import ServiceRepository
 
 
 # ── Value Objects ────────────────────────────────────────────
@@ -33,14 +33,14 @@ class BlockConflict:
 
 
 class ConflictDetectionService:
-    def __init__(self, service_query: ServiceRepository, block_query: BlockRepository) -> None:
-        self._service_query = service_query
-        self._block_query = block_query
+    def __init__(self, service_repo: ServiceRepository, block_repo: BlockRepository) -> None:
+        self._service_repo = service_repo
+        self._block_repo = block_repo
 
     async def detect_vehicle_conflicts(self, vehicle_id: UUID) -> list[VehicleConflict]:
         """Check overlapping time windows and location discontinuity
         across services assigned to the same vehicle."""
-        services = await self._service_query.find_by_vehicle_id(vehicle_id=vehicle_id)
+        services = await self._service_repo.find_by_vehicle_id(vehicle_id=vehicle_id)
 
         windows: list[tuple[UUID, int, int, UUID, UUID]] = []
         for service in services:
@@ -66,8 +66,8 @@ class ConflictDetectionService:
     async def detect_block_conflicts(self) -> list[BlockConflict]:
         """Check if multiple vehicles occupy the same block
         during overlapping time windows."""
-        services = await self._service_query.find_all()
-        blocks = await self._block_query.find_all()
+        services = await self._service_repo.find_all()
+        blocks = await self._block_repo.find_all()
         block_ids = {b.id for b in blocks}
 
         by_block: dict[UUID, list[tuple[UUID, TimetableEntry]]] = defaultdict(list)

@@ -27,4 +27,6 @@ class Block:
         return hash(self.id)
     
     def update_traversal_time(self, traversal_time_seconds: int) -> None:
+        if traversal_time_seconds <= 0:
+            raise ValueError("traversal_time_seconds must be positive")
         self.traversal_time_seconds = traversal_time_seconds

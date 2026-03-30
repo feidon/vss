@@ -43,3 +43,13 @@ class TestBlock:
         b1 = Block(id=bid, name="A", group=1, traversal_time_seconds=10)
         b2 = Block(id=bid, name="B", group=2, traversal_time_seconds=20)
         assert {b1, b2} == {b1}
+
+    def test_update_traversal_time(self):
+        block = Block(id=uuid7(), name="B1", group=1, traversal_time_seconds=30)
+        block.update_traversal_time(60)
+        assert block.traversal_time_seconds == 60
+
+    def test_update_traversal_time_rejects_invalid(self):
+        block = Block(id=uuid7(), name="B1", group=1, traversal_time_seconds=30)
+        with pytest.raises(ValueError, match="traversal_time_seconds must be positive"):
+            block.update_traversal_time(0)

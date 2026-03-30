@@ -3,15 +3,15 @@ from uuid import uuid7
 import pytest
 
 from domain.block.model import Block
+from domain.block.repository import BlockRepository
 from domain.network.model import Node, NodeType
 from domain.service.conflict import (
     BlockConflict,
-    BlockQueryPort,
     ConflictDetectionService,
-    ServiceQueryPort,
     VehicleConflict,
 )
 from domain.service.model import Service, TimetableEntry
+from domain.service.repository import ServiceRepository
 
 
 def make_block_node(block_id=None) -> Node:
@@ -34,23 +34,38 @@ def make_service_with_window(
     )
 
 
-class FakeServiceQuery(ServiceQueryPort):
+class FakeServiceRepo(ServiceRepository):
     def __init__(self, services: list[Service]):
-        self._services = services
+        self._services = {s.id: s for s in services}
 
     async def find_by_vehicle_id(self, vehicle_id) -> list[Service]:
-        return [s for s in self._services if s.vehicle_id == vehicle_id]
+        return [s for s in self._services.values() if s.vehicle_id == vehicle_id]
 
     async def find_all(self) -> list[Service]:
-        return list(self._services)
+        return list(self._services.values())
+
+    async def find_by_id(self, id) -> Service | None:
+        return self._services.get(id)
+
+    async def save(self, service) -> None:
+        self._services[service.id] = service
+
+    async def delete(self, id) -> None:
+        self._services.pop(id, None)
 
 
-class FakeBlockQuery(BlockQueryPort):
+class FakeBlockRepo(BlockRepository):
     def __init__(self, blocks: list[Block]):
-        self._blocks = blocks
+        self._blocks = {b.id: b for b in blocks}
 
     async def find_all(self) -> list[Block]:
-        return list(self._blocks)
+        return list(self._blocks.values())
+
+    async def find_by_id(self, id) -> Block | None:
+        return self._blocks.get(id)
+
+    async def save(self, block) -> None:
+        self._blocks[block.id] = block
 
 
 class TestVehicleConflicts:
@@ -62,8 +77,8 @@ class TestVehicleConflicts:
         s2 = make_service_with_window(vid, node, arrival=10, departure=20)
 
         svc = ConflictDetectionService(
-            FakeServiceQuery([s1, s2]),
-            FakeBlockQuery([]),
+            FakeServiceRepo([s1, s2]),
+            FakeBlockRepo([]),
         )
         conflicts = await svc.detect_vehicle_conflicts(vid)
         assert conflicts == []
@@ -76,8 +91,8 @@ class TestVehicleConflicts:
         s2 = make_service_with_window(vid, node, arrival=10, departure=20)
 
         svc = ConflictDetectionService(
-            FakeServiceQuery([s1, s2]),
-            FakeBlockQuery([]),
+            FakeServiceRepo([s1, s2]),
+            FakeBlockRepo([]),
         )
         conflicts = await svc.detect_vehicle_conflicts(vid)
         assert len(conflicts) == 1
@@ -91,8 +106,8 @@ class TestVehicleConflicts:
         s2 = make_service_with_window(vid, n2, arrival=10, departure=20)
 
         svc = ConflictDetectionService(
-            FakeServiceQuery([s1, s2]),
-            FakeBlockQuery([]),
+            FakeServiceRepo([s1, s2]),
+            FakeBlockRepo([]),
         )
         conflicts = await svc.detect_vehicle_conflicts(vid)
         assert len(conflicts) == 1
@@ -106,8 +121,8 @@ class TestVehicleConflicts:
         s2 = Service(id=uuid7(), name="S", vehicle_id=vid, path=[], timetable=[])
 
         svc = ConflictDetectionService(
-            FakeServiceQuery([s1, s2]),
-            FakeBlockQuery([]),
+            FakeServiceRepo([s1, s2]),
+            FakeBlockRepo([]),
         )
         conflicts = await svc.detect_vehicle_conflicts(vid)
         assert conflicts == []
@@ -122,8 +137,8 @@ class TestBlockConflicts:
         s2 = make_service_with_window(uuid7(), node, arrival=10, departure=20)
 
         svc = ConflictDetectionService(
-            FakeServiceQuery([s1, s2]),
-            FakeBlockQuery([block]),
+            FakeServiceRepo([s1, s2]),
+            FakeBlockRepo([block]),
         )
         conflicts = await svc.detect_block_conflicts()
         assert conflicts == []
@@ -136,8 +151,8 @@ class TestBlockConflicts:
         s2 = make_service_with_window(uuid7(), node, arrival=10, departure=20)
 
         svc = ConflictDetectionService(
-            FakeServiceQuery([s1, s2]),
-            FakeBlockQuery([block]),
+            FakeServiceRepo([s1, s2]),
+            FakeBlockRepo([block]),
         )
         conflicts = await svc.detect_block_conflicts()
         assert len(conflicts) == 1
@@ -153,8 +168,8 @@ class TestBlockConflicts:
         sc = make_service_with_window(uuid7(), node, arrival=3, departure=9)
 
         svc = ConflictDetectionService(
-            FakeServiceQuery([sa, sb, sc]),
-            FakeBlockQuery([block]),
+            FakeServiceRepo([sa, sb, sc]),
+            FakeBlockRepo([block]),
         )
         conflicts = await svc.detect_block_conflicts()
         pairs = {(c.service_a_id, c.service_b_id) for c in conflicts}
@@ -171,8 +186,8 @@ class TestBlockConflicts:
         s2 = make_service_with_window(uuid7(), platform_node, arrival=10, departure=20)
 
         svc = ConflictDetectionService(
-            FakeServiceQuery([s1, s2]),
-            FakeBlockQuery([block]),
+            FakeServiceRepo([s1, s2]),
+            FakeBlockRepo([block]),
         )
         conflicts = await svc.detect_block_conflicts()
         assert conflicts == []

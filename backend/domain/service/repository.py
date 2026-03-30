@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from uuid import UUID
 
-from backend.domain.service.model import Service
+from domain.service.model import Service
 
 
 class ServiceRepository(ABC):
