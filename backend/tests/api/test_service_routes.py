@@ -3,8 +3,9 @@ from uuid import uuid7
 import pytest
 from fastapi.testclient import TestClient
 
+from api.dependencies import get_service_repo
 from infra.memory.service_repo import InMemoryServiceRepository
-from main import create_app
+from main import app
 
 
 @pytest.fixture
@@ -13,13 +14,10 @@ def service_repo():
 
 
 @pytest.fixture
-def app(service_repo):
-    return create_app(service_repo=service_repo)
-
-
-@pytest.fixture
-def client(app):
-    return TestClient(app)
+def client(service_repo):
+    app.dependency_overrides[get_service_repo] = lambda: service_repo
+    yield TestClient(app)
+    app.dependency_overrides.clear()
 
 
 class TestServiceCRUD:

@@ -3,9 +3,10 @@ from uuid import uuid7
 import pytest
 from fastapi.testclient import TestClient
 
+from api.dependencies import get_block_repo
 from domain.block.model import Block
 from infra.memory.block_repo import InMemoryBlockRepository
-from main import create_app
+from main import app
 
 
 @pytest.fixture
@@ -14,13 +15,10 @@ def block_repo():
 
 
 @pytest.fixture
-def app(block_repo):
-    return create_app(block_repo=block_repo)
-
-
-@pytest.fixture
-def client(app):
-    return TestClient(app)
+def client(block_repo):
+    app.dependency_overrides[get_block_repo] = lambda: block_repo
+    yield TestClient(app)
+    app.dependency_overrides.clear()
 
 
 async def seed_block(repo, **kwargs) -> Block:
