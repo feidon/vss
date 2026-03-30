@@ -15,7 +15,7 @@ class Platform:
         return Node(id=self.id, type=NodeType.PLATFORM)
 
 
-@dataclass
+@dataclass(eq=False)
 class Station:
     id: UUID
     name: str
@@ -32,3 +32,9 @@ class Station:
         self.platforms = [p for p in self.platforms if p.id != platform_id]
         if len(self.platforms) == original_len:
             raise ValueError(f"Platform {platform_id} not found")
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Station) and self.id == other.id
+
+    def __hash__(self) -> int:
+        return hash(self.id)

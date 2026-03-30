@@ -6,7 +6,7 @@ from uuid import UUID
 from domain.network.model import Node, NodeType
 
 
-@dataclass
+@dataclass(eq=False)
 class Block:
     id: UUID
     name: str
@@ -19,3 +19,9 @@ class Block:
 
     def to_node(self) -> Node:
         return Node(id=self.id, type=NodeType.BLOCK)
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Block) and self.id == other.id
+
+    def __hash__(self) -> int:
+        return hash(self.id)

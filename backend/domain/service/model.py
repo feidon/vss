@@ -6,7 +6,7 @@ from uuid import UUID
 from domain.network.model import Node, NodeConnection
 
 
-@dataclass
+@dataclass(eq=False)
 class Service:
     id: UUID
     name: str
@@ -34,6 +34,12 @@ class Service:
             link = NodeConnection(from_id=self.path[i].id, to_id=self.path[i + 1].id)
             if link not in connections:
                 raise ValueError(f"No connection: {self.path[i].id} -> {self.path[i + 1].id}")
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Service) and self.id == other.id
+
+    def __hash__(self) -> int:
+        return hash(self.id)
 
 
 @dataclass(frozen=True)
