@@ -1,0 +1,23 @@
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+from backend.domain.block.model import Block
+
+class UpdateBlockRequest(BaseModel):
+    traversal_time_seconds: int = Field(gt=0)
+
+class BlockResponse(BaseModel):
+    id: UUID
+    name: str
+    group: int
+    traversal_time_seconds: int
+    
+    @classmethod
+    def _from(cls, block: Block) -> BlockResponse:
+        return cls(
+            id=block.id,
+            name=block.name,
+            group=block.group,
+            traversal_time_seconds=block.traversal_time_seconds,
+        )

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
 from uuid import UUID
 
-from domain.block.model import Block
-from domain.service.model import Service, TimetableEntry
+from backend.domain.block.repository import BlockRepository
+from backend.domain.service.repository import ServiceRepository
+from domain.service.model import TimetableEntry
 
 
 # ── Value Objects ────────────────────────────────────────────
@@ -29,27 +29,11 @@ class BlockConflict:
     overlap_end: int
 
 
-# ── Ports ────────────────────────────────────────────────────
-
-
-class ServiceQueryPort(ABC):
-    @abstractmethod
-    async def find_by_vehicle_id(self, vehicle_id: UUID) -> list[Service]: ...
-
-    @abstractmethod
-    async def find_all(self) -> list[Service]: ...
-
-
-class BlockQueryPort(ABC):
-    @abstractmethod
-    async def find_all(self) -> list[Block]: ...
-
-
 # ── Domain Service ───────────────────────────────────────────
 
 
 class ConflictDetectionService:
-    def __init__(self, service_query: ServiceQueryPort, block_query: BlockQueryPort) -> None:
+    def __init__(self, service_query: ServiceRepository, block_query: BlockRepository) -> None:
         self._service_query = service_query
         self._block_query = block_query
 
