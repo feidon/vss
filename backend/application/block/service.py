@@ -1,17 +1,28 @@
+from __future__ import annotations
+
 from uuid import UUID
 
-from backend.domain.block.model import Block
-from backend.infra.block.repository import BlockRepository
+from domain.block.model import Block
+from domain.block.repository import BlockRepository
 
 
 class BlockApplicationService:
     def __init__(self, block_repo: BlockRepository) -> None:
         self._block_repo = block_repo
-        
-    async def updateTraversalTime(self, id: UUID, traversal_time_seconds: int) -> None:
-        block: Block = self._block_repo.find_by_id(id=id)
+
+    async def get_block(self, id: UUID) -> Block:
+        block = await self._block_repo.find_by_id(id)
         if block is None:
             raise ValueError(f"Block {id} not found")
-        
-        block.update_traversal_time(traversal_time_seconds=traversal_time_seconds)
-        self._block_repo.save(block=block)
+        return block
+
+    async def list_blocks(self) -> list[Block]:
+        return await self._block_repo.find_all()
+
+    async def update_block(self, id: UUID, traversal_time_seconds: int) -> Block:
+        block = await self._block_repo.find_by_id(id)
+        if block is None:
+            raise ValueError(f"Block {id} not found")
+        block.update_traversal_time(traversal_time_seconds)
+        await self._block_repo.save(block)
+        return block
