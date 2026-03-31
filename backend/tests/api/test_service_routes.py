@@ -87,10 +87,8 @@ class TestServiceCRUD:
         resp = client.post("/services", json={"name": "Express", "vehicle_id": str(v.id)})
         assert resp.status_code == 201
         data = resp.json()
-        assert data["name"] == "Express"
-        assert data["vehicle_id"] == str(v.id)
-        assert data["path"] == []
-        assert data["timetable"] == []
+        assert "id" in data
+        assert set(data.keys()) == {"id"}
 
     def test_create_service_empty_name_rejected(self, client, vehicle_repo):
         v = seed_vehicle(vehicle_repo)
@@ -149,7 +147,11 @@ class TestServiceRouteUpdate:
             },
         )
         assert resp.status_code == 200
-        data = resp.json()
+        assert resp.json() == {"id": sid}
+
+        # Verify full state via GET
+        get_resp = client.get(f"/services/{sid}")
+        data = get_resp.json()
 
         # Path: P1A -> B3 -> B5 -> P2A
         path = data["path"]

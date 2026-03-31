@@ -1,38 +1,11 @@
 from __future__ import annotations
 
-from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
+from api.shared.schemas import BlockNodeSchema, NodeSchema, PlatformNodeSchema, YardNodeSchema
 from application.graph.dto import GraphData
-
-
-class YardNodeSchema(BaseModel):
-    type: Literal["yard"] = "yard"
-    id: UUID
-    name: str
-
-
-class PlatformNodeSchema(BaseModel):
-    type: Literal["platform"] = "platform"
-    id: UUID
-    name: str
-    station_name: str
-
-
-class BlockNodeSchema(BaseModel):
-    type: Literal["block"] = "block"
-    id: UUID
-    name: str
-    group: int
-    traversal_time_seconds: int
-
-
-GraphNodeSchema = Annotated[
-    YardNodeSchema | PlatformNodeSchema | BlockNodeSchema,
-    Field(discriminator="type"),
-]
 
 
 class ConnectionSchema(BaseModel):
@@ -53,31 +26,22 @@ class StationSchema(BaseModel):
 
 
 class GraphResponse(BaseModel):
-    nodes: list[GraphNodeSchema]
+    nodes: list[NodeSchema]
     connections: list[ConnectionSchema]
     stations: list[StationSchema]
     vehicles: list[VehicleSchema]
 
     @classmethod
     def from_graph_data(cls, data: GraphData) -> GraphResponse:
-        nodes: list[YardNodeSchema | PlatformNodeSchema | BlockNodeSchema] = []
-        platform_to_station = data.platform_to_station
+        nodes: list[BlockNodeSchema | PlatformNodeSchema | YardNodeSchema] = []
 
-        # Yard node
         yard = data.yard
         if yard is not None:
             nodes.append(YardNodeSchema(id=yard.id, name=yard.name))
 
-        # Platform nodes
         for platform in data.all_platforms:
-            station = platform_to_station[platform.id]
-            nodes.append(PlatformNodeSchema(
-                id=platform.id,
-                name=platform.name,
-                station_name=station.name,
-            ))
+            nodes.append(PlatformNodeSchema(id=platform.id, name=platform.name))
 
-        # Block nodes
         for block in data.blocks:
             nodes.append(BlockNodeSchema(
                 id=block.id,

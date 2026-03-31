@@ -1,10 +1,16 @@
 from __future__ import annotations
 
-from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from api.shared.schemas import (
+    BlockNodeSchema,
+    NodeSchema,
+    PlatformNodeSchema,
+    TimetableEntrySchema,
+    YardNodeSchema,
+)
 from domain.block.model import Block
 from domain.network.model import NodeType
 from domain.service.model import Service
@@ -26,47 +32,18 @@ class UpdateRouteRequest(BaseModel):
     start_time: int
 
 
-# ── Response schemas ─────────────────────────────────────────
+class ServiceIdResponse(BaseModel):
+    id: int
 
 
-class BlockNodeResponse(BaseModel):
-    type: Literal["block"] = "block"
-    id: UUID
-    name: str
-    group: int
-    traversal_time_seconds: int
-
-
-class PlatformNodeResponse(BaseModel):
-    type: Literal["platform"] = "platform"
-    id: UUID
-    name: str
-
-
-class YardNodeResponse(BaseModel):
-    type: Literal["yard"] = "yard"
-    id: UUID
-    name: str
-
-
-PathNodeResponse = Annotated[
-    BlockNodeResponse | PlatformNodeResponse | YardNodeResponse,
-    Field(discriminator="type"),
-]
-
-
-class TimetableEntrySchema(BaseModel):
-    order: int
-    node_id: UUID
-    arrival: int
-    departure: int
+# ── Full response (GET only) ───────────────────────────────────
 
 
 class ServiceResponse(BaseModel):
     id: int
     name: str
     vehicle_id: UUID
-    path: list[PathNodeResponse]
+    path: list[NodeSchema]
     timetable: list[TimetableEntrySchema]
 
     @classmethod
@@ -75,22 +52,20 @@ class ServiceResponse(BaseModel):
         service: Service,
         blocks: dict[UUID, Block],
         platforms: dict[UUID, Platform],
-        yard_id: UUID | None = None,
         yard_name: str = "Y",
     ) -> ServiceResponse:
-        path_nodes: list[BlockNodeResponse | PlatformNodeResponse | YardNodeResponse] = []
+        path_nodes: list[BlockNodeSchema | PlatformNodeSchema | YardNodeSchema] = []
         for node in service.path:
             if node.type == NodeType.BLOCK and node.id in blocks:
                 b = blocks[node.id]
-                path_nodes.append(BlockNodeResponse(
-                    id=b.id, name=b.name, group=b.group,
-                    traversal_time_seconds=b.traversal_time_seconds,
+                path_nodes.append(BlockNodeSchema(
+                    id=b.id, name=b.name, group=b.group, traversal_time_seconds=b.traversal_time_seconds,
                 ))
             elif node.type == NodeType.PLATFORM and node.id in platforms:
                 p = platforms[node.id]
-                path_nodes.append(PlatformNodeResponse(id=p.id, name=p.name))
+                path_nodes.append(PlatformNodeSchema(id=p.id, name=p.name))
             elif node.type == NodeType.YARD:
-                path_nodes.append(YardNodeResponse(
+                path_nodes.append(YardNodeSchema(
                     id=node.id, name=yard_name,
                 ))
 

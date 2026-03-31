@@ -49,10 +49,11 @@ class TestGraphEndpoint:
         b1 = next(n for n in data["nodes"] if n.get("name") == "B1")
         assert b1["group"] == 1
 
-    def test_platform_nodes_have_station_name(self, client):
+    def test_platform_station_lookup_via_stations(self, client):
         data = client.get("/graph").json()
         p1a = next(n for n in data["nodes"] if n.get("name") == "P1A")
-        assert p1a["station_name"] == "S1"
+        s1 = next(s for s in data["stations"] if s["name"] == "S1")
+        assert p1a["id"] in s1["platform_ids"]
 
     def test_graph_has_connections(self, client):
         data = client.get("/graph").json()

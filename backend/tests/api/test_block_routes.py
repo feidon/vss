@@ -48,6 +48,7 @@ class TestBlockRoutes:
         block = await seed_block(block_repo)
         resp = client.patch(f"/blocks/{block.id}", json={"traversal_time_seconds": 60})
         assert resp.status_code == 200
+        assert resp.json() == {"id": str(block.id)}
 
     @pytest.mark.asyncio
     async def test_update_block_invalid_time(self, client, block_repo):

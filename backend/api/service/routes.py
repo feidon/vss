@@ -6,6 +6,7 @@ from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 from api.dependencies import get_graph_service, get_service_app_service
 from api.service.schemas import (
     CreateServiceRequest,
+    ServiceIdResponse,
     ServiceResponse,
     UpdateRouteRequest,
 )
@@ -30,7 +31,6 @@ def _to_response(
             s,
             blocks,
             platforms,
-            yard.id if yard else None,
             yard.name if yard else "Y",
         )
         for s in services
@@ -63,11 +63,10 @@ def _conflict_response(e: ConflictError) -> HTTPException:
     return HTTPException(status_code=409, detail=detail)
 
 
-@router.post("", response_model=ServiceResponse, status_code=HTTP_201_CREATED)
+@router.post("", response_model=ServiceIdResponse, status_code=HTTP_201_CREATED)
 async def create_service(
     request: CreateServiceRequest,
     service_app_service: ServiceAppService = Depends(get_service_app_service),
-    graph_service: GraphAppService = Depends(get_graph_service),
 ):
     try:
         service = await service_app_service.create_service(
@@ -75,8 +74,7 @@ async def create_service(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    graph = await graph_service.get_graph()
-    return _to_response(graph, [service])[0]
+    return ServiceIdResponse(id=service.id)
 
 
 @router.get("", response_model=list[ServiceResponse])
@@ -103,12 +101,11 @@ async def get_service(
     return _to_response(graph, [service])[0]
 
 
-@router.patch("/{service_id}/route", response_model=ServiceResponse)
+@router.patch("/{service_id}/route", response_model=ServiceIdResponse)
 async def update_route(
     service_id: int,
     request: UpdateRouteRequest,
     service_app_service: ServiceAppService = Depends(get_service_app_service),
-    graph_service: GraphAppService = Depends(get_graph_service),
 ):
     stops = [
         RouteStop(platform_id=s.platform_id, dwell_time=s.dwell_time)
@@ -124,8 +121,7 @@ async def update_route(
         if str(e).startswith(f"Service {service_id}"):
             raise HTTPException(status_code=404, detail=str(e))
         raise HTTPException(status_code=400, detail=str(e))
-    graph = await graph_service.get_graph()
-    return _to_response(graph, [service])[0]
+    return ServiceIdResponse(id=service.id)
 
 
 @router.delete("/{service_id}", status_code=HTTP_204_NO_CONTENT)

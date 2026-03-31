@@ -11,6 +11,10 @@ class UpdateBlockRequest(BaseModel):
     traversal_time_seconds: int = Field(gt=0)
 
 
+class BlockIdResponse(BaseModel):
+    id: UUID
+
+
 class BlockResponse(BaseModel):
     id: UUID
     name: str
