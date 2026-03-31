@@ -10,7 +10,7 @@ Interview assignment: a vehicle scheduling system (frontend + backend) for manag
 |----------------|-------------------------------|
 | Backend        | Python 3.14 + FastAPI         |
 | Frontend       | Angular (latest stable) - TBD |
-| Database       | In-memory (PostgreSQL planned) |
+| Database       | PostgreSQL 17 (Docker)         |
 | Containerization | Docker + Docker Compose      |
 | Package Manager | uv                           |
 | Node (frontend) | managed via mise (LTS)       |
@@ -64,6 +64,9 @@ Route update returns 409 with conflict details when scheduling conflicts are det
 ## Running
 
 ```bash
+# PostgreSQL
+docker compose up -d
+
 # Backend
 cd backend
 uv sync
@@ -73,6 +76,10 @@ uv run uvicorn main:app --reload
 cd backend
 uv run pytest
 ```
+
+## Database
+
+PostgreSQL via Docker Compose. Connection: `postgresql://vss:vss@localhost:5432/vss`
 
 ## Testing Patterns
 
