@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from domain.network.model import Node, NodeType
-from domain.service.model import EpochSeconds, TimetableEntry
+from domain.service.model import TimetableEntry
+from domain.shared.types import EpochSeconds
 
 
 @dataclass(eq=False)

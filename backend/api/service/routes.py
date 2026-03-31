@@ -9,9 +9,11 @@ from api.service.schemas import (
     ServiceResponse,
     UpdateRouteRequest,
 )
-from application.graph.service import GraphAppService, GraphData
+from application.graph.dto import GraphData
+from application.graph.service import GraphAppService
+from application.service.dto import RouteStop
 from application.service.errors import ConflictError
-from application.service.service import RouteStop, ServiceAppService
+from application.service.service import ServiceAppService
 from domain.service.model import Service
 
 router = APIRouter(prefix="/services", tags=["services"])

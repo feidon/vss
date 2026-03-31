@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from application.graph.service import GraphData
+from application.graph.dto import GraphData
 
 
 class YardNodeSchema(BaseModel):

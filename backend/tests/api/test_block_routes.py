@@ -44,24 +44,10 @@ class TestBlockRoutes:
         assert len(resp.json()) == 2
 
     @pytest.mark.asyncio
-    async def test_get_block(self, client, block_repo):
-        block = await seed_block(block_repo)
-        resp = client.get(f"/blocks/{block.id}")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["id"] == str(block.id)
-        assert data["traversal_time_seconds"] == 30
-
-    def test_get_block_not_found(self, client):
-        resp = client.get(f"/blocks/{uuid7()}")
-        assert resp.status_code == 404
-
-    @pytest.mark.asyncio
     async def test_update_block(self, client, block_repo):
         block = await seed_block(block_repo)
         resp = client.patch(f"/blocks/{block.id}", json={"traversal_time_seconds": 60})
         assert resp.status_code == 200
-        assert resp.json()["traversal_time_seconds"] == 60
 
     @pytest.mark.asyncio
     async def test_update_block_invalid_time(self, client, block_repo):

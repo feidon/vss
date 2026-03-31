@@ -1,24 +1,19 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from uuid import UUID
 
+from application.service.dto import RouteStop
 from application.service.errors import ConflictError
 from domain.block.repository import BlockRepository
 from domain.network.model import Node, NodeType
 from domain.network.pathfinder import RouteFinder
 from domain.network.repository import ConnectionRepository
 from domain.service.conflict import ConflictDetectionService
-from domain.service.model import EpochSeconds, Service, TimetableEntry
+from domain.service.model import Service, TimetableEntry
+from domain.shared.types import EpochSeconds
 from domain.service.repository import ServiceRepository
 from domain.station.repository import StationRepository
 from domain.vehicle.repository import VehicleRepository
-
-
-@dataclass(frozen=True)
-class RouteStop:
-    platform_id: UUID
-    dwell_time: int  # seconds
 
 
 class ServiceAppService:
@@ -39,22 +34,28 @@ class ServiceAppService:
     async def create_service(self, name: str, vehicle_id: UUID) -> Service:
         if not name or not name.strip():
             raise ValueError("Service name must not be empty")
+        
         vehicle = await self._vehicle_repo.find_by_id(vehicle_id)
         if vehicle is None:
             raise ValueError(f"Vehicle {vehicle_id} not found")
+        
         service = Service(
             name=name,
             vehicle_id=vehicle_id,
             path=[],
             timetable=[],
         )
+        
         await self._service_repo.save(service)
+        
         return service
 
     async def get_service(self, id: int) -> Service:
         service = await self._service_repo.find_by_id(id)
+        
         if service is None:
             raise ValueError(f"Service {id} not found")
+        
         return service
 
     async def list_services(self) -> list[Service]:

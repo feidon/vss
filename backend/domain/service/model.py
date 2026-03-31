@@ -4,8 +4,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from domain.network.model import Node, NodeConnection
-
-EpochSeconds = int
+from domain.shared.types import EpochSeconds
 
 
 @dataclass(eq=False, kw_only=True)

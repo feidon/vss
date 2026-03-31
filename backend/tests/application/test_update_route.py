@@ -3,7 +3,8 @@ from uuid import uuid7
 import pytest
 
 from application.service.errors import ConflictError
-from application.service.service import RouteStop, ServiceAppService
+from application.service.dto import RouteStop
+from application.service.service import ServiceAppService
 from domain.network.model import NodeType
 from domain.vehicle.model import Vehicle
 from infra.memory.block_repo import InMemoryBlockRepository
