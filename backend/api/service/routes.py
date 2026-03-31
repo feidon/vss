@@ -59,6 +59,14 @@ def _conflict_response(e: ConflictError) -> HTTPException:
              "overlap_start": ic.overlap_start, "overlap_end": ic.overlap_end}
             for ic in c.interlocking_conflicts
         ],
+        "low_battery_conflicts": [
+            {"service_id": lbc.service_id}
+            for lbc in c.low_battery_conflicts
+        ],
+        "insufficient_charge_conflicts": [
+            {"service_a_id": icc.service_a_id, "service_b_id": icc.service_b_id}
+            for icc in c.insufficient_charge_conflicts
+        ],
     }
     return HTTPException(status_code=409, detail=detail)
 

@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from uuid import UUID
 
+from domain.network.model import NodeType
+from domain.shared.types import EpochSeconds
+from domain.vehicle.model import Vehicle
 from domain.block.model import Block
 from domain.service.model import Service, TimetableEntry
 
@@ -39,12 +42,22 @@ class InterlockingConflict:
     overlap_start: int
     overlap_end: int
 
+@dataclass(frozen=True)
+class LowBatteryConflict:
+    service_id: int
+
+@dataclass(frozen=True)
+class InsufficientChargeConflict:
+    service_a_id: int
+    service_b_id: int
 
 @dataclass(frozen=True)
 class ServiceConflicts:
     vehicle_conflicts: list[VehicleConflict]
     block_conflicts: list[BlockConflict]
     interlocking_conflicts: list[InterlockingConflict]
+    low_battery_conflicts: list[LowBatteryConflict] = field(default_factory=list)
+    insufficient_charge_conflicts: list[InsufficientChargeConflict] = field(default_factory=list)
 
     @property
     def has_conflicts(self) -> bool:
@@ -52,6 +65,8 @@ class ServiceConflicts:
             self.vehicle_conflicts
             or self.block_conflicts
             or self.interlocking_conflicts
+            or self.low_battery_conflicts
+            or self.insufficient_charge_conflicts
         )
 
 
@@ -66,10 +81,21 @@ class ConflictDetector:
         candidate: Service,
         other_services: list[Service],
         blocks: list[Block],
+        vehicles: list[Vehicle] | None = None,
     ) -> ServiceConflicts:
         """Check all conflicts for a candidate service against other services."""
         all_services = [s for s in other_services if s.id != candidate.id]
         all_services.append(candidate)
+
+        low_battery: list[LowBatteryConflict] = []
+        insufficient_charge: list[InsufficientChargeConflict] = []
+        if vehicles:
+            vehicle_by_id = {v.id: v for v in vehicles}
+            candidate_vehicle = vehicle_by_id.get(candidate.vehicle_id)
+            if candidate_vehicle is not None:
+                low_battery, insufficient_charge = cls._detect_battery_conflict(
+                    candidate_vehicle, all_services,
+                )
 
         return ServiceConflicts(
             vehicle_conflicts=cls._detect_vehicle_conflicts(
@@ -79,6 +105,8 @@ class ConflictDetector:
             interlocking_conflicts=cls._detect_interlocking_conflicts(
                 all_services, blocks,
             ),
+            low_battery_conflicts=low_battery,
+            insufficient_charge_conflicts=insufficient_charge,
         )
 
     # ── Private helpers ──────────────────────────────────────
@@ -212,3 +240,56 @@ class ConflictDetector:
                 ))
 
         return conflicts
+    
+    @classmethod
+    def _detect_battery_conflict(
+        cls,
+        vehicle: Vehicle,
+        services: list[Service],
+    ) -> tuple[list[LowBatteryConflict], list[InsufficientChargeConflict]]:
+        # Operate on a copy to avoid mutating the domain entity
+        sim = Vehicle(id=vehicle.id, name=vehicle.name, battery=100)
+
+        block_count: list[tuple[int, int, EpochSeconds, EpochSeconds]] = []
+
+        for service in services:
+            if service.vehicle_id != vehicle.id:
+                continue
+
+            timetable = sorted(service.timetable, key=lambda t: t.order)
+            if not timetable:
+                continue
+
+            start_time = timetable[0].arrival
+            end_time = timetable[-1].departure
+            block_num = len([n for n in service.path if n.type == NodeType.BLOCK])
+            block_count.append((service.id, block_num, start_time, end_time))
+
+        block_count.sort(key=lambda b: b[2])
+
+        low_battery_conflicts: list[LowBatteryConflict] = []
+        insufficient_charge_conflicts: list[InsufficientChargeConflict] = []
+
+        if not block_count:
+            return (low_battery_conflicts, insufficient_charge_conflicts)
+
+        prev_end = block_count[0][2]
+        prev_service_id = block_count[0][0]
+        for service_id, num, start, end in block_count:
+            sim.charge(start - prev_end)
+            if not sim.can_depart():
+                insufficient_charge_conflicts.append(InsufficientChargeConflict(
+                    service_a_id=prev_service_id,
+                    service_b_id=service_id,
+                ))
+                break
+
+            sim.consume_battery(num)
+            if sim.is_battery_critical():
+                low_battery_conflicts.append(LowBatteryConflict(service_id=service_id))
+                break
+
+            prev_end = end
+            prev_service_id = service_id
+
+        return (low_battery_conflicts, insufficient_charge_conflicts)

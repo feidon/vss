@@ -85,7 +85,10 @@ class ServiceAppService:
         service.update_route(full_path, timetable, connections)
 
         all_services = await self._service_repo.find_all()
-        conflicts = ConflictDetector.validate_service(service, all_services, all_blocks)
+        all_vehicles = await self._vehicle_repo.find_all()
+        conflicts = ConflictDetector.validate_service(
+            service, all_services, all_blocks, all_vehicles,
+        )
         if conflicts.has_conflicts:
             raise ConflictError(conflicts)
 

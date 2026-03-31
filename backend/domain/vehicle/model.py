@@ -6,9 +6,22 @@ from uuid import UUID
 class Vehicle:
     id: UUID
     name: str
+    battery: int = 100
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Vehicle) and self.id == other.id
 
     def __hash__(self) -> int:
         return hash(self.id)
+
+    def charge(self, charge_seconds: int) -> None:
+        self.battery = min(self.battery + charge_seconds // 12, 100)
+
+    def can_depart(self) -> bool:
+        return self.battery >= 80
+
+    def consume_battery(self, block_num: int) -> None:
+        self.battery -= block_num
+
+    def is_battery_critical(self) -> bool:
+        return self.battery < 30
