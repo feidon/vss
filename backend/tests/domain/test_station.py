@@ -17,10 +17,30 @@ class TestPlatform:
         assert node.id == p.id
         assert node.type == NodeType.PLATFORM
 
-    def test_frozen(self):
+    def test_to_timetable_entry(self):
         p = Platform(id=uuid7(), name="P1")
-        with pytest.raises(AttributeError):
-            p.name = "P2"
+        entry = p.to_timetable_entry(order=0, arrival=100, departure=200)
+        assert entry.node_id == p.id
+        assert entry.order == 0
+        assert entry.arrival == 100
+        assert entry.departure == 200
+
+    def test_equality_by_id(self):
+        pid = uuid7()
+        p1 = Platform(id=pid, name="P1")
+        p2 = Platform(id=pid, name="P2")
+        assert p1 == p2
+
+    def test_inequality_by_id(self):
+        p1 = Platform(id=uuid7(), name="P1")
+        p2 = Platform(id=uuid7(), name="P1")
+        assert p1 != p2
+
+    def test_hashable(self):
+        pid = uuid7()
+        p1 = Platform(id=pid, name="P1")
+        p2 = Platform(id=pid, name="P2")
+        assert {p1, p2} == {p1}
 
 
 class TestStation:
@@ -62,6 +82,18 @@ class TestStation:
         s1 = Station(id=sid, name="A", is_yard=False, platforms=[])
         s2 = Station(id=sid, name="B", is_yard=True, platforms=[])
         assert s1 == s2
+
+    def test_to_timetable_entry_yard(self):
+        s = Station(id=uuid7(), name="Yard", is_yard=True, platforms=[])
+        entry = s.to_timetable_entry(order=0, arrival=50, departure=100)
+        assert entry.node_id == s.id
+        assert entry.arrival == 50
+        assert entry.departure == 100
+
+    def test_to_timetable_entry_non_yard_rejected(self):
+        s = Station(id=uuid7(), name="S1", is_yard=False, platforms=[])
+        with pytest.raises(ValueError, match="Only yards"):
+            s.to_timetable_entry(order=0, arrival=0, departure=10)
 
     def test_hashable(self):
         sid = uuid7()

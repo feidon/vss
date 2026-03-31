@@ -8,7 +8,6 @@ from infra.memory.service_repo import InMemoryServiceRepository
 
 def make_service(vehicle_id=None) -> Service:
     return Service(
-        id=uuid7(),
         name="S1",
         vehicle_id=vehicle_id or uuid7(),
         path=[],
@@ -22,6 +21,12 @@ class TestInMemoryServiceRepository:
         return InMemoryServiceRepository()
 
     @pytest.mark.asyncio
+    async def test_save_assigns_id(self, repo):
+        service = make_service()
+        await repo.save(service)
+        assert service.id == 1
+
+    @pytest.mark.asyncio
     async def test_save_and_find_by_id(self, repo):
         service = make_service()
         await repo.save(service)
@@ -30,7 +35,7 @@ class TestInMemoryServiceRepository:
 
     @pytest.mark.asyncio
     async def test_find_by_id_returns_none(self, repo):
-        assert await repo.find_by_id(uuid7()) is None
+        assert await repo.find_by_id(999) is None
 
     @pytest.mark.asyncio
     async def test_find_all(self, repo):
@@ -61,4 +66,4 @@ class TestInMemoryServiceRepository:
 
     @pytest.mark.asyncio
     async def test_delete_nonexistent_is_idempotent(self, repo):
-        await repo.delete(uuid7())  # should not raise
+        await repo.delete(999)  # should not raise

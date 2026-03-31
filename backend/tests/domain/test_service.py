@@ -1,9 +1,12 @@
+from itertools import count
 from uuid import uuid7
 
 import pytest
 
 from domain.network.model import Node, NodeConnection, NodeType
 from domain.service.model import Service, TimetableEntry
+
+_id_counter = count(1)
 
 
 def make_node() -> Node:
@@ -19,7 +22,7 @@ def make_service(
     if timetable is None:
         timetable = []
     return Service(
-        id=uuid7(),
+        id=next(_id_counter),
         name="S1",
         vehicle_id=uuid7(),
         path=path,
@@ -97,57 +100,44 @@ class TestServiceCreation:
             make_service(path=[n], timetable=entries)
 
     def test_equality_by_id(self):
-        sid = uuid7()
-        s1 = Service(id=sid, name="A", vehicle_id=uuid7(), path=[], timetable=[])
-        s2 = Service(id=sid, name="B", vehicle_id=uuid7(), path=[], timetable=[])
+        s1 = Service(id=1, name="A", vehicle_id=uuid7(), path=[], timetable=[])
+        s2 = Service(id=1, name="B", vehicle_id=uuid7(), path=[], timetable=[])
         assert s1 == s2
 
     def test_hashable(self):
-        sid = uuid7()
-        s1 = Service(id=sid, name="A", vehicle_id=uuid7(), path=[], timetable=[])
-        s2 = Service(id=sid, name="B", vehicle_id=uuid7(), path=[], timetable=[])
+        s1 = Service(id=1, name="A", vehicle_id=uuid7(), path=[], timetable=[])
+        s2 = Service(id=1, name="B", vehicle_id=uuid7(), path=[], timetable=[])
         assert {s1, s2} == {s1}
 
 
-class TestServiceUpdatePath:
-    def test_update_path(self):
+class TestServiceUpdateRoute:
+    def test_update_route(self):
         n1, n2 = make_node(), make_node()
-        service = make_service(path=[n1])
-        service.update_path([n1, n2])
+        entries = [
+            TimetableEntry(order=0, node_id=n1.id, arrival=0, departure=10),
+            TimetableEntry(order=1, node_id=n2.id, arrival=10, departure=20),
+        ]
+        service = make_service(path=[make_node()])
+        service.update_route([n1, n2], entries)
         assert len(service.path) == 2
+        assert len(service.timetable) == 2
 
-    def test_update_path_rejects_if_entries_reference_missing_node(self):
-        n1, n2 = make_node(), make_node()
-        entries = [TimetableEntry(order=0, node_id=n1.id, arrival=0, departure=10)]
-        service = make_service(path=[n1, n2], timetable=entries)
-        with pytest.raises(ValueError, match="not in path"):
-            service.update_path([n2])
-
-
-class TestServiceUpdateTimetable:
-    def test_update_timetable(self):
+    def test_update_route_rejects_invalid_ordering(self):
         n = make_node()
-        service = make_service(path=[n])
-        new_entries = [TimetableEntry(order=0, node_id=n.id, arrival=0, departure=10)]
-        service.update_timetable(new_entries)
-        assert len(service.timetable) == 1
-
-    def test_update_timetable_rejects_invalid_ordering(self):
-        n = make_node()
-        service = make_service(path=[n])
         entries = [
             TimetableEntry(order=1, node_id=n.id, arrival=0, departure=5),
-            TimetableEntry(order=0, node_id=n.id, arrival=10, departure=15),
+            TimetableEntry(order=0, node_id=n.id, arrival=100, departure=105),
         ]
-        with pytest.raises(ValueError, match="ascending order"):
-            service.update_timetable(entries)
-
-    def test_update_timetable_rejects_unknown_node(self):
-        n = make_node()
         service = make_service(path=[n])
+        with pytest.raises(ValueError, match="ascending order"):
+            service.update_route([n], entries)
+
+    def test_update_route_rejects_entry_not_in_path(self):
+        n = make_node()
         entries = [TimetableEntry(order=0, node_id=uuid7(), arrival=0, departure=10)]
+        service = make_service(path=[n])
         with pytest.raises(ValueError, match="not in path"):
-            service.update_timetable(entries)
+            service.update_route([n], entries)
 
 
 class TestServiceConnectivity:

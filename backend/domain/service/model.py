@@ -8,9 +8,9 @@ from domain.network.model import Node, NodeConnection
 EpochSeconds = int
 
 
-@dataclass(eq=False)
+@dataclass(eq=False, kw_only=True)
 class Service:
-    id: int
+    id: int | None = None
     name: str
     vehicle_id: UUID
     path: list[Node]
@@ -20,14 +20,11 @@ class Service:
         _validate_entry_ordering(self.timetable)
         _validate_entries_in_path(self.timetable, self.path)
 
-    def update_path(self, path: list[Node]) -> None:
-        _validate_entries_in_path(self.timetable, path)
+    def update_route(self, path: list[Node], timetable: list[TimetableEntry]) -> None:
+        _validate_entry_ordering(timetable)
+        _validate_entries_in_path(timetable, path)
         self.path = list(path)
-
-    def update_timetable(self, entries: list[TimetableEntry]) -> None:
-        _validate_entry_ordering(entries)
-        _validate_entries_in_path(entries, self.path)
-        self.timetable = list(entries)
+        self.timetable = list(timetable)
 
     def validate_connectivity(self, connections: frozenset[NodeConnection]) -> None:
         if not self.path:
@@ -38,10 +35,14 @@ class Service:
                 raise ValueError(f"No connection: {self.path[i].id} -> {self.path[i + 1].id}")
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, Service) and self.id == other.id
+        if not isinstance(other, Service):
+            return False
+        if self.id is None or other.id is None:
+            return self is other
+        return self.id == other.id
 
     def __hash__(self) -> int:
-        return hash(self.id)
+        return id(self) if self.id is None else hash(self.id)
 
 
 @dataclass(frozen=True)

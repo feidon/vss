@@ -53,3 +53,11 @@ class TestBlock:
         block = Block(id=uuid7(), name="B1", group=1, traversal_time_seconds=30)
         with pytest.raises(ValueError, match="traversal_time_seconds must be positive"):
             block.update_traversal_time(0)
+
+    def test_to_timetable_entry(self):
+        block = Block(id=uuid7(), name="B1", group=1, traversal_time_seconds=30)
+        entry = block.to_timetable_entry(order=0, arrival=100)
+        assert entry.node_id == block.id
+        assert entry.order == 0
+        assert entry.arrival == 100
+        assert entry.departure == 130

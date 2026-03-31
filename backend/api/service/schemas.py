@@ -6,8 +6,9 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from domain.block.model import Block
-from domain.network.model import Node, NodeType
-from domain.service.model import Service, TimetableEntry
+from domain.network.model import NodeType
+from domain.service.model import Service
+from domain.station.model import Platform
 
 
 class CreateServiceRequest(BaseModel):
@@ -15,41 +16,14 @@ class CreateServiceRequest(BaseModel):
     vehicle_id: UUID
 
 
-class NodeInput(BaseModel):
-    id: UUID
-    type: Literal["block", "platform"]
-
-    def to_domain(self) -> Node:
-        return Node(id=self.id, type=NodeType(self.type))
+class RouteStopInput(BaseModel):
+    platform_id: UUID
+    dwell_time: int = Field(ge=0)
 
 
-class UpdatePathRequest(BaseModel):
-    path: list[NodeInput]
-
-    def to_nodes(self) -> list[Node]:
-        return [n.to_domain() for n in self.path]
-
-
-class TimetableEntrySchema(BaseModel):
-    order: int
-    node_id: UUID
-    arrival: int
-    departure: int
-
-
-class UpdateTimetableRequest(BaseModel):
-    timetable: list[TimetableEntrySchema]
-
-    def to_domains(self) -> list[TimetableEntry]:
-        return [
-            TimetableEntry(
-                order=e.order,
-                node_id=e.node_id,
-                arrival=e.arrival,
-                departure=e.departure,
-            )
-            for e in self.timetable
-        ]
+class UpdateRouteRequest(BaseModel):
+    stops: list[RouteStopInput] = Field(min_length=1)
+    start_time: int
 
 
 # ── Response schemas ─────────────────────────────────────────
@@ -69,30 +43,56 @@ class PlatformNodeResponse(BaseModel):
     name: str
 
 
+class YardNodeResponse(BaseModel):
+    type: Literal["yard"] = "yard"
+    id: UUID
+    name: str
+
+
 PathNodeResponse = Annotated[
-    BlockNodeResponse | PlatformNodeResponse,
+    BlockNodeResponse | PlatformNodeResponse | YardNodeResponse,
     Field(discriminator="type"),
 ]
 
 
+class TimetableEntrySchema(BaseModel):
+    order: int
+    node_id: UUID
+    arrival: int
+    departure: int
+
+
 class ServiceResponse(BaseModel):
-    id: UUID
+    id: int
     name: str
     vehicle_id: UUID
     path: list[PathNodeResponse]
     timetable: list[TimetableEntrySchema]
 
     @classmethod
-    def from_domain(cls, service: Service, blocks: dict[UUID, Block]) -> ServiceResponse:
-        path_nodes: list[BlockNodeResponse | PlatformNodeResponse] = []
+    def from_domain(
+        cls,
+        service: Service,
+        blocks: dict[UUID, Block],
+        platforms: dict[UUID, Platform],
+        yard_id: UUID | None = None,
+        yard_name: str = "Y",
+    ) -> ServiceResponse:
+        path_nodes: list[BlockNodeResponse | PlatformNodeResponse | YardNodeResponse] = []
         for node in service.path:
-            if node.id in blocks:
+            if node.type == NodeType.BLOCK and node.id in blocks:
                 b = blocks[node.id]
                 path_nodes.append(BlockNodeResponse(
                     id=b.id, name=b.name, group=b.group,
                     traversal_time_seconds=b.traversal_time_seconds,
                 ))
-            # TODO: add platform branch when available
+            elif node.type == NodeType.PLATFORM and node.id in platforms:
+                p = platforms[node.id]
+                path_nodes.append(PlatformNodeResponse(id=p.id, name=p.name))
+            elif node.type == NodeType.YARD:
+                path_nodes.append(YardNodeResponse(
+                    id=node.id, name=yard_name,
+                ))
 
         return cls(
             id=service.id,

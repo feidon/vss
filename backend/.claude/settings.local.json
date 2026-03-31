@@ -5,7 +5,9 @@
       "Bash(uv add:*)",
       "Bash(uv run:*)",
       "Bash(tree:*)",
-      "Read(//dev/**)"
+      "Read(//dev/**)",
+      "WebSearch",
+      "mcp__jetbrains__create_new_file"
     ]
   }
 }
