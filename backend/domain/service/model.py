@@ -5,10 +5,12 @@ from uuid import UUID
 
 from domain.network.model import Node, NodeConnection
 
+EpochSeconds = int
+
 
 @dataclass(eq=False)
 class Service:
-    id: UUID
+    id: int
     name: str
     vehicle_id: UUID
     path: list[Node]
@@ -22,10 +24,10 @@ class Service:
         _validate_entries_in_path(self.timetable, path)
         self.path = list(path)
 
-    def update_timetable(self, timetable: list[TimetableEntry]) -> None:
-        _validate_entry_ordering(timetable)
-        _validate_entries_in_path(timetable, self.path)
-        self.timetable = list(timetable)
+    def update_timetable(self, entries: list[TimetableEntry]) -> None:
+        _validate_entry_ordering(entries)
+        _validate_entries_in_path(entries, self.path)
+        self.timetable = list(entries)
 
     def validate_connectivity(self, connections: frozenset[NodeConnection]) -> None:
         if not self.path:
@@ -46,8 +48,8 @@ class Service:
 class TimetableEntry:
     order: int
     node_id: UUID
-    arrival: int
-    departure: int
+    arrival: EpochSeconds
+    departure: EpochSeconds
 
     def __post_init__(self) -> None:
         if self.arrival > self.departure:

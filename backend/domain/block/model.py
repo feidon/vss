@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from domain.network.model import Node, NodeType
+from domain.service.model import EpochSeconds, TimetableEntry
 
 
 @dataclass(eq=False)
@@ -19,6 +20,14 @@ class Block:
 
     def to_node(self) -> Node:
         return Node(id=self.id, type=NodeType.BLOCK)
+
+    def to_timetable_entry(self, order: int, arrival: EpochSeconds) -> TimetableEntry:
+        return TimetableEntry(
+            order=order,
+            node_id=self.id,
+            arrival=arrival,
+            departure=arrival + self.traversal_time_seconds,
+        )
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Block) and self.id == other.id

@@ -6,6 +6,7 @@ from uuid import UUID
 class NodeType(Enum):
     BLOCK = "block"
     PLATFORM = "platform"
+    YARD = "yard"
 
 
 @dataclass(frozen=True)
