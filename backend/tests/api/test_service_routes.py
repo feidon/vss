@@ -17,8 +17,8 @@ from infra.memory.service_repo import InMemoryServiceRepository
 from infra.memory.station_repo import InMemoryStationRepository
 from infra.memory.vehicle_repo import InMemoryVehicleRepository
 from infra.seed import (
-    BLOCK_IDS,
-    PLATFORM_IDS,
+    BLOCK_ID_BY_NAME,
+    PLATFORM_ID_BY_NAME,
     create_blocks,
     create_connections,
     create_stations,
@@ -140,8 +140,8 @@ class TestServiceRouteUpdate:
             f"/services/{sid}/route",
             json={
                 "stops": [
-                    {"platform_id": str(PLATFORM_IDS["P1A"]), "dwell_time": 60},
-                    {"platform_id": str(PLATFORM_IDS["P2A"]), "dwell_time": 90},
+                    {"platform_id": str(PLATFORM_ID_BY_NAME["P1A"]), "dwell_time": 60},
+                    {"platform_id": str(PLATFORM_ID_BY_NAME["P2A"]), "dwell_time": 90},
                 ],
                 "start_time": 1000,
             },
@@ -179,7 +179,7 @@ class TestServiceRouteUpdate:
             f"/services/{sid}/route",
             json={
                 "stops": [
-                    {"platform_id": str(PLATFORM_IDS["P1A"]), "dwell_time": 60},
+                    {"platform_id": str(PLATFORM_ID_BY_NAME["P1A"]), "dwell_time": 60},
                     {"platform_id": str(uuid7()), "dwell_time": 60},
                 ],
                 "start_time": 0,
@@ -192,8 +192,8 @@ class TestServiceRouteUpdate:
             "/services/999/route",
             json={
                 "stops": [
-                    {"platform_id": str(PLATFORM_IDS["P1A"]), "dwell_time": 60},
-                    {"platform_id": str(PLATFORM_IDS["P2A"]), "dwell_time": 60},
+                    {"platform_id": str(PLATFORM_ID_BY_NAME["P1A"]), "dwell_time": 60},
+                    {"platform_id": str(PLATFORM_ID_BY_NAME["P2A"]), "dwell_time": 60},
                 ],
                 "start_time": 0,
             },
@@ -207,8 +207,8 @@ class TestServiceRouteUpdate:
             f"/services/{sid}/route",
             json={
                 "stops": [
-                    {"platform_id": str(PLATFORM_IDS["P2A"]), "dwell_time": 60},
-                    {"platform_id": str(PLATFORM_IDS["P1A"]), "dwell_time": 60},
+                    {"platform_id": str(PLATFORM_ID_BY_NAME["P2A"]), "dwell_time": 60},
+                    {"platform_id": str(PLATFORM_ID_BY_NAME["P1A"]), "dwell_time": 60},
                 ],
                 "start_time": 0,
             },
@@ -225,8 +225,8 @@ class TestServiceRouteUpdate:
 
         route = {
             "stops": [
-                {"platform_id": str(PLATFORM_IDS["P1A"]), "dwell_time": 0},
-                {"platform_id": str(PLATFORM_IDS["P2A"]), "dwell_time": 0},
+                {"platform_id": str(PLATFORM_ID_BY_NAME["P1A"]), "dwell_time": 0},
+                {"platform_id": str(PLATFORM_ID_BY_NAME["P2A"]), "dwell_time": 0},
             ],
             "start_time": 0,
         }

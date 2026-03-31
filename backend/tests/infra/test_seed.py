@@ -1,8 +1,8 @@
 from infra.seed import (
-    BLOCK_IDS,
-    PLATFORM_IDS,
-    STATION_IDS,
-    VEHICLE_IDS,
+    BLOCK_ID_BY_NAME,
+    PLATFORM_ID_BY_NAME,
+    STATION_ID_BY_NAME,
+    VEHICLE_ID_BY_NAME,
     YARD_ID,
     create_blocks,
     create_connections,
@@ -72,29 +72,29 @@ class TestSeedConnections:
     def test_outbound_path_y_to_p1a(self):
         """Y -> B1 -> P1A must be a valid path."""
         conns = {(c.from_id, c.to_id) for c in create_connections()}
-        assert (YARD_ID, BLOCK_IDS["B1"]) in conns
-        assert (BLOCK_IDS["B1"], PLATFORM_IDS["P1A"]) in conns
+        assert (YARD_ID, BLOCK_ID_BY_NAME["B1"]) in conns
+        assert (BLOCK_ID_BY_NAME["B1"], PLATFORM_ID_BY_NAME["P1A"]) in conns
 
     def test_return_path_p1a_to_y(self):
         """P1A -> B1 -> Y must be a valid return path."""
         conns = {(c.from_id, c.to_id) for c in create_connections()}
-        assert (PLATFORM_IDS["P1A"], BLOCK_IDS["B1"]) in conns
-        assert (BLOCK_IDS["B1"], YARD_ID) in conns
+        assert (PLATFORM_ID_BY_NAME["P1A"], BLOCK_ID_BY_NAME["B1"]) in conns
+        assert (BLOCK_ID_BY_NAME["B1"], YARD_ID) in conns
 
     def test_loop_s1_to_s2_to_s3_and_back(self):
         conns = {(c.from_id, c.to_id) for c in create_connections()}
         # S1 -> S2
-        assert (PLATFORM_IDS["P1A"], BLOCK_IDS["B3"]) in conns
-        assert (BLOCK_IDS["B5"], PLATFORM_IDS["P2A"]) in conns
+        assert (PLATFORM_ID_BY_NAME["P1A"], BLOCK_ID_BY_NAME["B3"]) in conns
+        assert (BLOCK_ID_BY_NAME["B5"], PLATFORM_ID_BY_NAME["P2A"]) in conns
         # S2 -> S3
-        assert (PLATFORM_IDS["P2A"], BLOCK_IDS["B6"]) in conns
-        assert (BLOCK_IDS["B7"], PLATFORM_IDS["P3A"]) in conns
+        assert (PLATFORM_ID_BY_NAME["P2A"], BLOCK_ID_BY_NAME["B6"]) in conns
+        assert (BLOCK_ID_BY_NAME["B7"], PLATFORM_ID_BY_NAME["P3A"]) in conns
         # S3 -> S2 (return)
-        assert (PLATFORM_IDS["P3A"], BLOCK_IDS["B10"]) in conns
-        assert (BLOCK_IDS["B11"], PLATFORM_IDS["P2B"]) in conns
+        assert (PLATFORM_ID_BY_NAME["P3A"], BLOCK_ID_BY_NAME["B10"]) in conns
+        assert (BLOCK_ID_BY_NAME["B11"], PLATFORM_ID_BY_NAME["P2B"]) in conns
         # S2 -> S1 (return)
-        assert (PLATFORM_IDS["P2B"], BLOCK_IDS["B12"]) in conns
-        assert (BLOCK_IDS["B13"], PLATFORM_IDS["P1A"]) in conns
+        assert (PLATFORM_ID_BY_NAME["P2B"], BLOCK_ID_BY_NAME["B12"]) in conns
+        assert (BLOCK_ID_BY_NAME["B13"], PLATFORM_ID_BY_NAME["P1A"]) in conns
 
 
 class TestSeedVehicles:
@@ -116,10 +116,10 @@ class TestDeterministicIds:
 
     def test_no_id_collisions_between_types(self):
         all_ids = (
-            set(BLOCK_IDS.values())
-            | set(PLATFORM_IDS.values())
-            | set(STATION_IDS.values())
-            | set(VEHICLE_IDS.values())
+            set(BLOCK_ID_BY_NAME.values())
+            | set(PLATFORM_ID_BY_NAME.values())
+            | set(STATION_ID_BY_NAME.values())
+            | set(VEHICLE_ID_BY_NAME.values())
         )
-        expected_count = len(BLOCK_IDS) + len(PLATFORM_IDS) + len(STATION_IDS) + len(VEHICLE_IDS)
+        expected_count = len(BLOCK_ID_BY_NAME) + len(PLATFORM_ID_BY_NAME) + len(STATION_ID_BY_NAME) + len(VEHICLE_ID_BY_NAME)
         assert len(all_ids) == expected_count

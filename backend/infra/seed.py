@@ -20,49 +20,29 @@ between the Yard and S1 platforms.  All other blocks are
 strictly unidirectional as shown by `->`.
 """
 
-from uuid import UUID, uuid5, NAMESPACE_DNS
+from uuid import UUID, uuid7
 
 from domain.block.model import Block
 from domain.network.model import NodeConnection
 from domain.station.model import Platform, Station
 from domain.vehicle.model import Vehicle
 
-# ── Deterministic UUID helper ───────────────────────────────
-
-_NS = UUID("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
-
-
-def _id(name: str) -> UUID:
-    return uuid5(_NS, name)
-
-
 # ── IDs ─────────────────────────────────────────────────────
 
-YARD_ID = _id("Y")
+YARD_ID = uuid7()
 
-PLATFORM_IDS = {
-    "P1A": _id("P1A"),
-    "P1B": _id("P1B"),
-    "P2A": _id("P2A"),
-    "P2B": _id("P2B"),
-    "P3A": _id("P3A"),
-    "P3B": _id("P3B"),
-}
+PLATFORM_ID_BY_NAME = {name: uuid7() for name in ["P1A", "P1B", "P2A", "P2B", "P3A", "P3B"]}
 
-BLOCK_IDS = {f"B{i}": _id(f"B{i}") for i in range(1, 15)}
+BLOCK_ID_BY_NAME = {f"B{i}": uuid7() for i in range(1, 15)}
 
-STATION_IDS = {
+STATION_ID_BY_NAME = {
     "Y": YARD_ID,
-    "S1": _id("S1"),
-    "S2": _id("S2"),
-    "S3": _id("S3"),
+    "S1": uuid7(),
+    "S2": uuid7(),
+    "S3": uuid7(),
 }
 
-VEHICLE_IDS = {
-    "V1": _id("V1"),
-    "V2": _id("V2"),
-    "V3": _id("V3"),
-}
+VEHICLE_ID_BY_NAME = {name: uuid7() for name in ["V1", "V2", "V3"]}
 
 # ── Interlocking groups ─────────────────────────────────────
 #   Group 1: B1, B2
@@ -85,7 +65,7 @@ _DEFAULT_TRAVERSAL_TIME = 30  # seconds
 def create_blocks() -> list[Block]:
     return [
         Block(
-            id=BLOCK_IDS[name],
+            id=BLOCK_ID_BY_NAME[name],
             name=name,
             group=_BLOCK_GROUPS[name],
             traversal_time_seconds=_DEFAULT_TRAVERSAL_TIME,
@@ -103,30 +83,30 @@ def create_stations() -> list[Station]:
             platforms=[],
         ),
         Station(
-            id=STATION_IDS["S1"],
+            id=STATION_ID_BY_NAME["S1"],
             name="S1",
             is_yard=False,
             platforms=[
-                Platform(id=PLATFORM_IDS["P1A"], name="P1A"),
-                Platform(id=PLATFORM_IDS["P1B"], name="P1B"),
+                Platform(id=PLATFORM_ID_BY_NAME["P1A"], name="P1A"),
+                Platform(id=PLATFORM_ID_BY_NAME["P1B"], name="P1B"),
             ],
         ),
         Station(
-            id=STATION_IDS["S2"],
+            id=STATION_ID_BY_NAME["S2"],
             name="S2",
             is_yard=False,
             platforms=[
-                Platform(id=PLATFORM_IDS["P2A"], name="P2A"),
-                Platform(id=PLATFORM_IDS["P2B"], name="P2B"),
+                Platform(id=PLATFORM_ID_BY_NAME["P2A"], name="P2A"),
+                Platform(id=PLATFORM_ID_BY_NAME["P2B"], name="P2B"),
             ],
         ),
         Station(
-            id=STATION_IDS["S3"],
+            id=STATION_ID_BY_NAME["S3"],
             name="S3",
             is_yard=False,
             platforms=[
-                Platform(id=PLATFORM_IDS["P3A"], name="P3A"),
-                Platform(id=PLATFORM_IDS["P3B"], name="P3B"),
+                Platform(id=PLATFORM_ID_BY_NAME["P3A"], name="P3A"),
+                Platform(id=PLATFORM_ID_BY_NAME["P3B"], name="P3B"),
             ],
         ),
     ]
@@ -139,8 +119,8 @@ def create_connections() -> frozenset[NodeConnection]:
     to allow vehicles to depart from and return to the Yard.
     All other blocks are strictly unidirectional.
     """
-    b = BLOCK_IDS
-    p = PLATFORM_IDS
+    b = BLOCK_ID_BY_NAME
+    p = PLATFORM_ID_BY_NAME
     y = YARD_ID
 
     edges: list[tuple[UUID, UUID]] = [
@@ -174,7 +154,7 @@ def create_connections() -> frozenset[NodeConnection]:
 
 def create_vehicles() -> list[Vehicle]:
     return [
-        Vehicle(id=VEHICLE_IDS["V1"], name="V1"),
-        Vehicle(id=VEHICLE_IDS["V2"], name="V2"),
-        Vehicle(id=VEHICLE_IDS["V3"], name="V3"),
+        Vehicle(id=VEHICLE_ID_BY_NAME["V1"], name="V1"),
+        Vehicle(id=VEHICLE_ID_BY_NAME["V2"], name="V2"),
+        Vehicle(id=VEHICLE_ID_BY_NAME["V3"], name="V3"),
     ]

@@ -13,8 +13,8 @@ from infra.memory.service_repo import InMemoryServiceRepository
 from infra.memory.station_repo import InMemoryStationRepository
 from infra.memory.vehicle_repo import InMemoryVehicleRepository
 from infra.seed import (
-    BLOCK_IDS,
-    PLATFORM_IDS,
+    BLOCK_ID_BY_NAME,
+    PLATFORM_ID_BY_NAME,
     create_blocks,
     create_connections,
     create_stations,
@@ -57,17 +57,17 @@ class TestUpdateServiceRoute:
         svc = await app.create_service(name="S1", vehicle_id=v.id)
 
         stops = [
-            RouteStop(platform_id=PLATFORM_IDS["P1A"], dwell_time=60),
-            RouteStop(platform_id=PLATFORM_IDS["P2A"], dwell_time=90),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=90),
         ]
         result = await app.update_service_route(svc.id, stops, start_time=1000)
 
         # Path: P1A -> B3 -> B5 -> P2A
         assert len(result.path) == 4
-        assert result.path[0].id == PLATFORM_IDS["P1A"]
-        assert result.path[1].id == BLOCK_IDS["B3"]
-        assert result.path[2].id == BLOCK_IDS["B5"]
-        assert result.path[3].id == PLATFORM_IDS["P2A"]
+        assert result.path[0].id == PLATFORM_ID_BY_NAME["P1A"]
+        assert result.path[1].id == BLOCK_ID_BY_NAME["B3"]
+        assert result.path[2].id == BLOCK_ID_BY_NAME["B5"]
+        assert result.path[3].id == PLATFORM_ID_BY_NAME["P2A"]
 
         # Timetable: P1A dwell=60, B3 traverse=30, B5 traverse=30, P2A dwell=90
         tt = result.timetable
@@ -84,18 +84,18 @@ class TestUpdateServiceRoute:
         svc = await app.create_service(name="S1", vehicle_id=v.id)
 
         stops = [
-            RouteStop(platform_id=PLATFORM_IDS["P1A"], dwell_time=60),
-            RouteStop(platform_id=PLATFORM_IDS["P2A"], dwell_time=30),
-            RouteStop(platform_id=PLATFORM_IDS["P3A"], dwell_time=60),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=30),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P3A"], dwell_time=60),
         ]
         result = await app.update_service_route(svc.id, stops, start_time=0)
 
         # Path: P1A, B3, B5, P2A, B6, B7, P3A
         assert len(result.path) == 7
         assert [n.id for n in result.path] == [
-            PLATFORM_IDS["P1A"], BLOCK_IDS["B3"], BLOCK_IDS["B5"],
-            PLATFORM_IDS["P2A"], BLOCK_IDS["B6"], BLOCK_IDS["B7"],
-            PLATFORM_IDS["P3A"],
+            PLATFORM_ID_BY_NAME["P1A"], BLOCK_ID_BY_NAME["B3"], BLOCK_ID_BY_NAME["B5"],
+            PLATFORM_ID_BY_NAME["P2A"], BLOCK_ID_BY_NAME["B6"], BLOCK_ID_BY_NAME["B7"],
+            PLATFORM_ID_BY_NAME["P3A"],
         ]
 
         # Verify all block nodes
@@ -109,7 +109,7 @@ class TestUpdateServiceRoute:
         svc = await app.create_service(name="S1", vehicle_id=v.id)
 
         stops = [
-            RouteStop(platform_id=PLATFORM_IDS["P1A"], dwell_time=60),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
             RouteStop(platform_id=uuid7(), dwell_time=60),
         ]
         with pytest.raises(ValueError, match="Platform.*not found"):
@@ -119,8 +119,8 @@ class TestUpdateServiceRoute:
     async def test_service_not_found(self):
         app, _ = _make_app()
         stops = [
-            RouteStop(platform_id=PLATFORM_IDS["P1A"], dwell_time=60),
-            RouteStop(platform_id=PLATFORM_IDS["P2A"], dwell_time=60),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=60),
         ]
         with pytest.raises(ValueError, match="not found"):
             await app.update_service_route(999, stops, start_time=0)
@@ -133,8 +133,8 @@ class TestUpdateServiceRoute:
 
         # P2A -> P1A has no route (wrong direction)
         stops = [
-            RouteStop(platform_id=PLATFORM_IDS["P2A"], dwell_time=60),
-            RouteStop(platform_id=PLATFORM_IDS["P1A"], dwell_time=60),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=60),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
         ]
         with pytest.raises(ValueError, match="No route"):
             await app.update_service_route(svc.id, stops, start_time=0)
@@ -147,18 +147,18 @@ class TestUpdateServiceRoute:
 
         # First route
         stops1 = [
-            RouteStop(platform_id=PLATFORM_IDS["P1A"], dwell_time=60),
-            RouteStop(platform_id=PLATFORM_IDS["P2A"], dwell_time=60),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=60),
         ]
         await app.update_service_route(svc.id, stops1, start_time=0)
 
         # Second route replaces first
         stops2 = [
-            RouteStop(platform_id=PLATFORM_IDS["P2A"], dwell_time=30),
-            RouteStop(platform_id=PLATFORM_IDS["P3B"], dwell_time=30),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=30),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P3B"], dwell_time=30),
         ]
         result = await app.update_service_route(svc.id, stops2, start_time=500)
-        assert result.path[0].id == PLATFORM_IDS["P2A"]
+        assert result.path[0].id == PLATFORM_ID_BY_NAME["P2A"]
         assert result.timetable[0].arrival == 500
 
 
@@ -173,8 +173,8 @@ class TestRouteConflicts:
         s2 = await app.create_service(name="S2", vehicle_id=vid)
 
         stops = [
-            RouteStop(platform_id=PLATFORM_IDS["P1A"], dwell_time=60),
-            RouteStop(platform_id=PLATFORM_IDS["P2A"], dwell_time=60),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=60),
         ]
         await app.update_service_route(s1.id, stops, start_time=0)
 
@@ -193,8 +193,8 @@ class TestRouteConflicts:
         s2 = await app.create_service(name="S2", vehicle_id=v2.id)
 
         stops = [
-            RouteStop(platform_id=PLATFORM_IDS["P1A"], dwell_time=0),
-            RouteStop(platform_id=PLATFORM_IDS["P2A"], dwell_time=0),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=0),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=0),
         ]
         await app.update_service_route(s1.id, stops, start_time=0)
 
@@ -214,15 +214,15 @@ class TestRouteConflicts:
 
         # S1: P1A -> P2A (uses B3 in group 2)
         stops1 = [
-            RouteStop(platform_id=PLATFORM_IDS["P1A"], dwell_time=0),
-            RouteStop(platform_id=PLATFORM_IDS["P2A"], dwell_time=0),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=0),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=0),
         ]
         await app.update_service_route(s1.id, stops1, start_time=0)
 
         # S2: P1B -> P2A (uses B4 in group 2, interlocks with B3)
         stops2 = [
-            RouteStop(platform_id=PLATFORM_IDS["P1B"], dwell_time=0),
-            RouteStop(platform_id=PLATFORM_IDS["P2A"], dwell_time=0),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1B"], dwell_time=0),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=0),
         ]
         with pytest.raises(ConflictError) as exc_info:
             await app.update_service_route(s2.id, stops2, start_time=0)
