@@ -16,8 +16,11 @@ class Block:
     traversal_time_seconds: int
 
     def __post_init__(self) -> None:
-        if self.traversal_time_seconds <= 0:
-            raise ValueError("traversal_time_seconds must be positive")
+        self._validate_traversal_time(self.traversal_time_seconds)
+
+    def update_traversal_time(self, traversal_time_seconds: int) -> None:
+        self._validate_traversal_time(traversal_time_seconds)
+        self.traversal_time_seconds = traversal_time_seconds
 
     def to_node(self) -> Node:
         return Node(id=self.id, type=NodeType.BLOCK)
@@ -35,8 +38,8 @@ class Block:
 
     def __hash__(self) -> int:
         return hash(self.id)
-    
-    def update_traversal_time(self, traversal_time_seconds: int) -> None:
-        if traversal_time_seconds <= 0:
+
+    @staticmethod
+    def _validate_traversal_time(value: int) -> None:
+        if value <= 0:
             raise ValueError("traversal_time_seconds must be positive")
-        self.traversal_time_seconds = traversal_time_seconds

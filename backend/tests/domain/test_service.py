@@ -117,8 +117,9 @@ class TestServiceUpdateRoute:
             TimetableEntry(order=0, node_id=n1.id, arrival=0, departure=10),
             TimetableEntry(order=1, node_id=n2.id, arrival=10, departure=20),
         ]
+        connections = frozenset({NodeConnection(from_id=n1.id, to_id=n2.id)})
         service = make_service(path=[make_node()])
-        service.update_route([n1, n2], entries)
+        service.update_route([n1, n2], entries, connections)
         assert len(service.path) == 2
         assert len(service.timetable) == 2
 
@@ -130,34 +131,23 @@ class TestServiceUpdateRoute:
         ]
         service = make_service(path=[n])
         with pytest.raises(ValueError, match="ascending order"):
-            service.update_route([n], entries)
+            service.update_route([n], entries, frozenset())
 
     def test_update_route_rejects_entry_not_in_path(self):
         n = make_node()
         entries = [TimetableEntry(order=0, node_id=uuid7(), arrival=0, departure=10)]
         service = make_service(path=[n])
         with pytest.raises(ValueError, match="not in path"):
-            service.update_route([n], entries)
+            service.update_route([n], entries, frozenset())
 
-
-class TestServiceConnectivity:
-    def test_valid_connectivity(self):
+    def test_update_route_rejects_disconnected_path(self):
         n1, n2 = make_node(), make_node()
-        service = make_service(path=[n1, n2])
-        connections = frozenset({NodeConnection(from_id=n1.id, to_id=n2.id)})
-        service.validate_connectivity(connections)
-
-    def test_missing_connection_rejected(self):
-        n1, n2 = make_node(), make_node()
-        service = make_service(path=[n1, n2])
-        with pytest.raises(ValueError, match="No connection"):
-            service.validate_connectivity(frozenset())
-
-    def test_empty_path_rejected(self):
-        service = make_service(path=[])
-        with pytest.raises(ValueError, match="at least one node"):
-            service.validate_connectivity(frozenset())
-
-    def test_single_node_path_always_valid(self):
+        entries = [
+            TimetableEntry(order=0, node_id=n1.id, arrival=0, departure=10),
+            TimetableEntry(order=1, node_id=n2.id, arrival=10, departure=20),
+        ]
         service = make_service(path=[make_node()])
-        service.validate_connectivity(frozenset())
+        with pytest.raises(ValueError, match="No connection"):
+            service.update_route([n1, n2], entries, frozenset())
+
+

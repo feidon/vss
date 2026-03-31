@@ -5,7 +5,7 @@ import pytest
 
 from domain.block.model import Block
 from domain.network.model import Node, NodeType
-from domain.service.conflict import ConflictDetectionService
+from domain.service.conflict import ConflictDetector
 from domain.service.model import Service, TimetableEntry
 
 _id_counter = count(1)
@@ -37,7 +37,7 @@ def make_service_with_window(
 
 
 def validate(candidate: Service, others: list[Service], blocks: list[Block] | None = None):
-    return ConflictDetectionService.validate_service(candidate, others, blocks or [])
+    return ConflictDetector.validate_service(candidate, others, blocks or [])
 
 
 class TestVehicleConflicts:

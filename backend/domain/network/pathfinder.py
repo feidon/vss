@@ -43,8 +43,9 @@ class RouteFinder:
 
         raise ValueError(f"No route from {from_id} to {to_id}")
 
-    @staticmethod
+    @classmethod
     def build_full_path(
+        cls,
         stop_ids: list[UUID],
         connections: frozenset[NodeConnection],
         block_ids: set[UUID],
@@ -58,7 +59,7 @@ class RouteFinder:
 
         result: list[UUID] = [stop_ids[0]]
         for i in range(len(stop_ids) - 1):
-            blocks = RouteFinder.find_block_chain(
+            blocks = cls.find_block_chain(
                 stop_ids[i], stop_ids[i + 1], connections, block_ids
             )
             result.extend(blocks)

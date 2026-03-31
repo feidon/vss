@@ -16,8 +16,12 @@ class Platform:
     def to_node(self) -> Node:
         return Node(id=self.id, type=NodeType.PLATFORM)
 
-    def to_timetable_entry(self, order: int, arrival: EpochSeconds, departure: EpochSeconds) -> TimetableEntry:
-        return TimetableEntry(order=order, node_id=self.id, arrival=arrival, departure=departure)
+    def to_timetable_entry(
+        self, order: int, arrival: EpochSeconds, departure: EpochSeconds,
+    ) -> TimetableEntry:
+        return TimetableEntry(
+            order=order, node_id=self.id, arrival=arrival, departure=departure,
+        )
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Platform) and self.id == other.id
@@ -38,10 +42,14 @@ class Station:
             raise ValueError("Only yards can be converted to nodes")
         return Node(id=self.id, type=NodeType.YARD)
 
-    def to_timetable_entry(self, order: int, arrival: EpochSeconds, departure: EpochSeconds) -> TimetableEntry:
+    def to_timetable_entry(
+        self, order: int, arrival: EpochSeconds, departure: EpochSeconds,
+    ) -> TimetableEntry:
         if not self.is_yard:
             raise ValueError("Only yards can be converted to timetable entries")
-        return TimetableEntry(order=order, node_id=self.id, arrival=arrival, departure=departure)
+        return TimetableEntry(
+            order=order, node_id=self.id, arrival=arrival, departure=departure,
+        )
 
     def add_platform(self, platform: Platform) -> None:
         if any(p.id == platform.id for p in self.platforms):
