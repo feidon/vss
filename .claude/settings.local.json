@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mise --version)",
+      "Bash(npx --version)",
+      "Bash(mise install:*)",
+      "Bash(mise trust:*)",
+      "Bash(mise ls:*)",
+      "Bash(mise which:*)",
+      "Bash(mise exec:*)",
+      "Read(//home/feidon/.config/mise/**)",
+      "Read(//home/feidon/**)",
+      "Bash(chezmoi apply:*)",
+      "Bash(claude --version)",
+      "Bash(npx -y @modelcontextprotocol/server-memory --help)",
+      "Bash(chezmoi managed:*)",
+      "Bash(chezmoi source-path:*)"
+    ]
+  }
+}
