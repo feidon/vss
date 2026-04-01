@@ -56,6 +56,28 @@ uv run pytest
 
 PostgreSQL via Docker Compose. Connection: `postgresql://vss:vss@localhost:5432/vss`
 
+## Persistence Strategy: SQLAlchemy Core + Manual Mapper
+
+**Do NOT use SQLAlchemy ORM mapping (neither declarative nor imperative).** Use SQLAlchemy Core with manual mapping in repositories.
+
+Rationale:
+- Domain models must be pure Python dataclasses with zero SQLAlchemy imports
+- Repositories handle translation between domain entities and DB rows via `_to_entity()` / `_to_table()` methods
+- SQLAlchemy Core (`select()`, `insert()`, `update()`, `delete()` on `Table` objects) for all queries
+- No change tracking, no identity map, no lazy loading — all persistence is explicit
+- `save()` uses upsert (insert on conflict update all columns) — no need to diff changes
+
+This mirrors the QueryDSL SQL + Flyway pattern: schema-first, codegen/table definitions separate from domain, explicit mapper at repository boundary.
+
+### Write vs Read paths (CQRS-lite)
+
+- **Write side (commands)**: Use repositories, load aggregates separately, enforce domain rules. Multiple queries across aggregates is fine.
+- **Read side (queries)**: Use direct SQL with joins for list/display endpoints. No aggregate boundaries needed. Return DTOs, not domain entities.
+
+### Cross-aggregate data
+
+In a monolith with single DB, prefer querying at use time (load both aggregates in the application service) over snapshots + domain events. Pass data into domain logic from the application layer. Don't pay microservice complexity costs in a monolith.
+
 ## Testing Patterns
 
 - **Domain tests**: pure unit tests, no I/O
