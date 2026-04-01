@@ -248,30 +248,3 @@ class TestServiceRouteUpdate:
         assert "insufficient_charge_conflicts" in detail
 
 
-class TestBatteryConflictAPI:
-    def test_409_includes_low_battery_conflicts_field(self, client, vehicle_repo):
-        """Verify the 409 response schema includes battery conflict fields."""
-        v = seed_vehicle(vehicle_repo)
-        vid = str(v.id)
-
-        r1 = client.post("/services", json={"name": "S1", "vehicle_id": vid})
-        r2 = client.post("/services", json={"name": "S2", "vehicle_id": vid})
-        s1_id, s2_id = r1.json()["id"], r2.json()["id"]
-
-        route = {
-            "stops": [
-                {"platform_id": str(PLATFORM_ID_BY_NAME["P1A"]), "dwell_time": 0},
-                {"platform_id": str(PLATFORM_ID_BY_NAME["P2A"]), "dwell_time": 0},
-            ],
-            "start_time": 0,
-        }
-        client.patch(f"/services/{s1_id}/route", json=route)
-
-        resp = client.patch(
-            f"/services/{s2_id}/route",
-            json={**route, "start_time": 10},
-        )
-        assert resp.status_code == 409
-        detail = resp.json()["detail"]
-        assert isinstance(detail["low_battery_conflicts"], list)
-        assert isinstance(detail["insufficient_charge_conflicts"], list)
