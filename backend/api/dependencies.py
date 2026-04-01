@@ -11,7 +11,11 @@ from domain.service.repository import ServiceRepository
 from domain.station.repository import StationRepository
 from domain.vehicle.repository import VehicleRepository
 from infra.postgres.session import get_session
+from infra.postgres.block_repo import PostgresBlockRepository
+from infra.postgres.connection_repo import PostgresConnectionRepository
+from infra.postgres.service_repo import PostgresServiceRepository
 from infra.postgres.station_repo import PostgresStationRepository
+from infra.postgres.vehicle_repo import PostgresVehicleRepository
 from infra.memory.block_repo import InMemoryBlockRepository
 from infra.memory.connection_repo import InMemoryConnectionRepository
 from infra.memory.service_repo import InMemoryServiceRepository

@@ -20,24 +20,20 @@ class TestInMemoryServiceRepository:
     def repo(self):
         return InMemoryServiceRepository()
 
-    @pytest.mark.asyncio
     async def test_save_assigns_id(self, repo):
         service = make_service()
         await repo.save(service)
         assert service.id == 1
 
-    @pytest.mark.asyncio
     async def test_save_and_find_by_id(self, repo):
         service = make_service()
         await repo.save(service)
         found = await repo.find_by_id(service.id)
         assert found == service
 
-    @pytest.mark.asyncio
     async def test_find_by_id_returns_none(self, repo):
         assert await repo.find_by_id(999) is None
 
-    @pytest.mark.asyncio
     async def test_find_all(self, repo):
         s1, s2 = make_service(), make_service()
         await repo.save(s1)
@@ -45,7 +41,6 @@ class TestInMemoryServiceRepository:
         result = await repo.find_all()
         assert len(result) == 2
 
-    @pytest.mark.asyncio
     async def test_find_by_vehicle_id(self, repo):
         vid = uuid7()
         s1 = make_service(vehicle_id=vid)
@@ -57,13 +52,11 @@ class TestInMemoryServiceRepository:
         result = await repo.find_by_vehicle_id(vid)
         assert len(result) == 2
 
-    @pytest.mark.asyncio
     async def test_delete(self, repo):
         service = make_service()
         await repo.save(service)
         await repo.delete(service.id)
         assert await repo.find_by_id(service.id) is None
 
-    @pytest.mark.asyncio
     async def test_delete_nonexistent_is_idempotent(self, repo):
         await repo.delete(999)  # should not raise

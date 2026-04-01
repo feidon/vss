@@ -23,27 +23,23 @@ class TestBlockAppService:
         await repo.save(block)
         return block
 
-    @pytest.mark.asyncio
     async def test_list_blocks(self, service, repo):
         await self._given_block(repo)
         await self._given_block(repo)
         result = await service.list_blocks()
         assert len(result) == 2
 
-    @pytest.mark.asyncio
     async def test_update_block_traversal_time(self, service, repo):
         block = await self._given_block(repo, traversal_time_seconds=30)
         await service.update_block(block.id, traversal_time_seconds=60)
         updated = await repo.find_by_id(block.id)
         assert updated.traversal_time_seconds == 60
 
-    @pytest.mark.asyncio
     async def test_update_block_rejects_invalid_time(self, service, repo):
         block = await self._given_block(repo)
         with pytest.raises(ValueError, match="traversal_time_seconds must be positive"):
             await service.update_block(block.id, traversal_time_seconds=0)
 
-    @pytest.mark.asyncio
     async def test_update_block_not_found(self, service):
         with pytest.raises(ValueError, match="not found"):
             await service.update_block(uuid7(), traversal_time_seconds=60)

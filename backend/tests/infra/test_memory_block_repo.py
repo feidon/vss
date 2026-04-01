@@ -15,18 +15,15 @@ class TestInMemoryBlockRepository:
     def repo(self):
         return InMemoryBlockRepository()
 
-    @pytest.mark.asyncio
     async def test_save_and_find_by_id(self, repo):
         block = make_block()
         await repo.save(block)
         found = await repo.find_by_id(block.id)
         assert found == block
 
-    @pytest.mark.asyncio
     async def test_find_by_id_returns_none(self, repo):
         assert await repo.find_by_id(uuid7()) is None
 
-    @pytest.mark.asyncio
     async def test_find_all(self, repo):
         b1, b2 = make_block(), make_block()
         await repo.save(b1)

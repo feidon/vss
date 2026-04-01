@@ -50,7 +50,6 @@ def seed_vehicle(vehicle_repo):
 
 
 class TestUpdateServiceRoute:
-    @pytest.mark.asyncio
     async def test_two_stop_route(self):
         app, vehicle_repo = _make_app()
         v = seed_vehicle(vehicle_repo)
@@ -77,7 +76,6 @@ class TestUpdateServiceRoute:
         assert tt[2].arrival == 1090 and tt[2].departure == 1120  # B5
         assert tt[3].arrival == 1120 and tt[3].departure == 1210  # P2A
 
-    @pytest.mark.asyncio
     async def test_three_stop_route(self):
         app, vehicle_repo = _make_app()
         v = seed_vehicle(vehicle_repo)
@@ -102,7 +100,6 @@ class TestUpdateServiceRoute:
         block_nodes = [n for n in result.path if n.type == NodeType.BLOCK]
         assert len(block_nodes) == 4
 
-    @pytest.mark.asyncio
     async def test_unknown_platform_rejected(self):
         app, vehicle_repo = _make_app()
         v = seed_vehicle(vehicle_repo)
@@ -115,7 +112,6 @@ class TestUpdateServiceRoute:
         with pytest.raises(ValueError, match="Platform.*not found"):
             await app.update_service_route(svc.id, stops, start_time=0)
 
-    @pytest.mark.asyncio
     async def test_service_not_found(self):
         app, _ = _make_app()
         stops = [
@@ -125,7 +121,6 @@ class TestUpdateServiceRoute:
         with pytest.raises(ValueError, match="not found"):
             await app.update_service_route(999, stops, start_time=0)
 
-    @pytest.mark.asyncio
     async def test_no_route_between_platforms_rejected(self):
         app, vehicle_repo = _make_app()
         v = seed_vehicle(vehicle_repo)
@@ -139,7 +134,6 @@ class TestUpdateServiceRoute:
         with pytest.raises(ValueError, match="No route"):
             await app.update_service_route(svc.id, stops, start_time=0)
 
-    @pytest.mark.asyncio
     async def test_route_update_replaces_previous(self):
         app, vehicle_repo = _make_app()
         v = seed_vehicle(vehicle_repo)
@@ -163,7 +157,6 @@ class TestUpdateServiceRoute:
 
 
 class TestRouteConflicts:
-    @pytest.mark.asyncio
     async def test_vehicle_conflict(self):
         app, vehicle_repo = _make_app()
         vid = uuid7()
@@ -183,7 +176,6 @@ class TestRouteConflicts:
             await app.update_service_route(s2.id, stops, start_time=10)
         assert exc_info.value.conflicts.has_conflicts
 
-    @pytest.mark.asyncio
     async def test_block_conflict(self):
         app, vehicle_repo = _make_app()
         v1 = seed_vehicle(vehicle_repo)
@@ -203,7 +195,6 @@ class TestRouteConflicts:
             await app.update_service_route(s2.id, stops, start_time=10)
         assert len(exc_info.value.conflicts.block_conflicts) > 0
 
-    @pytest.mark.asyncio
     async def test_interlocking_conflict(self):
         app, vehicle_repo = _make_app()
         v1 = seed_vehicle(vehicle_repo)
@@ -236,7 +227,6 @@ def seed_vehicle(vehicle_repo, vid=None, battery=100):
 
 
 class TestBatteryConflicts:
-    @pytest.mark.asyncio
     async def test_insufficient_charge_conflict(self):
         app, vehicle_repo = _make_app()
         vid = uuid7()

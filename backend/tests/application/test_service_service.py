@@ -39,7 +39,6 @@ class TestServiceAppService:
     def app(self, vehicle_repo):
         return _make_app(vehicle_repo=vehicle_repo)
 
-    @pytest.mark.asyncio
     async def test_create_service(self, app, vehicle_repo):
         v = seed_vehicle(vehicle_repo)
         result = await app.create_service(name="Express", vehicle_id=v.id)
@@ -48,30 +47,25 @@ class TestServiceAppService:
         assert result.path == []
         assert result.timetable == []
 
-    @pytest.mark.asyncio
     async def test_create_service_rejects_empty_name(self, app, vehicle_repo):
         v = seed_vehicle(vehicle_repo)
         with pytest.raises(ValueError, match="name"):
             await app.create_service(name="", vehicle_id=v.id)
 
-    @pytest.mark.asyncio
     async def test_create_service_rejects_unknown_vehicle(self, app):
         with pytest.raises(ValueError, match="Vehicle.*not found"):
             await app.create_service(name="S1", vehicle_id=uuid7())
 
-    @pytest.mark.asyncio
     async def test_get_service(self, app, vehicle_repo):
         v = seed_vehicle(vehicle_repo)
         created = await app.create_service(name="S1", vehicle_id=v.id)
         result = await app.get_service(created.id)
         assert result == created
 
-    @pytest.mark.asyncio
     async def test_get_service_not_found(self, app):
         with pytest.raises(ValueError, match="not found"):
             await app.get_service(999)
 
-    @pytest.mark.asyncio
     async def test_list_services(self, app, vehicle_repo):
         v1 = seed_vehicle(vehicle_repo)
         v2 = seed_vehicle(vehicle_repo)
@@ -80,7 +74,6 @@ class TestServiceAppService:
         result = await app.list_services()
         assert len(result) == 2
 
-    @pytest.mark.asyncio
     async def test_delete_service(self):
         service_repo = InMemoryServiceRepository()
         vehicle_repo = InMemoryVehicleRepository()
@@ -90,6 +83,5 @@ class TestServiceAppService:
         await app.delete_service(created.id)
         assert await service_repo.find_by_id(created.id) is None
 
-    @pytest.mark.asyncio
     async def test_delete_service_idempotent(self, app):
         await app.delete_service(999)
