@@ -43,8 +43,8 @@ def _make_app():
     ), vehicle_repo
 
 
-def seed_vehicle(vehicle_repo):
-    v = Vehicle(id=uuid7(), name="V1")
+def seed_vehicle(vehicle_repo, vid=None, battery=100):
+    v = Vehicle(id=vid or uuid7(), name="V1", battery=battery)
     vehicle_repo._store[v.id] = v
     return v
 
@@ -120,6 +120,15 @@ class TestUpdateServiceRoute:
         ]
         with pytest.raises(ValueError, match="not found"):
             await app.update_service_route(999, stops, start_time=0)
+
+    async def test_single_stop_rejected(self):
+        app, vehicle_repo = _make_app()
+        v = seed_vehicle(vehicle_repo)
+        svc = await app.create_service(name="S1", vehicle_id=v.id)
+
+        stops = [RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60)]
+        with pytest.raises(ValueError, match="At least two stops"):
+            await app.update_service_route(svc.id, stops, start_time=0)
 
     async def test_no_route_between_platforms_rejected(self):
         app, vehicle_repo = _make_app()
@@ -219,40 +228,46 @@ class TestRouteConflicts:
             await app.update_service_route(s2.id, stops2, start_time=0)
         assert len(exc_info.value.conflicts.interlocking_conflicts) > 0
 
-
-def seed_vehicle(vehicle_repo, vid=None, battery=100):
-    v = Vehicle(id=vid or uuid7(), name="V1", battery=battery)
-    vehicle_repo._store[v.id] = v
-    return v
-
-
-class TestBatteryConflicts:
-    async def test_insufficient_charge_conflict(self):
+    async def test_block_conflict_checks_all_existing_services(self):
+        """S3 should detect block conflicts against both S1 and S2 (different vehicles)."""
         app, vehicle_repo = _make_app()
-        vid = uuid7()
-        seed_vehicle(vehicle_repo, vid)
+        v1 = seed_vehicle(vehicle_repo)
+        v2 = seed_vehicle(vehicle_repo)
+        v3 = seed_vehicle(vehicle_repo)
 
-        s1 = await app.create_service(name="S1", vehicle_id=vid)
-        s2 = await app.create_service(name="S2", vehicle_id=vid)
+        s1 = await app.create_service(name="S1", vehicle_id=v1.id)
+        s2 = await app.create_service(name="S2", vehicle_id=v2.id)
+        s3 = await app.create_service(name="S3", vehicle_id=v3.id)
 
-        # P1A → P2A → P3A: 4 blocks (B3, B5, B6, B7)
-        long_stops = [
+        # S1: P1A -> P2A at time 0 (B3: 0-30, B5: 30-60)
+        stops_s1 = [
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=0),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=0),
+        ]
+        await app.update_service_route(s1.id, stops_s1, start_time=0)
+
+        # S2: P2A -> P3A at time 60 (B6: 60-90, B7: 90-120)
+        # B5 (group 0) ends at 60, B6 (group 0) starts at 60 → no interlocking overlap
+        stops_s2 = [
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=0),
+            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P3A"], dwell_time=0),
+        ]
+        await app.update_service_route(s2.id, stops_s2, start_time=60)
+
+        # S3: P1A -> P2A -> P3A at time 0
+        # B3: 0-30, B5: 30-60, B6: 60-90, B7: 90-120
+        # Overlaps S1 on B3 and B5, overlaps S2 on B6 and B7
+        stops_s3 = [
             RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=0),
             RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=0),
             RouteStop(platform_id=PLATFORM_ID_BY_NAME["P3A"], dwell_time=0),
         ]
-        await app.update_service_route(s1.id, long_stops, start_time=0)
-
-        # Second service starts just 1 second after first ends
-        # Battery after S1: 100 - 4 = 96%
-        # Idle: 1s → 1 // 12 = 0% charge → 96% ≥ 80% → can depart (no conflict here)
-        # But let's create overlapping schedule to trigger vehicle conflict,
-        # and also verify battery fields are present in ConflictError
         with pytest.raises(ConflictError) as exc_info:
-            await app.update_service_route(s2.id, long_stops, start_time=10)
+            await app.update_service_route(s3.id, stops_s3, start_time=0)
 
-        conflicts = exc_info.value.conflicts
-        assert conflicts.has_conflicts
-        # Battery conflict fields exist (may be empty since routes are short)
-        assert isinstance(conflicts.low_battery_conflicts, list)
-        assert isinstance(conflicts.insufficient_charge_conflicts, list)
+        conflicts = exc_info.value.conflicts.block_conflicts
+        conflicting_service_ids = {c.service_a_id for c in conflicts} | {c.service_b_id for c in conflicts}
+        assert s1.id in conflicting_service_ids, "Should detect conflict with S1"
+        assert s2.id in conflicting_service_ids, "Should detect conflict with S2"
+
+
