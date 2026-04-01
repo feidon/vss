@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Protocol
 from uuid import UUID
 
 from domain.network.model import NodeType
 from domain.shared.types import EpochSeconds
 from domain.vehicle.model import Vehicle
 from domain.block.model import Block
-from domain.service.model import Service, TimetableEntry
+from domain.service.model import Service
 
 
 # ── Value Objects ────────────────────────────────────────────
@@ -70,226 +70,285 @@ class ServiceConflicts:
         )
 
 
-# ── Domain Service (pure — no repository dependencies) ────
+# ── Private value objects ───────────────────────────────────
 
 
-class ConflictDetector:
+class _Timed(Protocol):
+    arrival: EpochSeconds
+    departure: EpochSeconds
 
-    @classmethod
-    def validate_service(
-        cls,
-        candidate: Service,
-        other_services: list[Service],
-        blocks: list[Block],
-        vehicles: list[Vehicle] | None = None,
-    ) -> ServiceConflicts:
-        """Check all conflicts for a candidate service against other services."""
-        all_services = [s for s in other_services if s.id != candidate.id]
-        all_services.append(candidate)
 
-        low_battery: list[LowBatteryConflict] = []
-        insufficient_charge: list[InsufficientChargeConflict] = []
-        if vehicles:
-            vehicle_by_id = {v.id: v for v in vehicles}
-            candidate_vehicle = vehicle_by_id.get(candidate.vehicle_id)
-            if candidate_vehicle is not None:
-                low_battery, insufficient_charge = cls._detect_battery_conflict(
-                    candidate_vehicle, all_services,
+@dataclass(frozen=True)
+class _ServiceWindow:
+    service_id: int
+    start: EpochSeconds
+    end: EpochSeconds
+    first_node_id: UUID
+    last_node_id: UUID
+
+
+@dataclass(frozen=True)
+class _BlockOccupancy:
+    service_id: int
+    arrival: EpochSeconds
+    departure: EpochSeconds
+
+
+@dataclass(frozen=True)
+class _GroupOccupancy:
+    service_id: int
+    block_id: UUID
+    arrival: EpochSeconds
+    departure: EpochSeconds
+
+
+@dataclass(frozen=True)
+class _BatterySimEntry:
+    service_id: int
+    block_count: int
+    start: EpochSeconds
+    end: EpochSeconds
+    ends_at_yard: bool
+
+
+# ── Public API ──────────────────────────────────────────────
+
+
+def detect_conflicts(
+    candidate: Service,
+    other_services: list[Service],
+    blocks: list[Block],
+    vehicles: list[Vehicle] | None = None,
+) -> ServiceConflicts:
+    """Check all conflicts for a candidate service against other services."""
+    all_services = [s for s in other_services if s.id != candidate.id]
+    all_services.append(candidate)
+
+    windows = _build_service_windows(candidate.vehicle_id, all_services)
+    block_occupancies = _build_block_occupancies(all_services, blocks)
+    group_occupancies = _build_group_occupancies(all_services, blocks)
+
+    low_battery: list[LowBatteryConflict] = []
+    insufficient_charge: list[InsufficientChargeConflict] = []
+    if vehicles:
+        vehicle_by_id = {v.id: v for v in vehicles}
+        candidate_vehicle = vehicle_by_id.get(candidate.vehicle_id)
+        if candidate_vehicle is not None:
+            battery_entries = _build_battery_entries(
+                candidate_vehicle.id, all_services,
+            )
+            low_battery, insufficient_charge = _detect_battery_conflicts(
+                candidate_vehicle.battery, battery_entries,
+            )
+
+    return ServiceConflicts(
+        vehicle_conflicts=_detect_vehicle_conflicts(candidate.vehicle_id, windows),
+        block_conflicts=_detect_block_conflicts(block_occupancies),
+        interlocking_conflicts=_detect_interlocking_conflicts(group_occupancies),
+        low_battery_conflicts=low_battery,
+        insufficient_charge_conflicts=insufficient_charge,
+    )
+
+
+# ── Data preparation ───────────────────────────────────────
+
+
+def _build_service_windows(
+    vehicle_id: UUID,
+    services: list[Service],
+) -> list[_ServiceWindow]:
+    windows: list[_ServiceWindow] = []
+    for svc in services:
+        if svc.vehicle_id != vehicle_id or not svc.timetable:
+            continue
+        entries = sorted(svc.timetable, key=lambda e: e.order)
+        windows.append(_ServiceWindow(
+            service_id=svc.id,
+            start=min(e.arrival for e in entries),
+            end=max(e.departure for e in entries),
+            first_node_id=entries[0].node_id,
+            last_node_id=entries[-1].node_id,
+        ))
+    windows.sort(key=lambda w: w.start)
+    return windows
+
+
+def _build_block_occupancies(
+    services: list[Service],
+    blocks: list[Block],
+) -> dict[UUID, list[_BlockOccupancy]]:
+    block_ids = {b.id for b in blocks}
+    by_block: dict[UUID, list[_BlockOccupancy]] = defaultdict(list)
+    for svc in services:
+        for entry in svc.timetable:
+            if entry.node_id in block_ids:
+                by_block[entry.node_id].append(
+                    _BlockOccupancy(svc.id, entry.arrival, entry.departure),
                 )
+    return by_block
 
-        return ServiceConflicts(
-            vehicle_conflicts=cls._detect_vehicle_conflicts(
-                candidate.vehicle_id, all_services,
-            ),
-            block_conflicts=cls._detect_block_conflicts(all_services, blocks),
-            interlocking_conflicts=cls._detect_interlocking_conflicts(
-                all_services, blocks,
-            ),
-            low_battery_conflicts=low_battery,
-            insufficient_charge_conflicts=insufficient_charge,
-        )
 
-    # ── Private helpers ──────────────────────────────────────
+def _build_group_occupancies(
+    services: list[Service],
+    blocks: list[Block],
+) -> dict[int, list[_GroupOccupancy]]:
+    block_by_id = {b.id: b for b in blocks}
+    by_group: dict[int, list[_GroupOccupancy]] = defaultdict(list)
+    for svc in services:
+        for entry in svc.timetable:
+            block = block_by_id.get(entry.node_id)
+            if block is not None:
+                by_group[block.group].append(
+                    _GroupOccupancy(svc.id, block.id, entry.arrival, entry.departure),
+                )
+    return by_group
 
-    @staticmethod
-    def _find_time_overlaps[T](
-        entries: list[T],
-        time_of: Callable[[T], TimetableEntry],
-    ) -> list[tuple[T, T]]:
-        """Find all pairs with overlapping time windows.
 
-        Sweep-line algorithm: sort by arrival, break inner loop
-        when next arrival >= current departure.
-        """
-        sorted_entries = sorted(entries, key=lambda x: time_of(x).arrival)
-        pairs: list[tuple[T, T]] = []
+def _build_battery_entries(
+    vehicle_id: UUID,
+    services: list[Service],
+) -> list[_BatterySimEntry]:
+    entries: list[_BatterySimEntry] = []
+    for service in services:
+        if service.vehicle_id != vehicle_id:
+            continue
+        timetable = sorted(service.timetable, key=lambda t: t.order)
+        if not timetable:
+            continue
+        entries.append(_BatterySimEntry(
+            service_id=service.id,
+            block_count=len([n for n in service.path if n.type == NodeType.BLOCK]),
+            start=timetable[0].arrival,
+            end=timetable[-1].departure,
+            ends_at_yard=service.path[-1].type == NodeType.YARD if service.path else False,
+        ))
+    entries.sort(key=lambda e: e.start)
+    return entries
 
-        for i in range(len(sorted_entries)):
-            dep_i = time_of(sorted_entries[i]).departure
-            for j in range(i + 1, len(sorted_entries)):
-                if time_of(sorted_entries[j]).arrival >= dep_i:
-                    break
-                pairs.append((sorted_entries[i], sorted_entries[j]))
 
-        return pairs
+# ── Detection logic ─────────────────────────────────────────
 
-    @staticmethod
-    def _detect_vehicle_conflicts(
-        vehicle_id: UUID,
-        all_services: list[Service],
-    ) -> list[VehicleConflict]:
-        vehicle_services = [s for s in all_services if s.vehicle_id == vehicle_id]
 
-        windows: list[tuple[int, int, int, UUID, UUID]] = []
-        for svc in vehicle_services:
-            if not svc.timetable:
-                continue
-            entries = sorted(svc.timetable, key=lambda e: e.order)
-            windows.append((
-                svc.id,
-                min(e.arrival for e in entries),
-                max(e.departure for e in entries),
-                entries[0].node_id,
-                entries[-1].node_id,
+def _find_time_overlaps[T: _Timed](entries: list[T]) -> list[tuple[T, T]]:
+    """Find all pairs with overlapping time windows.
+
+    Sweep-line algorithm: sort by arrival, break inner loop
+    when next arrival >= current departure.
+    """
+    sorted_entries = sorted(entries, key=lambda x: x.arrival)
+    pairs: list[tuple[T, T]] = []
+
+    for i in range(len(sorted_entries)):
+        dep_i = sorted_entries[i].departure
+        for j in range(i + 1, len(sorted_entries)):
+            if sorted_entries[j].arrival >= dep_i:
+                break
+            pairs.append((sorted_entries[i], sorted_entries[j]))
+
+    return pairs
+
+
+def _detect_vehicle_conflicts(
+    vehicle_id: UUID,
+    windows: list[_ServiceWindow],
+) -> list[VehicleConflict]:
+    conflicts: list[VehicleConflict] = []
+
+    # Overlap detection
+    for i in range(len(windows)):
+        for j in range(i + 1, len(windows)):
+            prev, curr = windows[i], windows[j]
+            if curr.start >= prev.end:
+                break
+            conflicts.append(VehicleConflict(
+                vehicle_id, prev.service_id, curr.service_id,
+                "Overlapping time windows",
             ))
 
-        windows.sort(key=lambda w: w[1])
-        conflicts: list[VehicleConflict] = []
+    # Location discontinuity
+    for i in range(1, len(windows)):
+        prev, curr = windows[i - 1], windows[i]
+        if curr.first_node_id != prev.last_node_id:
+            conflicts.append(VehicleConflict(
+                vehicle_id, prev.service_id, curr.service_id,
+                "Location discontinuity",
+            ))
 
-        # Overlap detection
-        for i in range(len(windows)):
-            for j in range(i + 1, len(windows)):
-                prev, curr = windows[i], windows[j]
-                if curr[1] >= prev[2]:
-                    break
-                conflicts.append(VehicleConflict(
-                    vehicle_id, prev[0], curr[0], "Overlapping time windows",
-                ))
+    return conflicts
 
-        # Location discontinuity
-        for i in range(1, len(windows)):
-            prev, curr = windows[i - 1], windows[i]
-            if curr[3] != prev[4]:
-                conflicts.append(VehicleConflict(
-                    vehicle_id, prev[0], curr[0], "Location discontinuity",
-                ))
 
-        return conflicts
+def _detect_block_conflicts(
+    by_block: dict[UUID, list[_BlockOccupancy]],
+) -> list[BlockConflict]:
+    conflicts: list[BlockConflict] = []
+    for block_id, occupancies in by_block.items():
+        for a, b in _find_time_overlaps(occupancies):
+            conflicts.append(BlockConflict(
+                block_id=block_id,
+                service_a_id=a.service_id,
+                service_b_id=b.service_id,
+                overlap_start=b.arrival,
+                overlap_end=a.departure,
+            ))
+    return conflicts
 
-    @classmethod
-    def _detect_block_conflicts(
-        cls,
-        services: list[Service],
-        blocks: list[Block],
-    ) -> list[BlockConflict]:
-        block_ids = {b.id for b in blocks}
 
-        by_block: dict[UUID, list[tuple[int, TimetableEntry]]] = defaultdict(list)
-        for svc in services:
-            for entry in svc.timetable:
-                if entry.node_id in block_ids:
-                    by_block[entry.node_id].append((svc.id, entry))
+def _detect_interlocking_conflicts(
+    by_group: dict[int, list[_GroupOccupancy]],
+) -> list[InterlockingConflict]:
+    """Detect different blocks in the same interlocking group
+    occupied by different services at overlapping times."""
+    conflicts: list[InterlockingConflict] = []
+    for group, occupancies in by_group.items():
+        if group == 0:
+            continue  # group 0 means "no interlocking group"
+        for a, b in _find_time_overlaps(occupancies):
+            if a.block_id == b.block_id:
+                continue  # already caught by block conflict detection
+            conflicts.append(InterlockingConflict(
+                group=group,
+                block_a_id=a.block_id,
+                block_b_id=b.block_id,
+                service_a_id=a.service_id,
+                service_b_id=b.service_id,
+                overlap_start=b.arrival,
+                overlap_end=a.departure,
+            ))
+    return conflicts
 
-        conflicts: list[BlockConflict] = []
-        for block_id, entries in by_block.items():
-            for (sid_a, te_a), (sid_b, te_b) in cls._find_time_overlaps(
-                entries, lambda x: x[1],
-            ):
-                conflicts.append(BlockConflict(
-                    block_id=block_id,
-                    service_a_id=sid_a,
-                    service_b_id=sid_b,
-                    overlap_start=te_b.arrival,
-                    overlap_end=te_a.departure,
-                ))
 
-        return conflicts
+def _detect_battery_conflicts(
+    initial_battery: int,
+    entries: list[_BatterySimEntry],
+) -> tuple[list[LowBatteryConflict], list[InsufficientChargeConflict]]:
+    low_battery: list[LowBatteryConflict] = []
+    insufficient_charge: list[InsufficientChargeConflict] = []
 
-    @classmethod
-    def _detect_interlocking_conflicts(
-        cls,
-        services: list[Service],
-        blocks: list[Block],
-    ) -> list[InterlockingConflict]:
-        """Detect different blocks in the same interlocking group
-        occupied by different services at overlapping times."""
-        block_by_id = {b.id: b for b in blocks}
+    if not entries:
+        return (low_battery, insufficient_charge)
 
-        by_group: dict[int, list[tuple[int, UUID, TimetableEntry]]] = defaultdict(list)
-        for svc in services:
-            for entry in svc.timetable:
-                block = block_by_id.get(entry.node_id)
-                if block is not None:
-                    by_group[block.group].append((svc.id, block.id, entry))
+    sim = Vehicle(id=UUID(int=0), name="", battery=initial_battery)
 
-        conflicts: list[InterlockingConflict] = []
-        for group, entries in by_group.items():
-            for (sid_a, bid_a, te_a), (sid_b, bid_b, te_b) in cls._find_time_overlaps(
-                entries, lambda x: x[2],
-            ):
-                if bid_a == bid_b:
-                    continue  # already caught by block conflict detection
-                conflicts.append(InterlockingConflict(
-                    group=group,
-                    block_a_id=bid_a,
-                    block_b_id=bid_b,
-                    service_a_id=sid_a,
-                    service_b_id=sid_b,
-                    overlap_start=te_b.arrival,
-                    overlap_end=te_a.departure,
-                ))
+    prev_end = entries[0].start
+    prev_service_id = entries[0].service_id
+    prev_ends_at_yard = True  # vehicle starts at the Yard
+    for entry in entries:
+        if prev_ends_at_yard:
+            sim.charge(entry.start - prev_end)
+        if not sim.can_depart():
+            insufficient_charge.append(InsufficientChargeConflict(
+                service_a_id=prev_service_id,
+                service_b_id=entry.service_id,
+            ))
+            break
 
-        return conflicts
-    
-    @classmethod
-    def _detect_battery_conflict(
-        cls,
-        vehicle: Vehicle,
-        services: list[Service],
-    ) -> tuple[list[LowBatteryConflict], list[InsufficientChargeConflict]]:
-        # Operate on a copy to avoid mutating the domain entity
-        sim = Vehicle(id=vehicle.id, name=vehicle.name, battery=100)
+        sim.consume_battery(entry.block_count)
+        if sim.is_battery_critical():
+            low_battery.append(LowBatteryConflict(service_id=entry.service_id))
+            break
 
-        block_count: list[tuple[int, int, EpochSeconds, EpochSeconds]] = []
+        prev_end = entry.end
+        prev_service_id = entry.service_id
+        prev_ends_at_yard = entry.ends_at_yard
 
-        for service in services:
-            if service.vehicle_id != vehicle.id:
-                continue
-
-            timetable = sorted(service.timetable, key=lambda t: t.order)
-            if not timetable:
-                continue
-
-            start_time = timetable[0].arrival
-            end_time = timetable[-1].departure
-            block_num = len([n for n in service.path if n.type == NodeType.BLOCK])
-            block_count.append((service.id, block_num, start_time, end_time))
-
-        block_count.sort(key=lambda b: b[2])
-
-        low_battery_conflicts: list[LowBatteryConflict] = []
-        insufficient_charge_conflicts: list[InsufficientChargeConflict] = []
-
-        if not block_count:
-            return (low_battery_conflicts, insufficient_charge_conflicts)
-
-        prev_end = block_count[0][2]
-        prev_service_id = block_count[0][0]
-        for service_id, num, start, end in block_count:
-            sim.charge(start - prev_end)
-            if not sim.can_depart():
-                insufficient_charge_conflicts.append(InsufficientChargeConflict(
-                    service_a_id=prev_service_id,
-                    service_b_id=service_id,
-                ))
-                break
-
-            sim.consume_battery(num)
-            if sim.is_battery_critical():
-                low_battery_conflicts.append(LowBatteryConflict(service_id=service_id))
-                break
-
-            prev_end = end
-            prev_service_id = service_id
-
-        return (low_battery_conflicts, insufficient_charge_conflicts)
+    return (low_battery, insufficient_charge)

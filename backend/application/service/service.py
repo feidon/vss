@@ -9,7 +9,7 @@ from domain.block.repository import BlockRepository
 from domain.network.model import Node, NodeType
 from domain.network.pathfinder import RouteFinder
 from domain.network.repository import ConnectionRepository
-from domain.service.conflict import ConflictDetector
+from domain.service.conflict import detect_conflicts
 from domain.service.model import Service, TimetableEntry
 from domain.shared.types import EpochSeconds
 from domain.service.repository import ServiceRepository
@@ -86,7 +86,7 @@ class ServiceAppService:
 
         all_services = await self._service_repo.find_all()
         all_vehicles = await self._vehicle_repo.find_all()
-        conflicts = ConflictDetector.validate_service(
+        conflicts = detect_conflicts(
             service, all_services, all_blocks, all_vehicles,
         )
         if conflicts.has_conflicts:

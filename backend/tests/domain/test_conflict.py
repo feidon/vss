@@ -5,7 +5,7 @@ import pytest
 
 from domain.block.model import Block
 from domain.network.model import Node, NodeType
-from domain.service.conflict import ConflictDetector
+from domain.service.conflict import detect_conflicts
 from domain.service.model import Service, TimetableEntry
 from domain.vehicle.model import Vehicle
 
@@ -43,7 +43,7 @@ def validate(
     blocks: list[Block] | None = None,
     vehicles: list[Vehicle] | None = None,
 ):
-    return ConflictDetector.validate_service(candidate, others, blocks or [], vehicles)
+    return detect_conflicts(candidate, others, blocks or [], vehicles)
 
 
 class TestVehicleConflicts:
@@ -143,13 +143,46 @@ class TestBlockConflicts:
         assert result.block_conflicts == []
 
 
+class TestInterlockingConflicts:
+    def test_same_group_different_blocks_conflict(self):
+        """Two services on different blocks in the same group with overlapping times."""
+        b1 = make_block(group=1)
+        b2 = make_block(group=1)
+        n1 = make_block_node(b1.id)
+        n2 = make_block_node(b2.id)
+        s1 = make_service_with_window(uuid7(), n1, arrival=0, departure=15)
+        s2 = make_service_with_window(uuid7(), n2, arrival=10, departure=20)
+
+        result = validate(s2, [s1], [b1, b2])
+        assert len(result.interlocking_conflicts) == 1
+        assert result.interlocking_conflicts[0].group == 1
+
+    def test_group_zero_excluded(self):
+        """Blocks in group 0 (no interlocking group) should not trigger conflicts."""
+        b1 = make_block(group=0)
+        b2 = make_block(group=0)
+        n1 = make_block_node(b1.id)
+        n2 = make_block_node(b2.id)
+        s1 = make_service_with_window(uuid7(), n1, arrival=0, departure=15)
+        s2 = make_service_with_window(uuid7(), n2, arrival=10, departure=20)
+
+        result = validate(s2, [s1], [b1, b2])
+        assert result.interlocking_conflicts == []
+
+
 def make_multi_block_service(
     vehicle_id,
     num_blocks: int,
     arrival: int,
     block_time: int = 30,
+    ends_at_yard: bool = False,
 ) -> Service:
-    """Create a service traversing `num_blocks` block nodes sequentially."""
+    """Create a service traversing `num_blocks` block nodes sequentially.
+
+    If ``ends_at_yard`` is True, a Yard node with a zero-duration entry is
+    appended so that the vehicle is considered to be at the Yard after the
+    service (enabling charging during the subsequent gap).
+    """
     path = []
     timetable = []
     t = arrival
@@ -158,6 +191,10 @@ def make_multi_block_service(
         path.append(node)
         timetable.append(TimetableEntry(order=i, node_id=node.id, arrival=t, departure=t + block_time))
         t += block_time
+    if ends_at_yard:
+        yard_node = Node(id=uuid7(), type=NodeType.YARD)
+        path.append(yard_node)
+        timetable.append(TimetableEntry(order=num_blocks, node_id=yard_node.id, arrival=t, departure=t))
     return Service(
         id=next(_id_counter),
         name="S",
@@ -169,7 +206,7 @@ def make_multi_block_service(
 
 class TestBatteryConflicts:
     def test_no_conflict_sufficient_battery(self):
-        """5 blocks: 100 - 5 = 95% — well above 30%."""
+        """5 blocks: 80 - 5 = 75% — well above 30%."""
         v = Vehicle(id=uuid7(), name="V1")
         s = make_multi_block_service(v.id, num_blocks=5, arrival=0)
 
@@ -178,7 +215,7 @@ class TestBatteryConflicts:
         assert result.insufficient_charge_conflicts == []
 
     def test_low_battery_conflict_detected(self):
-        """75 blocks: 100 - 75 = 25% < 30% — should trigger LowBatteryConflict."""
+        """75 blocks: 80 - 75 = 5% < 30% — should trigger LowBatteryConflict."""
         v = Vehicle(id=uuid7(), name="V1")
         s = make_multi_block_service(v.id, num_blocks=75, arrival=0)
 
@@ -190,11 +227,11 @@ class TestBatteryConflicts:
     def test_insufficient_charge_conflict_detected(self):
         """First service drains to 30%, short idle, second service can't depart at 80%."""
         v = Vehicle(id=uuid7(), name="V1")
-        # Service 1: 70 blocks → 100 - 70 = 30%
-        s1 = make_multi_block_service(v.id, num_blocks=70, arrival=0, block_time=10)
-        # s1 ends at 70 * 10 = 700
-        # Service 2 starts at 800 → 100s idle → 100 // 12 = 8% → 30 + 8 = 38% < 80%
-        s2 = make_multi_block_service(v.id, num_blocks=5, arrival=800, block_time=10)
+        # Service 1: 50 blocks → 80 - 50 = 30% (not critical, exactly at threshold)
+        s1 = make_multi_block_service(v.id, num_blocks=50, arrival=0, block_time=10)
+        # s1 ends at 50 * 10 = 500
+        # Service 2 starts at 600 → 100s idle → 100 // 12 = 8% → 30 + 8 = 38% < 80%
+        s2 = make_multi_block_service(v.id, num_blocks=5, arrival=600, block_time=10)
 
         result = validate(s2, [s1], vehicles=[v])
         assert len(result.insufficient_charge_conflicts) == 1
@@ -203,27 +240,39 @@ class TestBatteryConflicts:
         assert result.has_conflicts
 
     def test_charging_prevents_conflict(self):
-        """Enough idle time to charge above 80% — no conflict."""
+        """Enough idle time at the Yard to charge above 80% — no conflict."""
         v = Vehicle(id=uuid7(), name="V1")
-        # Service 1: 70 blocks → 100 - 70 = 30%
-        s1 = make_multi_block_service(v.id, num_blocks=70, arrival=0, block_time=10)
-        # s1 ends at 700
-        # Service 2 starts at 1300 → 600s idle → 600 // 12 = 50% → 30 + 50 = 80% ≥ 80%
-        s2 = make_multi_block_service(v.id, num_blocks=5, arrival=1300, block_time=10)
+        # Service 1: 50 blocks → 80 - 50 = 30%, returns to Yard
+        s1 = make_multi_block_service(v.id, num_blocks=50, arrival=0, block_time=10, ends_at_yard=True)
+        # s1 ends at 500
+        # Service 2 starts at 1100 → 600s idle at Yard → 600 // 12 = 50% → 30 + 50 = 80% ≥ 80%
+        s2 = make_multi_block_service(v.id, num_blocks=5, arrival=1100, block_time=10)
 
         result = validate(s2, [s1], vehicles=[v])
         assert result.low_battery_conflicts == []
         assert result.insufficient_charge_conflicts == []
 
+    def test_no_charging_when_not_at_yard(self):
+        """Vehicle doesn't return to Yard between services — no charging occurs."""
+        v = Vehicle(id=uuid7(), name="V1")
+        # Service 1: 50 blocks → 80 - 50 = 30%, does NOT return to Yard
+        s1 = make_multi_block_service(v.id, num_blocks=50, arrival=0, block_time=10)
+        # s1 ends at 500
+        # Even with 600s gap, no charging because not at Yard → 30% < 80%
+        s2 = make_multi_block_service(v.id, num_blocks=5, arrival=1100, block_time=10)
+
+        result = validate(s2, [s1], vehicles=[v])
+        assert len(result.insufficient_charge_conflicts) == 1
+
     def test_cumulative_drain_across_services(self):
         """Three services that cumulatively drain the battery below threshold."""
         v = Vehicle(id=uuid7(), name="V1")
-        # S1: 30 blocks → 100 - 30 = 70%, ends at 300
-        s1 = make_multi_block_service(v.id, num_blocks=30, arrival=0, block_time=10)
-        # Gap: 300 → 1500 = 1200s → 1200 // 12 = 100% → 70 + 100 = 170 → capped at 100
-        # S2: 30 blocks → 100 - 30 = 70%, ends at 1800
-        s2 = make_multi_block_service(v.id, num_blocks=30, arrival=1500, block_time=10)
-        # Gap: 1800 → 1900 = 100s → 100 // 12 = 8% → 70 + 8 = 78% < 80%
+        # S1: 30 blocks → 80 - 30 = 50%, returns to Yard, ends at 300
+        s1 = make_multi_block_service(v.id, num_blocks=30, arrival=0, block_time=10, ends_at_yard=True)
+        # Gap at Yard: 300 → 1500 = 1200s → 1200 // 12 = 100% → 50 + 100 = 150 → capped at 100
+        # S2: 30 blocks → 100 - 30 = 70%, returns to Yard, ends at 1800
+        s2 = make_multi_block_service(v.id, num_blocks=30, arrival=1500, block_time=10, ends_at_yard=True)
+        # Gap at Yard: 1800 → 1900 = 100s → 100 // 12 = 8% → 70 + 8 = 78% < 80%
         s3 = make_multi_block_service(v.id, num_blocks=5, arrival=1900, block_time=10)
 
         result = validate(s3, [s1, s2], vehicles=[v])
