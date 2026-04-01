@@ -29,7 +29,8 @@
       "Bash(openspec new:*)",
       "Bash(openspec status:*)",
       "Bash(openspec instructions:*)",
-      "Bash(openspec --help)"
+      "Bash(openspec --help)",
+      "Read(//Users/stanfei/.claude/**)"
     ]
   },
   "enabledMcpjsonServers": [

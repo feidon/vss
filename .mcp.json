@@ -7,7 +7,7 @@
     },
     "filesystem": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/feidon/Documents/vss"],
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
       "description": "Filesystem operations"
     }
   }
