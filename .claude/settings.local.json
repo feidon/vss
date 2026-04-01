@@ -1,38 +1,4 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(mise --version)",
-      "Bash(npx --version)",
-      "Bash(mise install:*)",
-      "Bash(mise trust:*)",
-      "Bash(mise ls:*)",
-      "Bash(mise which:*)",
-      "Bash(mise exec:*)",
-      "Read(//home/feidon/.config/mise/**)",
-      "Read(//home/feidon/**)",
-      "Bash(chezmoi apply:*)",
-      "Bash(claude --version)",
-      "Bash(npx -y @modelcontextprotocol/server-memory --help)",
-      "Bash(chezmoi managed:*)",
-      "Bash(chezmoi source-path:*)",
-      "mcp__filesystem__directory_tree",
-      "mcp__filesystem__list_directory_with_sizes",
-      "Bash(wc:*)",
-      "Bash(uv run:*)",
-      "mcp__filesystem__list_directory",
-      "mcp__filesystem__read_text_file",
-      "mcp__filesystem__read_multiple_files",
-      "Bash(pip show:*)",
-      "Bash(pipx list:*)",
-      "Bash(npm list:*)",
-      "Read(//usr/local/bin/**)",
-      "Bash(openspec new:*)",
-      "Bash(openspec status:*)",
-      "Bash(openspec instructions:*)",
-      "Bash(openspec --help)",
-      "Read(//Users/stanfei/.claude/**)"
-    ]
-  },
   "enabledMcpjsonServers": [
     "sequential-thinking",
     "filesystem"
