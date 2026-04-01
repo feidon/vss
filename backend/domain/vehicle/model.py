@@ -6,7 +6,7 @@ from uuid import UUID
 class Vehicle:
     id: UUID
     name: str
-    battery: int = 100
+    battery: int = 80
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Vehicle) and self.id == other.id

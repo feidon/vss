@@ -23,7 +23,8 @@
       "Bash(pip show:*)",
       "Bash(uv add:*)",
       "Bash(uv remove:*)",
-      "Bash(openspec list:*)"
+      "Bash(openspec list:*)",
+      "mcp__filesystem__list_directory"
     ]
   },
   "enabledMcpjsonServers": [

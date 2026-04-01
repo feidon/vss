@@ -49,8 +49,8 @@ class Service:
         if orders != sorted(orders):
             raise ValueError("Entries must be in ascending order")
         for i in range(1, len(entries)):
-            if entries[i].arrival < entries[i - 1].departure:
-                raise ValueError("Entries must be chronologically non-overlapping")
+            if entries[i].arrival != entries[i - 1].departure:
+                raise ValueError("Entries must be continuous: departure must equal next arrival")
 
     @staticmethod
     def _validate_entries_in_path(entries: list[TimetableEntry], path: list[Node]) -> None:

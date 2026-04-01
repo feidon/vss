@@ -88,7 +88,16 @@ class TestServiceCreation:
             TimetableEntry(order=0, node_id=n1.id, arrival=0, departure=15),
             TimetableEntry(order=1, node_id=n2.id, arrival=10, departure=20),
         ]
-        with pytest.raises(ValueError, match="chronologically non-overlapping"):
+        with pytest.raises(ValueError, match="continuous"):
+            make_service(path=[n1, n2], timetable=entries)
+
+    def test_gap_between_entries_rejected(self):
+        n1, n2 = make_node(), make_node()
+        entries = [
+            TimetableEntry(order=0, node_id=n1.id, arrival=0, departure=10),
+            TimetableEntry(order=1, node_id=n2.id, arrival=15, departure=20),
+        ]
+        with pytest.raises(ValueError, match="continuous"):
             make_service(path=[n1, n2], timetable=entries)
 
     def test_entry_referencing_unknown_node_rejected(self):

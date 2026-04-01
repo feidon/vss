@@ -85,3 +85,9 @@ In a monolith with single DB, prefer querying at use time (load both aggregates 
 - **API tests**: `TestClient` with dependency overrides
 - **Infra tests**: repository contract verification
 - Helper factories: `make_block()`, `make_service_with_window()`, seed data utilities
+
+
+## Notes
+
+- no "高併發" support
+- no "cannot stop at block" support
