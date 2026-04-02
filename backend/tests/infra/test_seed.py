@@ -6,6 +6,7 @@ from infra.seed import (
     YARD_ID,
     create_blocks,
     create_connections,
+    create_node_layouts,
     create_stations,
     create_vehicles,
 )
@@ -105,6 +106,21 @@ class TestSeedVehicles:
     def test_vehicle_names(self):
         names = {v.name for v in create_vehicles()}
         assert names == {"V1", "V2", "V3"}
+
+
+class TestSeedNodeLayouts:
+    def test_creates_21_entries(self):
+        """1 yard + 6 platforms + 14 blocks = 21 nodes."""
+        layouts = create_node_layouts()
+        assert len(layouts) == 21
+
+    def test_all_coordinates_are_non_negative_floats(self):
+        layouts = create_node_layouts()
+        for node_id, (x, y) in layouts.items():
+            assert isinstance(x, float), f"x for {node_id} is not float"
+            assert isinstance(y, float), f"y for {node_id} is not float"
+            assert x >= 0.0, f"x for {node_id} is negative"
+            assert y >= 0.0, f"y for {node_id} is negative"
 
 
 class TestDeterministicIds:

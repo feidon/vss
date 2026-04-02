@@ -1,6 +1,7 @@
 from sqlalchemy import (
     Boolean,
     Column,
+    Float,
     ForeignKey,
     Integer,
     MetaData,
@@ -59,4 +60,12 @@ node_connections_table = Table(
     metadata,
     Column("from_id", Uuid, primary_key=True),
     Column("to_id", Uuid, primary_key=True),
+)
+
+node_layouts_table = Table(
+    "node_layouts",
+    metadata,
+    Column("node_id", Uuid, primary_key=True),
+    Column("x", Float, nullable=False),
+    Column("y", Float, nullable=False),
 )

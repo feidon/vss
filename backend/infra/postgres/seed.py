@@ -11,11 +11,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from infra.postgres.tables import (
     blocks_table,
     node_connections_table,
+    node_layouts_table,
     platforms_table,
     stations_table,
     vehicles_table,
 )
-from infra.seed import create_blocks, create_connections, create_stations, create_vehicles
+from infra.seed import (
+    create_blocks,
+    create_connections,
+    create_node_layouts,
+    create_stations,
+    create_vehicles,
+)
 
 
 async def seed_database(session: AsyncSession) -> None:
@@ -72,6 +79,14 @@ async def seed_database(session: AsyncSession) -> None:
         insert(node_connections_table)
         .values([{"from_id": c.from_id, "to_id": c.to_id} for c in connections])
         .on_conflict_do_nothing()
+    )
+
+    # Node layouts
+    layouts = create_node_layouts()
+    await session.execute(
+        insert(node_layouts_table)
+        .values([{"node_id": nid, "x": x, "y": y} for nid, (x, y) in layouts.items()])
+        .on_conflict_do_nothing(index_elements=["node_id"])
     )
 
     await session.commit()
