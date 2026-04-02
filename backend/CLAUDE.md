@@ -38,9 +38,15 @@ Dependency flow: `api → application → domain ← infra`
 | GET    | `/services`                     | List all services        |
 | GET    | `/services/{id}`                | Get service by ID        |
 | PATCH  | `/services/{id}/route`          | Update service route     |
+| POST   | `/routes/validate`              | Validate stops queue     |
 | DELETE | `/services/{id}`                | Delete service           |
 
 Route update returns 409 with conflict details when scheduling conflicts are detected.
+
+### Validation Scope Split
+
+- **`POST /routes/validate` (during editing):** Route connectivity + single-service battery only. No cross-service conflict checks — the route isn't final during editing.
+- **`PATCH /services/{id}/route` (save):** Full cross-service conflict detection (vehicle, block, interlocking, battery) against all existing services.
 
 ## Running
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from uuid import UUID
 
 from domain.block.model import Block
@@ -15,6 +15,7 @@ class GraphData:
     blocks: list[Block]
     connections: frozenset[NodeConnection]
     vehicles: list[Vehicle]
+    layouts: dict[UUID, tuple[float, float]] = field(default_factory=dict)
 
     @property
     def platform_to_station(self) -> dict[UUID, Station]:

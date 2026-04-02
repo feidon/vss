@@ -15,11 +15,35 @@ dependencies = [
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",
+    "import-linter>=2.1",
     "psycopg-binary>=3.3.3",
     "psycopg[binary]>=3.3.3",
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",
 ]
+
+[tool.importlinter]
+root_packages = ["api", "application", "domain", "infra"]
+
+[[tool.importlinter.contracts]]
+name = "domain has no outward dependencies"
+type = "independence"
+modules = ["domain"]
+
+[[tool.importlinter.contracts]]
+name = "layered architecture"
+type = "layers"
+layers = [
+    "api",
+    "application",
+    "domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "infra only depends on domain"
+type = "forbidden"
+source_modules = ["infra"]
+forbidden_modules = ["api", "application"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

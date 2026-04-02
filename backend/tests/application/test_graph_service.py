@@ -9,6 +9,7 @@ from domain.station.model import Platform, Station
 from domain.vehicle.model import Vehicle
 from infra.memory.block_repo import InMemoryBlockRepository
 from infra.memory.connection_repo import InMemoryConnectionRepository
+from infra.memory.node_layout_repo import InMemoryNodeLayoutRepository
 from infra.memory.station_repo import InMemoryStationRepository
 from infra.memory.vehicle_repo import InMemoryVehicleRepository
 
@@ -44,12 +45,17 @@ class TestGraphAppService:
         return repo
 
     @pytest.fixture
-    def service(self, station_repo, block_repo, connection_repo, vehicle_repo):
+    def node_layout_repo(self):
+        return InMemoryNodeLayoutRepository()
+
+    @pytest.fixture
+    def service(self, station_repo, block_repo, connection_repo, vehicle_repo, node_layout_repo):
         return GraphAppService(
             station_repo=station_repo,
             block_repo=block_repo,
             connection_repo=connection_repo,
             vehicle_repo=vehicle_repo,
+            node_layout_repo=node_layout_repo,
         )
 
     async def test_get_graph_assembles_all_data(self, service, station_repo, block_repo, vehicle_repo):
@@ -65,6 +71,7 @@ class TestGraphAppService:
             block_repo=InMemoryBlockRepository(),
             connection_repo=InMemoryConnectionRepository(),
             vehicle_repo=InMemoryVehicleRepository(),
+            node_layout_repo=InMemoryNodeLayoutRepository(),
         )
         graph = await svc.get_graph()
         assert graph.stations == []
@@ -90,6 +97,7 @@ class TestGraphAppService:
             block_repo=InMemoryBlockRepository(),
             connection_repo=InMemoryConnectionRepository(),
             vehicle_repo=InMemoryVehicleRepository(),
+            node_layout_repo=InMemoryNodeLayoutRepository(),
         )
         graph = await svc.get_graph()
         assert graph.yard == yard

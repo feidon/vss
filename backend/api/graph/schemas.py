@@ -34,20 +34,26 @@ class GraphResponse(BaseModel):
     @classmethod
     def from_graph_data(cls, data: GraphData) -> GraphResponse:
         nodes: list[BlockNodeSchema | PlatformNodeSchema | YardNodeSchema] = []
+        layouts = data.layouts
 
         yard = data.yard
         if yard is not None:
-            nodes.append(YardNodeSchema(id=yard.id, name=yard.name))
+            x, y = layouts.get(yard.id, (0.0, 0.0))
+            nodes.append(YardNodeSchema(id=yard.id, name=yard.name, x=x, y=y))
 
         for platform in data.all_platforms:
-            nodes.append(PlatformNodeSchema(id=platform.id, name=platform.name))
+            x, y = layouts.get(platform.id, (0.0, 0.0))
+            nodes.append(PlatformNodeSchema(id=platform.id, name=platform.name, x=x, y=y))
 
         for block in data.blocks:
+            x, y = layouts.get(block.id, (0.0, 0.0))
             nodes.append(BlockNodeSchema(
                 id=block.id,
                 name=block.name,
                 group=block.group,
                 traversal_time_seconds=block.traversal_time_seconds,
+                x=x,
+                y=y,
             ))
 
         connections = [

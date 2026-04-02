@@ -1,4 +1,16 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(uv run:*)",
+      "mcp__filesystem__directory_tree",
+      "mcp__filesystem__read_text_file",
+      "mcp__filesystem__list_directory",
+      "Bash(docker compose build:*)",
+      "Bash(sudo docker:*)",
+      "mcp__filesystem__read_multiple_files",
+      "Bash(uv sync:*)"
+    ]
+  },
   "enabledMcpjsonServers": [
     "sequential-thinking",
     "filesystem"

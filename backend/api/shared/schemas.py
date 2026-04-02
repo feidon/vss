@@ -12,18 +12,24 @@ class BlockNodeSchema(BaseModel):
     name: str
     group: int
     traversal_time_seconds: int
+    x: float = 0.0
+    y: float = 0.0
 
 
 class PlatformNodeSchema(BaseModel):
     type: Literal["platform"] = "platform"
     id: UUID
     name: str
+    x: float = 0.0
+    y: float = 0.0
 
 
 class YardNodeSchema(BaseModel):
     type: Literal["yard"] = "yard"
     id: UUID
     name: str
+    x: float = 0.0
+    y: float = 0.0
 
 
 NodeSchema = Annotated[
