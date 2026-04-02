@@ -8,7 +8,15 @@
       "Bash(docker compose build:*)",
       "Bash(sudo docker:*)",
       "mcp__filesystem__read_multiple_files",
-      "Bash(uv sync:*)"
+      "Bash(uv sync:*)",
+      "Bash(uv add:*)",
+      "Bash(npx ng:*)",
+      "Bash(npm list:*)",
+      "Bash(sort -t. -k1,1n -k2,2n -k3,3n)",
+      "Bash(python3 -c \"import yaml; yaml.safe_load\\(open\\('/home/feidon/Documents/vss/.github/workflows/ci.yml'\\)\\)\")",
+      "Bash(npx prettier:*)",
+      "Read(//home/feidon/.cache/pre-commit/**)",
+      "Bash(/home/feidon/.cache/pre-commit/repobd57k9me/py_env-python3.14/bin/ruff check:*)"
     ]
   },
   "enabledMcpjsonServers": [

@@ -29,7 +29,8 @@
       "mcp__filesystem__write_file",
       "Bash(sudo docker:*)",
       "Bash(PGPASSWORD=vss psql:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(xargs ls:*)"
     ]
   },
   "enabledMcpjsonServers": [

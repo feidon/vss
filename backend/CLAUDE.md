@@ -15,7 +15,7 @@ backend/
 ├── api/            # FastAPI routes, Pydantic schemas, DI container
 ├── application/    # App services, DTOs, orchestration
 ├── domain/         # Entities, value objects, repository interfaces, domain services
-├── infra/          # In-memory repository implementations, seed data
+├── infra/          # PostgreSQL repos, in-memory test doubles, seed data
 └── tests/          # Mirrors source structure: domain/, application/, api/, infra/
 ```
 
@@ -49,6 +49,8 @@ Route update returns 409 with conflict details when scheduling conflicts are det
 - **`PATCH /services/{id}/route` (save):** Full cross-service conflict detection (vehicle, block, interlocking, battery) against all existing services.
 
 ## Running
+
+PostgreSQL is always required — the app will not start without a database connection.
 
 ```bash
 uv sync

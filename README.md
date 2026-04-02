@@ -30,8 +30,8 @@ The Angular frontend is built inside the backend Docker image and served by Fast
 ```bash
 cd backend
 uv sync
-uv run uvicorn main:app --reload                # in-memory mode
-DB=postgres uv run uvicorn main:app --reload     # PostgreSQL mode (needs running container)
+# PostgreSQL must be running (see docker compose up -d)
+uv run uvicorn main:app --reload
 ```
 
 **Frontend:**
@@ -69,7 +69,7 @@ api/  →  application/  →  domain/  ←  infra/
 | **`domain/`**    | Core business rules           | Entities, value objects, repository interfaces (ports), domain services |
 | **`application/`** | Use-case orchestration     | Coordinates domain objects and repos; enforces workflow (build route → detect conflicts → persist) |
 | **`api/`**       | Inbound adapter               | FastAPI routes, Pydantic schemas, dependency injection |
-| **`infra/`**     | Outbound adapters             | Repository implementations (PostgreSQL and in-memory)  |
+| **`infra/`**     | Outbound adapters             | PostgreSQL repositories (production), in-memory repositories (test doubles) |
 
 Dependencies point inward — `infra` implements domain interfaces, `api` calls application services, but **nothing depends on `infra` or `api`** from inside the domain. This is enforced at CI time via [`import-linter`](https://github.com/seddonym/import-linter).
 
@@ -115,7 +115,7 @@ class PostgresBlockRepository(BlockRepository): ...
 class InMemoryBlockRepository(BlockRepository): ...
 ```
 
-The domain declares **what** it needs; adapters decide **how**. Application services and domain logic depend only on the interface, never on a concrete implementation. FastAPI's `Depends()` wires the correct adapter at runtime based on the `DB` environment variable.
+The domain declares **what** it needs; adapters decide **how**. Application services and domain logic depend only on the interface, never on a concrete implementation. FastAPI's `Depends()` wires PostgreSQL repositories at runtime. In-memory repositories are used exclusively as test doubles in application-level tests.
 
 This is the Ports & Adapters pattern in action: the repository interface is the **port**, and each implementation is an **adapter**. See [Trade-off #4](#4-dual-repository-strategy-in-memory--postgresql) for the dual-implementation rationale and [Trade-off #5](#5-sqlalchemy-core--manual-mapper-vs-orm) for the persistence technology choice.
 
@@ -281,11 +281,11 @@ Conflict response includes structured details (block IDs, overlap windows, reaso
 
 ### Infrastructure
 
-#### 4. Dual Repository Strategy (In-Memory + PostgreSQL)
+#### 4. Dual Repository Strategy (In-Memory for Tests + PostgreSQL for Production)
 
-**Choice:** Every repository interface has both an in-memory and a PostgreSQL implementation, selected by the `DB` environment variable.
+**Choice:** Every repository interface has both an in-memory and a PostgreSQL implementation. Production always uses PostgreSQL; in-memory repos are used exclusively as test doubles in application-level tests.
 
-**Why:** In-memory repos enable rapid development and unit testing without any database setup. Domain and application tests run in milliseconds. PostgreSQL repos are exercised by dedicated integration tests marked with `@pytest.mark.postgres`.
+**Why:** In-memory repos enable fast application-level testing without database setup — domain and application tests run in milliseconds. PostgreSQL repos are exercised by dedicated integration tests marked with `@pytest.mark.postgres`. The DI container unconditionally wires PostgreSQL; test fixtures inject in-memory repos directly.
 
 **Trade-off:** Maintaining two implementations per repository adds code. Mitigated by narrow repository interfaces (5 methods or fewer) and integration tests verifying both implementations against the same contracts.
 
@@ -330,7 +330,7 @@ vss/
 │   ├── api/                     # Routes, Pydantic schemas, dependency injection
 │   ├── application/             # App services, DTOs, orchestration
 │   ├── domain/                  # Entities, value objects, repo interfaces, domain services
-│   ├── infra/                   # In-memory & PostgreSQL repository implementations
+│   ├── infra/                   # PostgreSQL repos (production), in-memory repos (test doubles)
 │   └── tests/                   # Unit + integration tests
 │
 └── frontend/
@@ -347,7 +347,7 @@ vss/
 
 ## Todo
 
-- [ ] in-memory repo only for tests
+- [x] in-memory repo only for tests
 - [ ] create ci
 - [ ] create domain error and error handler
 - [ ] not consist starlette.status
