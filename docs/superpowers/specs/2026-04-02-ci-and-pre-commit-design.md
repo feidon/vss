@@ -10,15 +10,24 @@ A single `.pre-commit-config.yaml` at the repo root using the `pre-commit` Pytho
 
 ### Hooks
 
-| Hook | Scope | Purpose |
-|------|-------|---------|
-| `ruff check` | `backend/**/*.py` | Python linting |
-| `ruff format --check` | `backend/**/*.py` | Python format check |
-| `lint-imports` | `backend/` | Architecture dependency enforcement |
-| `eslint` | `frontend/src/**/*.{ts,html}` | Angular linting |
-| `prettier --check` | `frontend/src/**/*.{ts,html,css}` | Format check |
+| Hook | Scope | Purpose | Notes |
+|------|-------|---------|-------|
+| `ruff check` | `backend/**/*.py` | Python linting | Uses `ruff-pre-commit` mirror repo |
+| `ruff format --check` | `backend/**/*.py` | Python format check | Uses `ruff-pre-commit` mirror repo |
+| `lint-imports` | `backend/` | Architecture dependency enforcement | Local hook, `pass_filenames: false`, entry: `bash -c 'cd backend && lint-imports'` |
+| `eslint` | `frontend/src/**/*.{ts,html}` | Angular linting | Local hook, entry: `bash -c 'cd frontend && npx eslint'`, passes filenames relative to frontend/ |
+| `prettier --check` | `frontend/src/**/*.{ts,html,css}` | Format check | Local hook, entry: `bash -c 'cd frontend && npx prettier --check'` |
 
 `pre-commit` is installed as a backend dev dependency and configured at the repo root.
+
+### Developer Onboarding
+
+After cloning the repo, developers must run:
+
+```bash
+cd backend && uv sync   # installs pre-commit
+uv run pre-commit install   # activates git hooks
+```
 
 ## CI Pipeline
 
@@ -28,24 +37,34 @@ Single GitHub Actions workflow at `.github/workflows/ci.yml`. Triggers on push t
 
 #### backend-lint
 - **Trigger**: `backend/**` changes
-- **Steps**: Checkout, setup Python 3.14, `uv sync`, `ruff check backend/`, `ruff format --check backend/`, `cd backend && lint-imports`
+- **Working directory**: `backend/`
+- **Steps**: Checkout, setup Python 3.14, `uv sync`, `ruff check .`, `ruff format --check .`, `lint-imports`
 
 #### backend-test
 - **Trigger**: `backend/**` changes
-- **Services**: Postgres 17 container (`vss` user/password/db, plus `vss_test` db)
-- **Steps**: Checkout, setup Python 3.14, `uv sync`, wait for Postgres health check, create `vss_test` database, `pytest -m ''` (all tests including Postgres integration)
+- **Working directory**: `backend/`
+- **Services**: Postgres 17 container (`POSTGRES_USER=vss`, `POSTGRES_PASSWORD=vss`, `POSTGRES_DB=vss`) with health check
+- **Environment**: `DATABASE_URL=postgresql+asyncpg://vss:vss@localhost:5432/vss_test`
+- **Steps**:
+  1. Checkout, setup Python 3.14, `uv sync`
+  2. Create test database: `PGPASSWORD=vss psql -h localhost -U vss -c "CREATE DATABASE vss_test;"`
+  3. Run Alembic migrations: `uv run alembic upgrade head` (against `vss_test`)
+  4. Run all tests: `uv run pytest -m ''`
 
 #### frontend-lint
 - **Trigger**: `frontend/**` changes
-- **Steps**: Checkout, setup Node LTS, `npm ci`, `ng lint`, `npx prettier --check src/`
+- **Working directory**: `frontend/`
+- **Steps**: Checkout, setup Node LTS, `npm ci`, `npx ng lint`, `npx prettier --check "src/**/*.{ts,html,css}"`
 
 #### frontend-test
 - **Trigger**: `frontend/**` changes
-- **Steps**: Checkout, setup Node LTS, `npm ci`, `ng test`
+- **Working directory**: `frontend/`
+- **Steps**: Checkout, setup Node LTS, `npm ci`, `npx ng test`
 
 #### frontend-build
 - **Trigger**: `frontend/**` changes
-- **Steps**: Checkout, setup Node LTS, `npm ci`, `ng build`
+- **Working directory**: `frontend/`
+- **Steps**: Checkout, setup Node LTS, `npm ci`, `npx ng build`
 
 ## New Dependencies and Config
 
@@ -53,8 +72,8 @@ Single GitHub Actions workflow at `.github/workflows/ci.yml`. Triggers on push t
 |------|-------|---------|
 | `pre-commit` | `backend/pyproject.toml` dev dep | `uv add --dev pre-commit` |
 | `ruff` | `backend/pyproject.toml` dev dep | `uv add --dev ruff` |
-| Ruff config | `backend/pyproject.toml` `[tool.ruff]` | Target Python 3.14, line length 88, src dirs |
-| `angular-eslint` | `frontend/` | `ng add @angular-eslint/schematics` adds `eslint.config.js` and wires `ng lint` |
+| Ruff config | `backend/pyproject.toml` `[tool.ruff]` | Target Python 3.14, line length 88 (Python convention; frontend uses 100 via Prettier) |
+| `angular-eslint` | `frontend/` | `ng add @angular-eslint/schematics` modifies `package.json`, `angular.json` (adds `lint` target), and creates `eslint.config.js` |
 | `.pre-commit-config.yaml` | repo root | Pre-commit hook definitions |
 | `.github/workflows/ci.yml` | repo root | CI workflow |
 
