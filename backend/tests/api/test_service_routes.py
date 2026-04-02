@@ -2,6 +2,15 @@ from uuid import uuid7
 
 import pytest
 from infra.seed import PLATFORM_ID_BY_NAME, VEHICLE_ID_BY_NAME
+from starlette.status import (
+    HTTP_200_OK,
+    HTTP_201_CREATED,
+    HTTP_204_NO_CONTENT,
+    HTTP_400_BAD_REQUEST,
+    HTTP_404_NOT_FOUND,
+    HTTP_409_CONFLICT,
+    HTTP_422_UNPROCESSABLE_CONTENT,
+)
 
 pytestmark = pytest.mark.postgres
 
@@ -9,7 +18,7 @@ pytestmark = pytest.mark.postgres
 async def create_service(client, vehicle_name="V1"):
     vid = str(VEHICLE_ID_BY_NAME[vehicle_name])
     resp = await client.post("/services", json={"name": "S1", "vehicle_id": vid})
-    assert resp.status_code == 201
+    assert resp.status_code == HTTP_201_CREATED
     return resp.json()["id"]
 
 
@@ -19,7 +28,7 @@ class TestServiceCRUD:
         resp = await client.post(
             "/services", json={"name": "Express", "vehicle_id": vid}
         )
-        assert resp.status_code == 201
+        assert resp.status_code == HTTP_201_CREATED
         data = resp.json()
         assert "id" in data
         assert set(data.keys()) == {"id"}
@@ -27,17 +36,17 @@ class TestServiceCRUD:
     async def test_create_service_empty_name_rejected(self, client):
         vid = str(VEHICLE_ID_BY_NAME["V1"])
         resp = await client.post("/services", json={"name": "", "vehicle_id": vid})
-        assert resp.status_code == 422
+        assert resp.status_code == HTTP_422_UNPROCESSABLE_CONTENT
 
     async def test_create_service_unknown_vehicle_rejected(self, client):
         resp = await client.post(
             "/services", json={"name": "S1", "vehicle_id": str(uuid7())}
         )
-        assert resp.status_code == 400
+        assert resp.status_code == HTTP_400_BAD_REQUEST
 
     async def test_list_services_empty(self, client):
         resp = await client.get("/services")
-        assert resp.status_code == 200
+        assert resp.status_code == HTTP_200_OK
         assert resp.json() == []
 
     async def test_list_services(self, client):
@@ -60,24 +69,24 @@ class TestServiceCRUD:
     async def test_get_service(self, client):
         sid = await create_service(client)
         resp = await client.get(f"/services/{sid}")
-        assert resp.status_code == 200
+        assert resp.status_code == HTTP_200_OK
         data = resp.json()
         assert data["name"] == "S1"
         assert "graph" in data
 
     async def test_get_service_not_found(self, client):
         resp = await client.get("/services/999")
-        assert resp.status_code == 404
+        assert resp.status_code == HTTP_404_NOT_FOUND
 
     async def test_delete_service(self, client):
         sid = await create_service(client)
         resp = await client.delete(f"/services/{sid}")
-        assert resp.status_code == 204
-        assert (await client.get(f"/services/{sid}")).status_code == 404
+        assert resp.status_code == HTTP_204_NO_CONTENT
+        assert (await client.get(f"/services/{sid}")).status_code == HTTP_404_NOT_FOUND
 
     async def test_delete_service_idempotent(self, client):
         resp = await client.delete("/services/999")
-        assert resp.status_code == 204
+        assert resp.status_code == HTTP_204_NO_CONTENT
 
 
 class TestServiceRouteUpdate:
@@ -93,7 +102,7 @@ class TestServiceRouteUpdate:
                 "start_time": 1000,
             },
         )
-        assert resp.status_code == 200
+        assert resp.status_code == HTTP_200_OK
         assert resp.json() == {"id": sid}
 
         # Verify full state via GET
@@ -132,7 +141,7 @@ class TestServiceRouteUpdate:
                 "start_time": 0,
             },
         )
-        assert resp.status_code == 400
+        assert resp.status_code == HTTP_400_BAD_REQUEST
 
     async def test_update_route_service_not_found(self, client):
         resp = await client.patch(
@@ -145,7 +154,7 @@ class TestServiceRouteUpdate:
                 "start_time": 0,
             },
         )
-        assert resp.status_code == 404
+        assert resp.status_code == HTTP_404_NOT_FOUND
 
     async def test_update_route_no_route_returns_422(self, client):
         sid = await create_service(client)
@@ -160,7 +169,7 @@ class TestServiceRouteUpdate:
                 "start_time": 0,
             },
         )
-        assert resp.status_code == 422
+        assert resp.status_code == HTTP_422_UNPROCESSABLE_CONTENT
 
     async def test_update_route_conflict_returns_409(self, client):
         vid = str(VEHICLE_ID_BY_NAME["V1"])
@@ -183,7 +192,7 @@ class TestServiceRouteUpdate:
             f"/services/{s2_id}/route",
             json={**route, "start_time": 10},
         )
-        assert resp.status_code == 409
+        assert resp.status_code == HTTP_409_CONFLICT
         detail = resp.json()["detail"]
         assert (
             len(detail["vehicle_conflicts"]) > 0 or len(detail["block_conflicts"]) > 0

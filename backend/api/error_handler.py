@@ -4,18 +4,24 @@ from application.service.errors import ConflictError
 from domain.error import DomainError, ErrorCode
 from fastapi import Request
 from fastapi.responses import JSONResponse
+from starlette.status import (
+    HTTP_400_BAD_REQUEST,
+    HTTP_404_NOT_FOUND,
+    HTTP_409_CONFLICT,
+    HTTP_422_UNPROCESSABLE_CONTENT,
+)
 
 STATUS_MAP = {
-    ErrorCode.NOT_FOUND: 404,
-    ErrorCode.VALIDATION: 400,
-    ErrorCode.CONFLICT: 409,
-    ErrorCode.NO_ROUTE: 422,
+    ErrorCode.NOT_FOUND: HTTP_404_NOT_FOUND,
+    ErrorCode.VALIDATION: HTTP_400_BAD_REQUEST,
+    ErrorCode.CONFLICT: HTTP_409_CONFLICT,
+    ErrorCode.NO_ROUTE: HTTP_422_UNPROCESSABLE_CONTENT,
 }
 
 
 async def domain_error_handler(request: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, DomainError)
-    status = STATUS_MAP.get(exc.code, 400)
+    status = STATUS_MAP.get(exc.code, HTTP_400_BAD_REQUEST)
     if isinstance(exc, ConflictError):
         detail = _build_conflict_detail(exc)
     else:

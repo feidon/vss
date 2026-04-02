@@ -1,5 +1,6 @@
 import pytest
 from infra.seed import PLATFORM_ID_BY_NAME, VEHICLE_ID_BY_NAME, YARD_ID
+from starlette.status import HTTP_200_OK, HTTP_422_UNPROCESSABLE_CONTENT
 
 pytestmark = pytest.mark.postgres
 
@@ -17,7 +18,7 @@ class TestValidateRoute:
                 "start_time": 1000,
             },
         )
-        assert resp.status_code == 200
+        assert resp.status_code == HTTP_200_OK
         data = resp.json()
         assert len(data["path"]) == 4
         assert data["battery_conflicts"] == []
@@ -34,7 +35,7 @@ class TestValidateRoute:
                 "start_time": 0,
             },
         )
-        assert resp.status_code == 422
+        assert resp.status_code == HTTP_422_UNPROCESSABLE_CONTENT
 
     async def test_yard_as_stop(self, client):
         resp = await client.post(
@@ -48,7 +49,7 @@ class TestValidateRoute:
                 "start_time": 0,
             },
         )
-        assert resp.status_code == 200
+        assert resp.status_code == HTTP_200_OK
         data = resp.json()
         assert len(data["path"]) >= 2
 
@@ -63,4 +64,4 @@ class TestValidateRoute:
                 "start_time": 0,
             },
         )
-        assert resp.status_code == 422
+        assert resp.status_code == HTTP_422_UNPROCESSABLE_CONTENT
