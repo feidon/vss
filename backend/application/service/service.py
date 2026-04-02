@@ -67,6 +67,25 @@ class ServiceAppService:
     ) -> Service:
         service = await self.get_service(id)
 
+        full_path, timetable = await self._build_route(stops, start_time)
+        connections = await self._connection_repo.find_all()
+        service.update_route(full_path, timetable, connections)
+
+        all_services = await self._service_repo.find_all()
+        all_blocks = await self._block_repo.find_all()
+        all_vehicles = await self._vehicle_repo.find_all()
+        conflicts = detect_conflicts(
+            service, all_services, all_blocks, all_vehicles,
+        )
+        if conflicts.has_conflicts:
+            raise ConflictError(conflicts)
+
+        await self._service_repo.save(service)
+        return service
+
+    async def _build_route(
+        self, stops: list[RouteStop], start_time: EpochSeconds
+    ) -> tuple[list[Node], list[TimetableEntry]]:
         stations = await self._station_repo.find_all()
         all_platforms = {p.id: p for s in stations for p in s.platforms}
         yard_ids = {s.id for s in stations if s.is_yard}
@@ -83,18 +102,7 @@ class ServiceAppService:
             start_time,
         )
 
-        service.update_route(full_path, timetable, connections)
-
-        all_services = await self._service_repo.find_all()
-        all_vehicles = await self._vehicle_repo.find_all()
-        conflicts = detect_conflicts(
-            service, all_services, all_blocks, all_vehicles,
-        )
-        if conflicts.has_conflicts:
-            raise ConflictError(conflicts)
-
-        await self._service_repo.save(service)
-        return service
+        return full_path, timetable
 
     async def delete_service(self, id: int) -> None:
         await self._service_repo.delete(id)
