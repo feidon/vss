@@ -30,8 +30,9 @@ import { ConflictResponse } from '../../shared/models';
           <ul class="ml-4 list-disc">
             @for (c of conflicts().block_conflicts; track $index) {
               <li>
-                Block {{ c.block_id }} — Services {{ c.service_a_id }} &amp; {{ c.service_b_id }}
-                ({{ formatTime(c.overlap_start) }} – {{ formatTime(c.overlap_end) }})
+                Block {{ c.block_id }} — Services {{ c.service_a_id }} &amp;
+                {{ c.service_b_id }} ({{ formatTime(c.overlap_start) }} –
+                {{ formatTime(c.overlap_end) }})
               </li>
             }
           </ul>
@@ -44,9 +45,9 @@ import { ConflictResponse } from '../../shared/models';
           <ul class="ml-4 list-disc">
             @for (c of conflicts().interlocking_conflicts; track $index) {
               <li>
-                Group {{ c.group }} — Blocks {{ c.block_a_id }} &amp; {{ c.block_b_id }},
-                Services {{ c.service_a_id }} &amp; {{ c.service_b_id }}
-                ({{ formatTime(c.overlap_start) }} – {{ formatTime(c.overlap_end) }})
+                Group {{ c.group }} — Blocks {{ c.block_a_id }} &amp; {{ c.block_b_id }}, Services
+                {{ c.service_a_id }} &amp; {{ c.service_b_id }} ({{ formatTime(c.overlap_start) }} –
+                {{ formatTime(c.overlap_end) }})
               </li>
             }
           </ul>

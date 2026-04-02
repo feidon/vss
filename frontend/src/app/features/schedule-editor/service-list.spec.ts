@@ -71,7 +71,9 @@ describe('ServiceListComponent', () => {
     let emitted: ServiceResponse | undefined;
     fixture.componentInstance.delete.subscribe((s: ServiceResponse) => (emitted = s));
 
-    const buttons = fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>;
+    const buttons = fixture.nativeElement.querySelectorAll(
+      'button',
+    ) as NodeListOf<HTMLButtonElement>;
     buttons[1].click(); // Delete is second button
     expect(emitted).toEqual(services[0]);
   });

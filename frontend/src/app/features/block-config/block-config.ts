@@ -56,7 +56,8 @@ interface BlockGroup {
                     (click)="startEdit(block)"
                     (keydown.enter)="startEdit(block)"
                     (keydown.space)="startEdit(block)"
-                  >{{ block.traversal_time_seconds }}</span>
+                    >{{ block.traversal_time_seconds }}</span
+                  >
                 }
               </td>
             </tr>
@@ -147,9 +148,7 @@ export class BlockConfigComponent implements OnInit {
 
   private updateBlockLocally(id: string, traversalTime: number): void {
     this.blocks.update((blocks) =>
-      blocks.map((b) =>
-        b.id === id ? { ...b, traversal_time_seconds: traversalTime } : b
-      )
+      blocks.map((b) => (b.id === id ? { ...b, traversal_time_seconds: traversalTime } : b)),
     );
   }
 }

@@ -5,16 +5,12 @@ export const routes: Routes = [
   {
     path: 'editor',
     loadComponent: () =>
-      import('./features/schedule-editor/schedule-editor').then(
-        (m) => m.ScheduleEditorComponent
-      ),
+      import('./features/schedule-editor/schedule-editor').then((m) => m.ScheduleEditorComponent),
   },
   {
     path: 'viewer',
     loadComponent: () =>
-      import('./features/schedule-viewer/schedule-viewer').then(
-        (m) => m.ScheduleViewerComponent
-      ),
+      import('./features/schedule-viewer/schedule-viewer').then((m) => m.ScheduleViewerComponent),
   },
   {
     path: 'blocks',
@@ -23,7 +19,6 @@ export const routes: Routes = [
   },
   {
     path: 'map',
-    loadComponent: () =>
-      import('./features/track-map/track-map').then((m) => m.TrackMapComponent),
+    loadComponent: () => import('./features/track-map/track-map').then((m) => m.TrackMapComponent),
   },
 ];

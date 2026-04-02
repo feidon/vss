@@ -1,9 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { BlockConfigComponent } from './block-config';
 import { BlockResponse } from '../../shared/models';
 import { API_BASE_URL } from '../../core/services/api.config';
@@ -44,7 +41,7 @@ describe('BlockConfigComponent', () => {
     flushBlocks();
 
     const dataRows = fixture.nativeElement.querySelectorAll(
-      'tbody tr:not([data-testid="group-header"])'
+      'tbody tr:not([data-testid="group-header"])',
     );
     expect(dataRows.length).toBe(5);
 
@@ -64,9 +61,7 @@ describe('BlockConfigComponent', () => {
       { id: 'b1', name: 'B1', group: 1, traversal_time_seconds: 60 },
     ]);
 
-    const groupHeaders = fixture.nativeElement.querySelectorAll(
-      '[data-testid="group-header"]'
-    );
+    const groupHeaders = fixture.nativeElement.querySelectorAll('[data-testid="group-header"]');
     expect(groupHeaders.length).toBe(3);
     expect(groupHeaders[0].textContent).toContain('Group 1');
     expect(groupHeaders[1].textContent).toContain('Group 2');
@@ -74,7 +69,7 @@ describe('BlockConfigComponent', () => {
 
     // Blocks within group 1 should be sorted by name: B1 before B2
     const rows = fixture.nativeElement.querySelectorAll(
-      'tbody tr:not([data-testid="group-header"])'
+      'tbody tr:not([data-testid="group-header"])',
     );
     const blockNames = Array.from(rows as NodeListOf<HTMLElement>)
       .map((r) => r.querySelector('td')?.textContent?.trim())
@@ -87,14 +82,12 @@ describe('BlockConfigComponent', () => {
     flushBlocks();
 
     const span = fixture.nativeElement.querySelector(
-      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span'
+      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span',
     ) as HTMLElement;
     span.click();
     fixture.detectChanges();
 
-    const input = fixture.nativeElement.querySelector(
-      'input[type="number"]'
-    ) as HTMLInputElement;
+    const input = fixture.nativeElement.querySelector('input[type="number"]') as HTMLInputElement;
     expect(input).toBeTruthy();
     expect(input.valueAsNumber).toBe(60);
   });
@@ -104,14 +97,12 @@ describe('BlockConfigComponent', () => {
     flushBlocks();
 
     const span = fixture.nativeElement.querySelector(
-      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span'
+      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span',
     ) as HTMLElement;
     span.click();
     fixture.detectChanges();
 
-    const input = fixture.nativeElement.querySelector(
-      'input[type="number"]'
-    ) as HTMLInputElement;
+    const input = fixture.nativeElement.querySelector('input[type="number"]') as HTMLInputElement;
     input.valueAsNumber = 90;
     input.dispatchEvent(new Event('input'));
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
@@ -124,9 +115,7 @@ describe('BlockConfigComponent', () => {
     fixture.detectChanges();
 
     // Should exit edit mode
-    const inputAfter = fixture.nativeElement.querySelector(
-      'input[type="number"]'
-    );
+    const inputAfter = fixture.nativeElement.querySelector('input[type="number"]');
     expect(inputAfter).toBeNull();
   });
 
@@ -135,28 +124,24 @@ describe('BlockConfigComponent', () => {
     flushBlocks();
 
     const span = fixture.nativeElement.querySelector(
-      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span'
+      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span',
     ) as HTMLElement;
     span.click();
     fixture.detectChanges();
 
-    const input = fixture.nativeElement.querySelector(
-      'input[type="number"]'
-    ) as HTMLInputElement;
+    const input = fixture.nativeElement.querySelector('input[type="number"]') as HTMLInputElement;
     input.valueAsNumber = 999;
     input.dispatchEvent(new Event('input'));
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     fixture.detectChanges();
 
     // Should exit edit mode, no PATCH request
-    const inputAfter = fixture.nativeElement.querySelector(
-      'input[type="number"]'
-    );
+    const inputAfter = fixture.nativeElement.querySelector('input[type="number"]');
     expect(inputAfter).toBeNull();
 
     // Original value should be displayed
     const span2 = fixture.nativeElement.querySelector(
-      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span'
+      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span',
     );
     expect(span2.textContent.trim()).toContain('60');
   });
@@ -166,14 +151,12 @@ describe('BlockConfigComponent', () => {
     flushBlocks();
 
     const span = fixture.nativeElement.querySelector(
-      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span'
+      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span',
     ) as HTMLElement;
     span.click();
     fixture.detectChanges();
 
-    const input = fixture.nativeElement.querySelector(
-      'input[type="number"]'
-    ) as HTMLInputElement;
+    const input = fixture.nativeElement.querySelector('input[type="number"]') as HTMLInputElement;
     input.valueAsNumber = 75;
     input.dispatchEvent(new Event('input'));
     input.dispatchEvent(new Event('blur'));
@@ -190,14 +173,12 @@ describe('BlockConfigComponent', () => {
     flushBlocks();
 
     const span = fixture.nativeElement.querySelector(
-      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span'
+      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span',
     ) as HTMLElement;
     span.click();
     fixture.detectChanges();
 
-    const input = fixture.nativeElement.querySelector(
-      'input[type="number"]'
-    ) as HTMLInputElement;
+    const input = fixture.nativeElement.querySelector('input[type="number"]') as HTMLInputElement;
     input.valueAsNumber = 0;
     input.dispatchEvent(new Event('input'));
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
@@ -209,9 +190,7 @@ describe('BlockConfigComponent', () => {
     expect(validationMsg.textContent).toContain('positive integer');
 
     // Should still be in edit mode
-    expect(
-      fixture.nativeElement.querySelector('input[type="number"]')
-    ).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('input[type="number"]')).toBeTruthy();
   });
 
   it('should update displayed value on successful save', () => {
@@ -219,14 +198,12 @@ describe('BlockConfigComponent', () => {
     flushBlocks();
 
     const span = fixture.nativeElement.querySelector(
-      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span'
+      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span',
     ) as HTMLElement;
     span.click();
     fixture.detectChanges();
 
-    const input = fixture.nativeElement.querySelector(
-      'input[type="number"]'
-    ) as HTMLInputElement;
+    const input = fixture.nativeElement.querySelector('input[type="number"]') as HTMLInputElement;
     input.valueAsNumber = 120;
     input.dispatchEvent(new Event('input'));
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
@@ -236,7 +213,7 @@ describe('BlockConfigComponent', () => {
     fixture.detectChanges();
 
     const updatedSpan = fixture.nativeElement.querySelector(
-      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span'
+      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span',
     );
     expect(updatedSpan.textContent.trim()).toContain('120');
   });
@@ -246,14 +223,12 @@ describe('BlockConfigComponent', () => {
     flushBlocks();
 
     const span = fixture.nativeElement.querySelector(
-      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span'
+      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span',
     ) as HTMLElement;
     span.click();
     fixture.detectChanges();
 
-    const input = fixture.nativeElement.querySelector(
-      'input[type="number"]'
-    ) as HTMLInputElement;
+    const input = fixture.nativeElement.querySelector('input[type="number"]') as HTMLInputElement;
     input.valueAsNumber = 120;
     input.dispatchEvent(new Event('input'));
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
@@ -266,7 +241,7 @@ describe('BlockConfigComponent', () => {
 
     // Value should revert to original
     const revertedSpan = fixture.nativeElement.querySelector(
-      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span'
+      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span',
     );
     expect(revertedSpan.textContent.trim()).toContain('60');
 

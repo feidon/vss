@@ -81,7 +81,9 @@ describe('RouteEditorComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    const buttons = fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>;
+    const buttons = fixture.nativeElement.querySelectorAll(
+      'button',
+    ) as NodeListOf<HTMLButtonElement>;
     const submitBtn = Array.from(buttons).find((b) => b.textContent?.includes('Update Route'))!;
     expect(submitBtn.disabled).toBe(true);
   });
@@ -93,7 +95,9 @@ describe('RouteEditorComponent', () => {
     component.addStop();
     component.startTimeLocal.set('2025-06-15T10:00');
 
-    let emitted: { stops: { platform_id: string; dwell_time: number }[]; start_time: number } | undefined;
+    let emitted:
+      | { stops: { platform_id: string; dwell_time: number }[]; start_time: number }
+      | undefined;
     component.submitted.subscribe((e) => (emitted = e));
     component.onSubmit();
 

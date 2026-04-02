@@ -26,10 +26,7 @@ export class ServiceService {
   }
 
   updateRoute(id: number, request: UpdateRouteRequest): Observable<ServiceIdResponse> {
-    return this.http.patch<ServiceIdResponse>(
-      `${API_BASE_URL}/services/${id}/route`,
-      request
-    );
+    return this.http.patch<ServiceIdResponse>(`${API_BASE_URL}/services/${id}/route`, request);
   }
 
   deleteService(id: number): Observable<void> {

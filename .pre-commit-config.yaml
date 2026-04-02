@@ -1,0 +1,42 @@
+repos:
+  # --- Backend: Ruff ---
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.8
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+        types_or: [python, pyi]
+        files: ^backend/
+      - id: ruff-format
+        types_or: [python, pyi]
+        files: ^backend/
+
+  # --- Backend: import-linter ---
+  - repo: local
+    hooks:
+      - id: lint-imports
+        name: lint-imports
+        entry: bash -c 'cd backend && uv run lint-imports'
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.py$
+
+  # --- Frontend: ESLint ---
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        entry: bash -c 'cd frontend && npx eslint src/'
+        language: system
+        pass_filenames: false
+        files: ^frontend/src/.*\.(ts|html)$
+
+  # --- Frontend: Prettier ---
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier
+        entry: bash -c 'cd frontend && npx prettier --check "src/**/*.{ts,html,css}"'
+        language: system
+        pass_filenames: false
+        files: ^frontend/src/.*\.(ts|html|css)$

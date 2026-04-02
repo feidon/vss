@@ -1,12 +1,7 @@
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { ServiceService } from '../../core/services/service.service';
 import { GraphService } from '../../core/services/graph.service';
-import {
-  ServiceResponse,
-  GraphResponse,
-  ConflictResponse,
-  Vehicle,
-} from '../../shared/models';
+import { ServiceResponse, GraphResponse, ConflictResponse, Vehicle } from '../../shared/models';
 import { ServiceListComponent } from './service-list';
 import { ServiceFormComponent } from './service-form';
 import { RouteEditorComponent } from './route-editor';
@@ -16,15 +11,17 @@ type ViewMode = 'list' | 'edit';
 
 @Component({
   selector: 'app-schedule-editor',
-  imports: [ServiceListComponent, ServiceFormComponent, RouteEditorComponent, ConflictAlertComponent],
+  imports: [
+    ServiceListComponent,
+    ServiceFormComponent,
+    RouteEditorComponent,
+    ConflictAlertComponent,
+  ],
   template: `
     <h2 class="mb-4 text-xl font-semibold">Schedule Editor</h2>
 
     @if (viewMode() === 'list') {
-      <app-service-form
-        [vehicles]="vehicles()"
-        (created)="onServiceCreated($event)"
-      />
+      <app-service-form [vehicles]="vehicles()" (created)="onServiceCreated($event)" />
       <app-service-list
         [services]="services()"
         [vehicles]="vehicles()"
@@ -33,10 +30,7 @@ type ViewMode = 'list' | 'edit';
       />
     } @else {
       @if (conflicts()) {
-        <app-conflict-alert
-          [conflicts]="conflicts()!"
-          (dismiss)="conflicts.set(null)"
-        />
+        <app-conflict-alert [conflicts]="conflicts()!" (dismiss)="conflicts.set(null)" />
       }
       <app-route-editor
         [service]="selectedService()!"
@@ -84,7 +78,10 @@ export class ScheduleEditorComponent implements OnInit {
     });
   }
 
-  onRouteSubmitted(request: { stops: { platform_id: string; dwell_time: number }[]; start_time: number }): void {
+  onRouteSubmitted(request: {
+    stops: { platform_id: string; dwell_time: number }[];
+    start_time: number;
+  }): void {
     const id = this.selectedService()!.id;
     this.conflicts.set(null);
     this.serviceService.updateRoute(id, request).subscribe({

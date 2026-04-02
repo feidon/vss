@@ -40,7 +40,13 @@ describe('ConflictAlertComponent', () => {
     const conflicts: ConflictResponse = {
       ...emptyConflicts,
       block_conflicts: [
-        { block_id: 'b3', service_a_id: 1, service_b_id: 2, overlap_start: 1700000000, overlap_end: 1700000030 },
+        {
+          block_id: 'b3',
+          service_a_id: 1,
+          service_b_id: 2,
+          overlap_start: 1700000000,
+          overlap_end: 1700000030,
+        },
       ],
     };
     fixture.componentRef.setInput('conflicts', conflicts);

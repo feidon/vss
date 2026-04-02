@@ -14,10 +14,7 @@ interface StopEntry {
   template: `
     <div class="mb-4 flex items-center justify-between">
       <h3 class="text-lg font-medium">Route: {{ service().name }}</h3>
-      <button
-        class="rounded border px-3 py-1 text-sm hover:bg-gray-100"
-        (click)="back.emit()"
-      >
+      <button class="rounded border px-3 py-1 text-sm hover:bg-gray-100" (click)="back.emit()">
         Back to list
       </button>
     </div>
@@ -70,10 +67,7 @@ interface StopEntry {
                   />
                 </td>
                 <td class="px-3 py-1">
-                  <button
-                    class="text-xs text-red-600 hover:text-red-800"
-                    (click)="removeStop(i)"
-                  >
+                  <button class="text-xs text-red-600 hover:text-red-800" (click)="removeStop(i)">
                     Remove
                   </button>
                 </td>
@@ -135,7 +129,10 @@ interface StopEntry {
 export class RouteEditorComponent {
   readonly service = input.required<ServiceResponse>();
   readonly graph = input.required<GraphResponse>();
-  readonly submitted = output<{ stops: { platform_id: string; dwell_time: number }[]; start_time: number }>();
+  readonly submitted = output<{
+    stops: { platform_id: string; dwell_time: number }[];
+    start_time: number;
+  }>();
   readonly back = output<void>();
 
   readonly stops = signal<readonly StopEntry[]>([]);
@@ -143,7 +140,7 @@ export class RouteEditorComponent {
   readonly startTimeLocal = signal('');
 
   readonly nonYardStations = computed<readonly Station[]>(() =>
-    this.graph().stations.filter((s) => !s.is_yard)
+    this.graph().stations.filter((s) => !s.is_yard),
   );
 
   platformName(platformId: string): string {
@@ -167,7 +164,9 @@ export class RouteEditorComponent {
   }
 
   updateDwellTime(index: number, value: number): void {
-    this.stops.update((s) => s.map((stop, i) => (i === index ? { ...stop, dwellTime: value } : stop)));
+    this.stops.update((s) =>
+      s.map((stop, i) => (i === index ? { ...stop, dwellTime: value } : stop)),
+    );
   }
 
   onSubmit(): void {

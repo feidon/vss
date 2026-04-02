@@ -26,9 +26,7 @@ describe('ViewerServiceListComponent', () => {
       id: 102,
       name: 'S102',
       vehicle_id: 'v2',
-      path: [
-        { type: 'platform', id: 'p3', name: 'P3A' },
-      ],
+      path: [{ type: 'platform', id: 'p3', name: 'P3A' }],
       timetable: [],
     },
   ];

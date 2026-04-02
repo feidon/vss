@@ -41,14 +41,10 @@ interface VehicleGroup {
         <h3 class="mt-4 mb-2 text-sm font-semibold text-gray-700">
           {{ group.vehicleName }}
         </h3>
-        <ng-container
-          *ngTemplateOutlet="serviceTable; context: { $implicit: group.services }"
-        />
+        <ng-container *ngTemplateOutlet="serviceTable; context: { $implicit: group.services }" />
       }
     } @else {
-      <ng-container
-        *ngTemplateOutlet="serviceTable; context: { $implicit: filteredServices() }"
-      />
+      <ng-container *ngTemplateOutlet="serviceTable; context: { $implicit: filteredServices() }" />
     }
 
     <ng-template #serviceTable let-items>
