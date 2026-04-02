@@ -123,7 +123,7 @@ describe('ViewerServiceListComponent', () => {
     await fixture.whenStable();
 
     let emitted: ServiceResponse | undefined;
-    fixture.componentInstance.select.subscribe((s: ServiceResponse) => (emitted = s));
+    fixture.componentInstance.serviceSelect.subscribe((s: ServiceResponse) => (emitted = s));
 
     const row = fixture.nativeElement.querySelector('tbody tr') as HTMLElement;
     row.click();

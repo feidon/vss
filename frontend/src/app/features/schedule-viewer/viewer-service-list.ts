@@ -64,7 +64,7 @@ interface VehicleGroup {
           @for (service of items; track service.id) {
             <tr
               class="cursor-pointer border-b hover:bg-gray-50"
-              (click)="select.emit(service)"
+              (click)="serviceSelect.emit(service)"
             >
               <td class="px-3 py-2 font-medium">{{ service.name }}</td>
               <td class="px-3 py-2">{{ vehicleName(service.vehicle_id) }}</td>
@@ -79,7 +79,7 @@ interface VehicleGroup {
 export class ViewerServiceListComponent {
   readonly services = input.required<readonly ServiceResponse[]>();
   readonly vehicles = input.required<readonly Vehicle[]>();
-  readonly select = output<ServiceResponse>();
+  readonly serviceSelect = output<ServiceResponse>();
 
   readonly vehicleFilter = signal('');
   readonly grouped = signal(false);

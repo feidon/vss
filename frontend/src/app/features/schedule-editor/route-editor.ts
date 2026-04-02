@@ -1,6 +1,6 @@
 import { Component, computed, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ServiceResponse, GraphResponse, Station, TimetableEntry } from '../../shared/models';
+import { ServiceResponse, GraphResponse, Station } from '../../shared/models';
 
 interface StopEntry {
   readonly platformId: string;

@@ -53,12 +53,8 @@ import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
 })
 export class TimetableDetailComponent {
   readonly service = input.required<ServiceResponse>();
-  readonly vehicleNameValue = input.required<string>({ alias: 'vehicleName' });
+  readonly vehicleName = input.required<string>();
   readonly back = output<void>();
-
-  vehicleName(): string {
-    return this.vehicleNameValue();
-  }
 
   sortedEntries(): readonly import('../../shared/models').TimetableEntry[] {
     return [...this.service().timetable].sort((a, b) => a.order - b.order);

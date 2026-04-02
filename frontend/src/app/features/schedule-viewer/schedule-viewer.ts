@@ -21,7 +21,7 @@ import { TimetableDetailComponent } from './timetable-detail';
       <app-viewer-service-list
         [services]="services()"
         [vehicles]="vehicles()"
-        (select)="onSelectService($event)"
+        (serviceSelect)="onSelectService($event)"
       />
     }
   `,

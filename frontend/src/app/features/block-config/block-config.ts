@@ -51,7 +51,11 @@ interface BlockGroup {
                 } @else {
                   <span
                     class="cursor-pointer rounded px-1 hover:bg-blue-50"
+                    tabindex="0"
+                    role="button"
                     (click)="startEdit(block)"
+                    (keydown.enter)="startEdit(block)"
+                    (keydown.space)="startEdit(block)"
                   >{{ block.traversal_time_seconds }}</span>
                 }
               </td>
