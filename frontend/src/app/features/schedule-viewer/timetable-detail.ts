@@ -1,5 +1,5 @@
 import { Component, input, output } from '@angular/core';
-import { ServiceResponse, Node } from '../../shared/models';
+import { ServiceDetailResponse, Node } from '../../shared/models';
 import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
 
 @Component({
@@ -52,7 +52,7 @@ import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
   `,
 })
 export class TimetableDetailComponent {
-  readonly service = input.required<ServiceResponse>();
+  readonly service = input.required<ServiceDetailResponse>();
   readonly vehicleName = input.required<string>();
   readonly back = output<void>();
 
@@ -69,6 +69,6 @@ export class TimetableDetailComponent {
   }
 
   private findNode(nodeId: string): Node | undefined {
-    return this.service().path.find((n) => n.id === nodeId);
+    return this.service().route.find((n) => n.id === nodeId);
   }
 }

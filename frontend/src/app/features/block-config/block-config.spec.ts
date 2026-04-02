@@ -77,6 +77,33 @@ describe('BlockConfigComponent', () => {
     expect(blockNames).toEqual(['B1', 'B2', 'B3', 'B7']);
   });
 
+  it('should show pencil icon next to traversal time', () => {
+    fixture.detectChanges();
+    flushBlocks();
+
+    const editSpan = fixture.nativeElement.querySelector(
+      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span[role="button"]',
+    ) as HTMLElement;
+    const svg = editSpan.querySelector('svg');
+    expect(svg).toBeTruthy();
+    expect(svg!.classList.contains('text-gray-400')).toBe(true);
+  });
+
+  it('should enter edit mode when clicking pencil icon', () => {
+    fixture.detectChanges();
+    flushBlocks();
+
+    const svg = fixture.nativeElement.querySelector(
+      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) svg',
+    ) as SVGElement;
+    svg.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    fixture.detectChanges();
+
+    const input = fixture.nativeElement.querySelector('input[type="number"]') as HTMLInputElement;
+    expect(input).toBeTruthy();
+    expect(input.valueAsNumber).toBe(60);
+  });
+
   it('should enter edit mode when clicking traversal time', () => {
     fixture.detectChanges();
     flushBlocks();

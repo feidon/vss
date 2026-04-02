@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { RouteEditorComponent } from './route-editor';
-import { GraphResponse, ServiceResponse } from '../../shared/models';
+import { GraphResponse, ServiceDetailResponse } from '../../shared/models';
 
 describe('RouteEditorComponent', () => {
   let fixture: ComponentFixture<RouteEditorComponent>;
@@ -8,9 +8,9 @@ describe('RouteEditorComponent', () => {
 
   const graph: GraphResponse = {
     nodes: [
-      { type: 'platform', id: 'p1', name: 'P1A' },
-      { type: 'platform', id: 'p2', name: 'P2A' },
-      { type: 'block', id: 'b1', name: 'B1', group: 1, traversal_time_seconds: 30 },
+      { type: 'platform', id: 'p1', name: 'P1A', x: 0, y: 0 },
+      { type: 'platform', id: 'p2', name: 'P2A', x: 0, y: 0 },
+      { type: 'block', id: 'b1', name: 'B1', group: 1, traversal_time_seconds: 30, x: 0, y: 0 },
     ],
     connections: [],
     stations: [
@@ -21,12 +21,13 @@ describe('RouteEditorComponent', () => {
     vehicles: [{ id: 'v1', name: 'V1' }],
   };
 
-  const service: ServiceResponse = {
+  const service: ServiceDetailResponse = {
     id: 101,
     name: 'S101',
     vehicle_id: 'v1',
-    path: [],
+    route: [],
     timetable: [],
+    graph,
   };
 
   beforeEach(async () => {
@@ -96,15 +97,15 @@ describe('RouteEditorComponent', () => {
     component.startTimeLocal.set('2025-06-15T10:00');
 
     let emitted:
-      | { stops: { platform_id: string; dwell_time: number }[]; start_time: number }
+      | { stops: { node_id: string; dwell_time: number }[]; start_time: number }
       | undefined;
     component.submitted.subscribe((e) => (emitted = e));
     component.onSubmit();
 
     expect(emitted).toBeDefined();
     expect(emitted!.stops).toEqual([
-      { platform_id: 'p1', dwell_time: 30 },
-      { platform_id: 'p2', dwell_time: 30 },
+      { node_id: 'p1', dwell_time: 30 },
+      { node_id: 'p2', dwell_time: 30 },
     ]);
     expect(emitted!.start_time).toBeGreaterThan(0);
   });
@@ -119,7 +120,7 @@ describe('RouteEditorComponent', () => {
   });
 
   it('should display timetable when service has entries', async () => {
-    const serviceWithTimetable: ServiceResponse = {
+    const serviceWithTimetable: ServiceDetailResponse = {
       ...service,
       timetable: [
         { order: 0, node_id: 'p1', arrival: 1700000000, departure: 1700000030 },

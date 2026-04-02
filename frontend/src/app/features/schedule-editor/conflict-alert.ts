@@ -70,10 +70,7 @@ import { ConflictResponse } from '../../shared/models';
           <h5 class="font-medium text-red-700">Insufficient Charge</h5>
           <ul class="ml-4 list-disc">
             @for (c of conflicts().insufficient_charge_conflicts; track $index) {
-              <li>
-                Services {{ c.service_a_id }} &amp; {{ c.service_b_id }} — insufficient charging
-                time between services
-              </li>
+              <li>Service {{ c.service_id }} — insufficient charging time between services</li>
             }
           </ul>
         </div>

@@ -1,32 +1,36 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TimetableDetailComponent } from './timetable-detail';
-import { ServiceResponse } from '../../shared/models';
+import { ServiceDetailResponse } from '../../shared/models';
 
 describe('TimetableDetailComponent', () => {
   let fixture: ComponentFixture<TimetableDetailComponent>;
 
-  const serviceWithTimetable: ServiceResponse = {
+  const emptyGraph = { nodes: [], connections: [], stations: [], vehicles: [] };
+
+  const serviceWithTimetable: ServiceDetailResponse = {
     id: 101,
     name: 'S101',
     vehicle_id: 'v1',
-    path: [
-      { type: 'platform', id: 'p1', name: 'P1A' },
-      { type: 'block', id: 'b1', name: 'B1', group: 1, traversal_time_seconds: 30 },
-      { type: 'platform', id: 'p2', name: 'P2A' },
+    route: [
+      { type: 'platform', id: 'p1', name: 'P1A', x: 0, y: 0 },
+      { type: 'block', id: 'b1', name: 'B1', group: 1, traversal_time_seconds: 30, x: 0, y: 0 },
+      { type: 'platform', id: 'p2', name: 'P2A', x: 0, y: 0 },
     ],
     timetable: [
       { order: 0, node_id: 'p1', arrival: 1700000000, departure: 1700000030 },
       { order: 2, node_id: 'p2', arrival: 1700000090, departure: 1700000120 },
       { order: 1, node_id: 'b1', arrival: 1700000030, departure: 1700000090 },
     ],
+    graph: emptyGraph,
   };
 
-  const serviceNoTimetable: ServiceResponse = {
+  const serviceNoTimetable: ServiceDetailResponse = {
     id: 102,
     name: 'S102',
     vehicle_id: 'v2',
-    path: [],
+    route: [],
     timetable: [],
+    graph: emptyGraph,
   };
 
   beforeEach(async () => {

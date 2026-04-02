@@ -82,7 +82,7 @@ describe('ConflictAlertComponent', () => {
     const conflicts: ConflictResponse = {
       ...emptyConflicts,
       low_battery_conflicts: [{ service_id: 1 }],
-      insufficient_charge_conflicts: [{ service_a_id: 1, service_b_id: 2 }],
+      insufficient_charge_conflicts: [{ service_id: 1 }],
     };
     fixture.componentRef.setInput('conflicts', conflicts);
     await fixture.whenStable();

@@ -28,8 +28,7 @@ export interface LowBatteryConflict {
 }
 
 export interface InsufficientChargeConflict {
-  readonly service_a_id: number;
-  readonly service_b_id: number;
+  readonly service_id: number;
 }
 
 export interface ConflictResponse {

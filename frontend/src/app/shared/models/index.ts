@@ -3,6 +3,7 @@ export type { BlockResponse, UpdateBlockRequest, BlockIdResponse } from './block
 export type {
   TimetableEntry,
   ServiceResponse,
+  ServiceDetailResponse,
   StopRequest,
   UpdateRouteRequest,
   CreateServiceRequest,

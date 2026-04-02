@@ -60,27 +60,32 @@ Base URL: `http://localhost:8000`
 
 | Method | Path                       | Description                        |
 |--------|----------------------------|------------------------------------|
-| GET    | `/graph`                   | Full track network (nodes + edges) |
+| GET    | `/vehicles`                | List all vehicles                  |
 | GET    | `/blocks`                  | List all blocks                    |
-| GET    | `/blocks/{id}`             | Get block by ID                    |
 | PATCH  | `/blocks/{id}`             | Update traversal time              |
 | POST   | `/services`                | Create service                     |
-| GET    | `/services`                | List all services                  |
-| GET    | `/services/{id}`           | Get service by ID                  |
+| GET    | `/services`                | List all services (summary only)   |
+| GET    | `/services/{id}`           | Get service detail (incl. graph)   |
 | PATCH  | `/services/{id}/route`     | Update service route               |
 | DELETE | `/services/{id}`           | Delete service                     |
+| POST   | `/routes/validate`         | Validate route for conflicts       |
 
 ### Key Response Schemas
 
 **Node** (discriminated union by `type`):
 ```json
-{ "type": "block|platform|yard", "id": "uuid", "name": "B1" }
+{ "type": "block|platform|yard", "id": "uuid", "name": "B1", "x": 0.0, "y": 0.0 }
 ```
 Blocks additionally include: `group`, `traversal_time_seconds`
 
-**Service**:
+**Service list** (GET `/services`):
 ```json
-{ "id": 101, "name": "S101", "vehicle_id": "uuid", "path": [Node], "timetable": [TimetableEntry] }
+{ "id": 101, "name": "S101", "vehicle_id": "uuid" }
+```
+
+**Service detail** (GET `/services/{id}`):
+```json
+{ "id": 101, "name": "S101", "vehicle_id": "uuid", "route": [Node], "timetable": [TimetableEntry], "graph": GraphResponse }
 ```
 
 **TimetableEntry**:
@@ -90,7 +95,7 @@ Blocks additionally include: `group`, `traversal_time_seconds`
 
 **Route Update Request** (PATCH `/services/{id}/route`):
 ```json
-{ "stops": [{ "platform_id": "uuid", "dwell_time": 30 }], "start_time": 1700000000 }
+{ "stops": [{ "node_id": "uuid", "dwell_time": 30 }], "start_time": 1700000000 }
 ```
 
 **409 Conflict Response** (route update):

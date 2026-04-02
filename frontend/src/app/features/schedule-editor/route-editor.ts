@@ -1,6 +1,6 @@
 import { Component, computed, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ServiceResponse, GraphResponse, Station } from '../../shared/models';
+import { ServiceDetailResponse, GraphResponse, Station } from '../../shared/models';
 
 interface StopEntry {
   readonly platformId: string;
@@ -127,10 +127,10 @@ interface StopEntry {
   `,
 })
 export class RouteEditorComponent {
-  readonly service = input.required<ServiceResponse>();
+  readonly service = input.required<ServiceDetailResponse>();
   readonly graph = input.required<GraphResponse>();
   readonly submitted = output<{
-    stops: { platform_id: string; dwell_time: number }[];
+    stops: { node_id: string; dwell_time: number }[];
     start_time: number;
   }>();
   readonly back = output<void>();
@@ -172,7 +172,7 @@ export class RouteEditorComponent {
   onSubmit(): void {
     const startEpoch = Math.floor(new Date(this.startTimeLocal()).getTime() / 1000);
     this.submitted.emit({
-      stops: this.stops().map((s) => ({ platform_id: s.platformId, dwell_time: s.dwellTime })),
+      stops: this.stops().map((s) => ({ node_id: s.platformId, dwell_time: s.dwellTime })),
       start_time: startEpoch,
     });
   }

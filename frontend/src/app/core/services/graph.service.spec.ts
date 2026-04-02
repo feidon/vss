@@ -23,7 +23,7 @@ describe('GraphService', () => {
 
   it('should fetch graph data', () => {
     const mockResponse: GraphResponse = {
-      nodes: [{ type: 'platform', id: 'p1', name: 'P1A' }],
+      nodes: [{ type: 'platform', id: 'p1', name: 'P1A', x: 0, y: 0 }],
       connections: [{ from_id: 'p1', to_id: 'b1' }],
       stations: [{ id: 's1', name: 'S1', is_yard: false, platform_ids: ['p1'] }],
       vehicles: [{ id: 'v1', name: 'V1' }],

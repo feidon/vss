@@ -12,7 +12,6 @@ import { ServiceResponse, Vehicle } from '../../shared/models';
           <tr>
             <th class="px-3 py-2">Name</th>
             <th class="px-3 py-2">Vehicle</th>
-            <th class="px-3 py-2">Stops</th>
             <th class="px-3 py-2">Actions</th>
           </tr>
         </thead>
@@ -21,7 +20,6 @@ import { ServiceResponse, Vehicle } from '../../shared/models';
             <tr class="border-b">
               <td class="px-3 py-2 font-medium">{{ service.name }}</td>
               <td class="px-3 py-2">{{ vehicleName(service.vehicle_id) }}</td>
-              <td class="px-3 py-2">{{ stopCount(service) }}</td>
               <td class="flex gap-2 px-3 py-2">
                 <button
                   class="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
@@ -51,9 +49,5 @@ export class ServiceListComponent {
 
   vehicleName(vehicleId: string): string {
     return this.vehicles().find((v) => v.id === vehicleId)?.name ?? vehicleId;
-  }
-
-  stopCount(service: ServiceResponse): number {
-    return service.path.filter((n) => n.type === 'platform').length;
   }
 }

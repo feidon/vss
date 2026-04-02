@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
   ServiceResponse,
+  ServiceDetailResponse,
   ServiceIdResponse,
   CreateServiceRequest,
   UpdateRouteRequest,
@@ -17,8 +18,8 @@ export class ServiceService {
     return this.http.get<ServiceResponse[]>(`${API_BASE_URL}/services`);
   }
 
-  getService(id: number): Observable<ServiceResponse> {
-    return this.http.get<ServiceResponse>(`${API_BASE_URL}/services/${id}`);
+  getService(id: number): Observable<ServiceDetailResponse> {
+    return this.http.get<ServiceDetailResponse>(`${API_BASE_URL}/services/${id}`);
   }
 
   createService(request: CreateServiceRequest): Observable<ServiceIdResponse> {

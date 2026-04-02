@@ -53,7 +53,6 @@ interface VehicleGroup {
           <tr>
             <th class="px-3 py-2">Name</th>
             <th class="px-3 py-2">Vehicle</th>
-            <th class="px-3 py-2">Stops</th>
           </tr>
         </thead>
         <tbody>
@@ -64,7 +63,6 @@ interface VehicleGroup {
             >
               <td class="px-3 py-2 font-medium">{{ service.name }}</td>
               <td class="px-3 py-2">{{ vehicleName(service.vehicle_id) }}</td>
-              <td class="px-3 py-2">{{ stopCount(service) }}</td>
             </tr>
           }
         </tbody>
@@ -104,10 +102,6 @@ export class ViewerServiceListComponent {
 
   vehicleName(vehicleId: string): string {
     return this.vehicles().find((v) => v.id === vehicleId)?.name ?? vehicleId;
-  }
-
-  stopCount(service: ServiceResponse): number {
-    return service.path.filter((n) => n.type === 'platform').length;
   }
 
   onFilterChange(event: Event): void {

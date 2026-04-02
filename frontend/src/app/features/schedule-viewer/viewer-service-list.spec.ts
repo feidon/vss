@@ -11,24 +11,8 @@ describe('ViewerServiceListComponent', () => {
   ];
 
   const services: ServiceResponse[] = [
-    {
-      id: 101,
-      name: 'S101',
-      vehicle_id: 'v1',
-      path: [
-        { type: 'platform', id: 'p1', name: 'P1A' },
-        { type: 'block', id: 'b1', name: 'B1', group: 1, traversal_time_seconds: 30 },
-        { type: 'platform', id: 'p2', name: 'P2A' },
-      ],
-      timetable: [],
-    },
-    {
-      id: 102,
-      name: 'S102',
-      vehicle_id: 'v2',
-      path: [{ type: 'platform', id: 'p3', name: 'P3A' }],
-      timetable: [],
-    },
+    { id: 101, name: 'S101', vehicle_id: 'v1' },
+    { id: 102, name: 'S102', vehicle_id: 'v2' },
   ];
 
   beforeEach(async () => {
@@ -46,7 +30,7 @@ describe('ViewerServiceListComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('No services to display');
   });
 
-  it('should display services with vehicle name and stop count', async () => {
+  it('should display services with vehicle name', async () => {
     fixture.componentRef.setInput('services', services);
     fixture.componentRef.setInput('vehicles', vehicles);
     await fixture.whenStable();
@@ -55,15 +39,13 @@ describe('ViewerServiceListComponent', () => {
     expect(rows).toHaveLength(2);
     expect(rows[0].textContent).toContain('S101');
     expect(rows[0].textContent).toContain('V1');
-    expect(rows[0].textContent).toContain('2'); // 2 platform stops
     expect(rows[1].textContent).toContain('S102');
     expect(rows[1].textContent).toContain('V2');
-    expect(rows[1].textContent).toContain('1'); // 1 platform stop
   });
 
   it('should resolve unknown vehicle ID as raw UUID', async () => {
     const unknownService: ServiceResponse[] = [
-      { id: 200, name: 'S200', vehicle_id: 'unknown-uuid', path: [], timetable: [] },
+      { id: 200, name: 'S200', vehicle_id: 'unknown-uuid' },
     ];
     fixture.componentRef.setInput('services', unknownService);
     fixture.componentRef.setInput('vehicles', vehicles);

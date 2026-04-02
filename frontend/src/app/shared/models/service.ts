@@ -1,3 +1,4 @@
+import { GraphResponse } from './graph';
 import { Node } from './node';
 
 export interface TimetableEntry {
@@ -11,12 +12,19 @@ export interface ServiceResponse {
   readonly id: number;
   readonly name: string;
   readonly vehicle_id: string;
-  readonly path: readonly Node[];
+}
+
+export interface ServiceDetailResponse {
+  readonly id: number;
+  readonly name: string;
+  readonly vehicle_id: string;
+  readonly route: readonly Node[];
   readonly timetable: readonly TimetableEntry[];
+  readonly graph: GraphResponse;
 }
 
 export interface StopRequest {
-  readonly platform_id: string;
+  readonly node_id: string;
   readonly dwell_time: number;
 }
 

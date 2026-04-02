@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { ServiceService } from '../../core/services/service.service';
-import { GraphService } from '../../core/services/graph.service';
-import { ServiceResponse, GraphResponse, Vehicle } from '../../shared/models';
+import { VehicleService } from '../../core/services/vehicle.service';
+import { ServiceResponse, ServiceDetailResponse, Vehicle } from '../../shared/models';
 import { ViewerServiceListComponent } from './viewer-service-list';
 import { TimetableDetailComponent } from './timetable-detail';
 
@@ -28,13 +28,11 @@ import { TimetableDetailComponent } from './timetable-detail';
 })
 export class ScheduleViewerComponent implements OnInit {
   private readonly serviceService = inject(ServiceService);
-  private readonly graphService = inject(GraphService);
+  private readonly vehicleService = inject(VehicleService);
 
   readonly services = signal<readonly ServiceResponse[]>([]);
-  readonly graph = signal<GraphResponse | null>(null);
-  readonly selectedService = signal<ServiceResponse | null>(null);
-
-  readonly vehicles = computed<readonly Vehicle[]>(() => this.graph()?.vehicles ?? []);
+  readonly vehicles = signal<readonly Vehicle[]>([]);
+  readonly selectedService = signal<ServiceDetailResponse | null>(null);
 
   readonly selectedVehicleName = computed(() => {
     const service = this.selectedService();
@@ -44,11 +42,13 @@ export class ScheduleViewerComponent implements OnInit {
 
   ngOnInit(): void {
     this.serviceService.getServices().subscribe((s) => this.services.set(s));
-    this.graphService.getGraph().subscribe((g) => this.graph.set(g));
+    this.vehicleService.getVehicles().subscribe((v) => this.vehicles.set(v));
   }
 
   onSelectService(service: ServiceResponse): void {
-    this.selectedService.set(service);
+    this.serviceService.getService(service.id).subscribe((detail) => {
+      this.selectedService.set(detail);
+    });
   }
 
   onBackToList(): void {

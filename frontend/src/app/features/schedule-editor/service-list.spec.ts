@@ -10,19 +10,7 @@ describe('ServiceListComponent', () => {
     { id: 'v2', name: 'V2' },
   ];
 
-  const services: ServiceResponse[] = [
-    {
-      id: 101,
-      name: 'S101',
-      vehicle_id: 'v1',
-      path: [
-        { type: 'platform', id: 'p1', name: 'P1A' },
-        { type: 'block', id: 'b1', name: 'B1', group: 1, traversal_time_seconds: 30 },
-        { type: 'platform', id: 'p2', name: 'P2A' },
-      ],
-      timetable: [],
-    },
-  ];
+  const services: ServiceResponse[] = [{ id: 101, name: 'S101', vehicle_id: 'v1' }];
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -39,7 +27,7 @@ describe('ServiceListComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('No services created yet');
   });
 
-  it('should display service with vehicle name and stop count', async () => {
+  it('should display service with vehicle name', async () => {
     fixture.componentRef.setInput('services', services);
     fixture.componentRef.setInput('vehicles', vehicles);
     await fixture.whenStable();
@@ -47,7 +35,6 @@ describe('ServiceListComponent', () => {
     const row = fixture.nativeElement.querySelector('tbody tr') as HTMLElement;
     expect(row.textContent).toContain('S101');
     expect(row.textContent).toContain('V1');
-    expect(row.textContent).toContain('2'); // 2 platform stops
   });
 
   it('should emit edit event on Edit click', async () => {

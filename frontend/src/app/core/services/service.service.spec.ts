@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ServiceService } from './service.service';
-import { ServiceResponse } from '../../shared/models';
+import { ServiceDetailResponse, ServiceResponse } from '../../shared/models';
 import { API_BASE_URL } from './api.config';
 
 describe('ServiceService', () => {
@@ -21,10 +21,8 @@ describe('ServiceService', () => {
     httpTesting.verify();
   });
 
-  it('should fetch all services', () => {
-    const mockServices: ServiceResponse[] = [
-      { id: 101, name: 'S101', vehicle_id: 'v1', path: [], timetable: [] },
-    ];
+  it('should fetch all services (summary only)', () => {
+    const mockServices: ServiceResponse[] = [{ id: 101, name: 'S101', vehicle_id: 'v1' }];
 
     service.getServices().subscribe((result) => {
       expect(result).toEqual(mockServices);
@@ -35,13 +33,19 @@ describe('ServiceService', () => {
     req.flush(mockServices);
   });
 
-  it('should fetch a single service', () => {
-    const mockService: ServiceResponse = {
+  it('should fetch a single service with detail', () => {
+    const mockService: ServiceDetailResponse = {
       id: 101,
       name: 'S101',
       vehicle_id: 'v1',
-      path: [{ type: 'platform', id: 'p1', name: 'P1A' }],
+      route: [{ type: 'platform', id: 'p1', name: 'P1A', x: 0, y: 0 }],
       timetable: [{ order: 0, node_id: 'p1', arrival: 1700000000, departure: 1700000030 }],
+      graph: {
+        nodes: [],
+        connections: [],
+        stations: [],
+        vehicles: [],
+      },
     };
 
     service.getService(101).subscribe((result) => {
@@ -66,7 +70,7 @@ describe('ServiceService', () => {
 
   it('should update a route', () => {
     const routeRequest = {
-      stops: [{ platform_id: 'p1', dwell_time: 30 }],
+      stops: [{ node_id: 'p1', dwell_time: 30 }],
       start_time: 1700000000,
     };
 

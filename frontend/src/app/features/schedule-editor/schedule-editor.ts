@@ -1,7 +1,12 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { ServiceService } from '../../core/services/service.service';
-import { GraphService } from '../../core/services/graph.service';
-import { ServiceResponse, GraphResponse, ConflictResponse, Vehicle } from '../../shared/models';
+import { VehicleService } from '../../core/services/vehicle.service';
+import {
+  ServiceResponse,
+  ServiceDetailResponse,
+  ConflictResponse,
+  Vehicle,
+} from '../../shared/models';
 import { ServiceListComponent } from './service-list';
 import { ServiceFormComponent } from './service-form';
 import { RouteEditorComponent } from './route-editor';
@@ -34,7 +39,7 @@ type ViewMode = 'list' | 'edit';
       }
       <app-route-editor
         [service]="selectedService()!"
-        [graph]="graph()!"
+        [graph]="selectedService()!.graph"
         (submitted)="onRouteSubmitted($event)"
         (back)="onBackToList()"
       />
@@ -43,25 +48,25 @@ type ViewMode = 'list' | 'edit';
 })
 export class ScheduleEditorComponent implements OnInit {
   private readonly serviceService = inject(ServiceService);
-  private readonly graphService = inject(GraphService);
+  private readonly vehicleService = inject(VehicleService);
 
   readonly services = signal<readonly ServiceResponse[]>([]);
-  readonly graph = signal<GraphResponse | null>(null);
-  readonly selectedService = signal<ServiceResponse | null>(null);
+  readonly vehicles = signal<readonly Vehicle[]>([]);
+  readonly selectedService = signal<ServiceDetailResponse | null>(null);
   readonly conflicts = signal<ConflictResponse | null>(null);
   readonly viewMode = signal<ViewMode>('list');
 
-  readonly vehicles = computed<readonly Vehicle[]>(() => this.graph()?.vehicles ?? []);
-
   ngOnInit(): void {
     this.loadServices();
-    this.graphService.getGraph().subscribe((g) => this.graph.set(g));
+    this.vehicleService.getVehicles().subscribe((v) => this.vehicles.set(v));
   }
 
   onEdit(service: ServiceResponse): void {
-    this.selectedService.set(service);
-    this.conflicts.set(null);
-    this.viewMode.set('edit');
+    this.serviceService.getService(service.id).subscribe((detail) => {
+      this.selectedService.set(detail);
+      this.conflicts.set(null);
+      this.viewMode.set('edit');
+    });
   }
 
   onDelete(service: ServiceResponse): void {
@@ -79,7 +84,7 @@ export class ScheduleEditorComponent implements OnInit {
   }
 
   onRouteSubmitted(request: {
-    stops: { platform_id: string; dwell_time: number }[];
+    stops: { node_id: string; dwell_time: number }[];
     start_time: number;
   }): void {
     const id = this.selectedService()!.id;
