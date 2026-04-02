@@ -100,4 +100,4 @@ class TestGraphAppService:
             node_layout_repo=InMemoryNodeLayoutRepository(),
         )
         graph = await svc.get_graph()
-        assert graph.yard == yard
+        assert graph.yards == [yard]

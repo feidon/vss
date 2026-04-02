@@ -49,11 +49,22 @@ class TestServiceCRUD:
         resp = await client.get("/services")
         assert len(resp.json()) == 2
 
+    async def test_list_services_returns_summary_only(self, client):
+        await create_service(client)
+        resp = await client.get("/services")
+        for item in resp.json():
+            assert set(item.keys()) == {"id", "name", "vehicle_id"}
+            assert "graph" not in item
+            assert "path" not in item
+            assert "timetable" not in item
+
     async def test_get_service(self, client):
         sid = await create_service(client)
         resp = await client.get(f"/services/{sid}")
         assert resp.status_code == 200
-        assert resp.json()["name"] == "S1"
+        data = resp.json()
+        assert data["name"] == "S1"
+        assert "graph" in data
 
     async def test_get_service_not_found(self, client):
         resp = await client.get("/services/999")

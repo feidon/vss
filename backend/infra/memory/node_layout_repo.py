@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from application.graph.node_layout_repository import NodeLayoutRepository
+from domain.network.node_layout_repository import NodeLayoutRepository
 
 
 class InMemoryNodeLayoutRepository(NodeLayoutRepository):

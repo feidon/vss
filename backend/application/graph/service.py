@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from application.graph.dto import GraphData
-from application.graph.node_layout_repository import NodeLayoutRepository
+from domain.network.node_layout_repository import NodeLayoutRepository
 from domain.block.repository import BlockRepository
 from domain.network.repository import ConnectionRepository
 from domain.station.repository import StationRepository

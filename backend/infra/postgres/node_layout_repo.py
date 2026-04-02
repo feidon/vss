@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.graph.node_layout_repository import NodeLayoutRepository
+from domain.network.node_layout_repository import NodeLayoutRepository
 from infra.postgres.tables import node_layouts_table
 
 

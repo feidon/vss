@@ -3,7 +3,7 @@ import os
 from fastapi import Depends
 
 from application.block.service import BlockAppService
-from application.graph.node_layout_repository import NodeLayoutRepository
+from domain.network.node_layout_repository import NodeLayoutRepository
 from application.graph.service import GraphAppService
 from application.service.service import ServiceAppService
 from domain.block.repository import BlockRepository

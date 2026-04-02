@@ -351,3 +351,6 @@ vss/
 - [ ] create ci
 - [ ] create domain error and error handler
 - [ ] not consist starlette.status
+- [ ] some domain login leak to `backend/application/service/service.py`
+- [ ] route/path mismatch in service entity
+- [ ] refactor `backend/application/service/service.py`, there are too many same query and hard to read

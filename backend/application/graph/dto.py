@@ -30,5 +30,5 @@ class GraphData:
         return [p for s in self.stations for p in s.platforms]
 
     @property
-    def yard(self) -> Station | None:
-        return next((s for s in self.stations if s.is_yard), None)
+    def yards(self) -> list[Station]:
+        return [s for s in self.stations if s.is_yard]

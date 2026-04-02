@@ -6,35 +6,17 @@ from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 from api.dependencies import get_graph_service, get_service_app_service
 from api.service.schemas import (
     CreateServiceRequest,
+    ServiceDetailResponse,
     ServiceIdResponse,
     ServiceResponse,
     UpdateRouteRequest,
 )
-from application.graph.dto import GraphData
 from application.graph.service import GraphAppService
 from application.service.dto import RouteStop
 from application.service.errors import ConflictError
 from application.service.service import ServiceAppService
-from domain.service.model import Service
 
 router = APIRouter(prefix="/services", tags=["services"])
-
-
-def _to_response(
-    graph: GraphData, services: list[Service]
-) -> list[ServiceResponse]:
-    blocks = {b.id: b for b in graph.blocks}
-    platforms = {p.id: p for p in graph.all_platforms}
-    yard = graph.yard
-    return [
-        ServiceResponse.from_domain(
-            s,
-            blocks,
-            platforms,
-            yard.name if yard else "Y",
-        )
-        for s in services
-    ]
 
 
 def _conflict_response(e: ConflictError) -> HTTPException:
@@ -88,14 +70,15 @@ async def create_service(
 @router.get("", response_model=list[ServiceResponse])
 async def list_services(
     service_app_service: ServiceAppService = Depends(get_service_app_service),
-    graph_service: GraphAppService = Depends(get_graph_service),
 ):
     services = await service_app_service.list_services()
-    graph = await graph_service.get_graph()
-    return _to_response(graph, services)
+    return [
+        ServiceResponse(id=s.id, name=s.name, vehicle_id=s.vehicle_id)
+        for s in services
+    ]
 
 
-@router.get("/{service_id}", response_model=ServiceResponse)
+@router.get("/{service_id}", response_model=ServiceDetailResponse)
 async def get_service(
     service_id: int,
     service_app_service: ServiceAppService = Depends(get_service_app_service),
@@ -105,8 +88,8 @@ async def get_service(
         service = await service_app_service.get_service(service_id)
     except ValueError:
         raise HTTPException(status_code=404, detail=f"Service {service_id} not found")
-    graph = await graph_service.get_graph()
-    return _to_response(graph, [service])[0]
+    graph_data = await graph_service.get_graph()
+    return ServiceDetailResponse.from_domain(service, graph_data)
 
 
 @router.patch("/{service_id}/route", response_model=ServiceIdResponse)
