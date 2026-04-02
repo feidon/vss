@@ -5,6 +5,7 @@ from api.block.routes import router as block_router
 from api.error_handler import domain_error_handler
 from api.route.routes import router as route_router
 from api.service.routes import router as service_router
+from api.vehicle.routes import router as vehicle_router
 from domain.error import DomainError
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,6 +38,7 @@ app.add_middleware(
 app.include_router(block_router)
 app.include_router(service_router)
 app.include_router(route_router)
+app.include_router(vehicle_router)
 
 if STATIC_DIR.is_dir():
 
