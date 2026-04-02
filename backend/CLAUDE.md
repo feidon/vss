@@ -112,4 +112,4 @@ In a monolith with single DB, prefer querying at use time (load both aggregates 
 ## Notes
 
 - no "高併發" support
-- no "cannot stop at block" support
+- no "stop at block" support
