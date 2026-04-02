@@ -15,8 +15,8 @@ A single `.pre-commit-config.yaml` at the repo root using the `pre-commit` Pytho
 | `ruff check` | `backend/**/*.py` | Python linting | Uses `ruff-pre-commit` mirror repo |
 | `ruff format --check` | `backend/**/*.py` | Python format check | Uses `ruff-pre-commit` mirror repo |
 | `lint-imports` | `backend/` | Architecture dependency enforcement | Local hook, `pass_filenames: false`, entry: `bash -c 'cd backend && lint-imports'` |
-| `eslint` | `frontend/src/**/*.{ts,html}` | Angular linting | Local hook, entry: `bash -c 'cd frontend && npx eslint'`, passes filenames relative to frontend/ |
-| `prettier --check` | `frontend/src/**/*.{ts,html,css}` | Format check | Local hook, entry: `bash -c 'cd frontend && npx prettier --check'` |
+| `eslint` | `frontend/src/**/*.{ts,html}` | Angular linting | Local hook, `pass_filenames: false`, entry: `bash -c 'cd frontend && npx eslint src/'` |
+| `prettier --check` | `frontend/src/**/*.{ts,html,css}` | Format check | Local hook, `pass_filenames: false`, entry: `bash -c 'cd frontend && npx prettier --check "src/**/*.{ts,html,css}"'` |
 
 `pre-commit` is installed as a backend dev dependency and configured at the repo root.
 
@@ -48,8 +48,7 @@ Single GitHub Actions workflow at `.github/workflows/ci.yml`. Triggers on push t
 - **Steps**:
   1. Checkout, setup Python 3.14, `uv sync`
   2. Create test database: `PGPASSWORD=vss psql -h localhost -U vss -c "CREATE DATABASE vss_test;"`
-  3. Run Alembic migrations: `uv run alembic upgrade head` (against `vss_test`)
-  4. Run all tests: `uv run pytest -m ''`
+  3. Run all tests: `uv run pytest -m ''` (test fixtures handle schema creation via `metadata.create_all()`, no Alembic migrations needed)
 
 #### frontend-lint
 - **Trigger**: `frontend/**` changes
