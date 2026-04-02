@@ -347,10 +347,8 @@ vss/
 
 ## Todo
 
-- [x] in-memory repo only for tests
-- [ ] create ci
-- [ ] create domain error and error handler
-- [ ] not consist starlette.status
-- [ ] some domain login leak to `backend/application/service/service.py`
-- [ ] route/path mismatch in service entity
 - [ ] refactor `backend/application/service/service.py`, there are too many same query and hard to read
+- [ ] seeding need to check if already done
+- [ ] still no vehicle when create service, it might be the seeding problem
+- [ ] block traversal time editing still not intuitive enough, maybe just a edit button and show a dialog.
+- [ ] implement track map in editor

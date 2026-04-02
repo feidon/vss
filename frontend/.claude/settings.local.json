@@ -11,7 +11,10 @@
       "Bash(openspec status:*)",
       "Bash(openspec instructions:*)",
       "Bash(npx ng:*)",
-      "Bash(openspec list:*)"
+      "Bash(openspec list:*)",
+      "mcp__angular-cli__list_projects",
+      "Bash(uv run:*)",
+      "Bash(npx prettier:*)"
     ]
   },
   "enabledMcpjsonServers": [
