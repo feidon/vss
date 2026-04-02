@@ -63,7 +63,7 @@ class TestServiceCRUD:
         for item in resp.json():
             assert set(item.keys()) == {"id", "name", "vehicle_id"}
             assert "graph" not in item
-            assert "path" not in item
+            assert "route" not in item
             assert "timetable" not in item
 
     async def test_get_service(self, client):
@@ -109,17 +109,17 @@ class TestServiceRouteUpdate:
         get_resp = await client.get(f"/services/{sid}")
         data = get_resp.json()
 
-        # Path: P1A -> B3 -> B5 -> P2A
-        path = data["path"]
-        assert len(path) == 4
-        assert path[0]["type"] == "platform"
-        assert path[0]["name"] == "P1A"
-        assert path[1]["type"] == "block"
-        assert path[1]["name"] == "B3"
-        assert path[2]["type"] == "block"
-        assert path[2]["name"] == "B5"
-        assert path[3]["type"] == "platform"
-        assert path[3]["name"] == "P2A"
+        # Route: P1A -> B3 -> B5 -> P2A
+        route = data["route"]
+        assert len(route) == 4
+        assert route[0]["type"] == "platform"
+        assert route[0]["name"] == "P1A"
+        assert route[1]["type"] == "block"
+        assert route[1]["name"] == "B3"
+        assert route[2]["type"] == "block"
+        assert route[2]["name"] == "B5"
+        assert route[3]["type"] == "platform"
+        assert route[3]["name"] == "P2A"
 
         # Timetable
         tt = data["timetable"]

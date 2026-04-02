@@ -124,7 +124,7 @@ class ServiceDetailResponse(BaseModel):
     id: int
     name: str
     vehicle_id: UUID
-    path: list[NodeSchema]
+    route: list[NodeSchema]
     timetable: list[TimetableEntrySchema]
     graph: GraphSchema
 
@@ -138,11 +138,11 @@ class ServiceDetailResponse(BaseModel):
         platforms = {p.id: p for p in graph_data.all_platforms}
         yards = {y.id: y.name for y in graph_data.yards}
 
-        path_nodes: list[BlockNodeSchema | PlatformNodeSchema | YardNodeSchema] = []
-        for node in service.path:
+        route_nodes: list[BlockNodeSchema | PlatformNodeSchema | YardNodeSchema] = []
+        for node in service.route:
             if node.type == NodeType.BLOCK and node.id in blocks:
                 b = blocks[node.id]
-                path_nodes.append(
+                route_nodes.append(
                     BlockNodeSchema(
                         id=b.id,
                         name=b.name,
@@ -152,9 +152,9 @@ class ServiceDetailResponse(BaseModel):
                 )
             elif node.type == NodeType.PLATFORM and node.id in platforms:
                 p = platforms[node.id]
-                path_nodes.append(PlatformNodeSchema(id=p.id, name=p.name))
+                route_nodes.append(PlatformNodeSchema(id=p.id, name=p.name))
             elif node.type == NodeType.YARD:
-                path_nodes.append(
+                route_nodes.append(
                     YardNodeSchema(
                         id=node.id,
                         name=yards.get(node.id, "Y"),
@@ -165,7 +165,7 @@ class ServiceDetailResponse(BaseModel):
             id=service.id,
             name=service.name,
             vehicle_id=service.vehicle_id,
-            path=path_nodes,
+            route=route_nodes,
             timetable=[
                 TimetableEntrySchema(
                     order=e.order,

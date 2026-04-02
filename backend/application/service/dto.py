@@ -18,5 +18,5 @@ class RouteStop:
 
 @dataclass(frozen=True)
 class RouteValidationResult:
-    path: list[Node]
+    route: list[Node]
     battery_conflicts: list[LowBatteryConflict | InsufficientChargeConflict]

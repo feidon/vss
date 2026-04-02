@@ -61,12 +61,12 @@ class TestUpdateServiceRoute:
         ]
         result = await app.update_service_route(svc.id, stops, start_time=1000)
 
-        # Path: P1A -> B3 -> B5 -> P2A
-        assert len(result.path) == 4
-        assert result.path[0].id == PLATFORM_ID_BY_NAME["P1A"]
-        assert result.path[1].id == BLOCK_ID_BY_NAME["B3"]
-        assert result.path[2].id == BLOCK_ID_BY_NAME["B5"]
-        assert result.path[3].id == PLATFORM_ID_BY_NAME["P2A"]
+        # Route: P1A -> B3 -> B5 -> P2A
+        assert len(result.route) == 4
+        assert result.route[0].id == PLATFORM_ID_BY_NAME["P1A"]
+        assert result.route[1].id == BLOCK_ID_BY_NAME["B3"]
+        assert result.route[2].id == BLOCK_ID_BY_NAME["B5"]
+        assert result.route[3].id == PLATFORM_ID_BY_NAME["P2A"]
 
         # Timetable: P1A dwell=60, B3 traverse=30, B5 traverse=30, P2A dwell=90
         tt = result.timetable
@@ -88,9 +88,9 @@ class TestUpdateServiceRoute:
         ]
         result = await app.update_service_route(svc.id, stops, start_time=0)
 
-        # Path: P1A, B3, B5, P2A, B6, B7, P3A
-        assert len(result.path) == 7
-        assert [n.id for n in result.path] == [
+        # Route: P1A, B3, B5, P2A, B6, B7, P3A
+        assert len(result.route) == 7
+        assert [n.id for n in result.route] == [
             PLATFORM_ID_BY_NAME["P1A"],
             BLOCK_ID_BY_NAME["B3"],
             BLOCK_ID_BY_NAME["B5"],
@@ -101,7 +101,7 @@ class TestUpdateServiceRoute:
         ]
 
         # Verify all block nodes
-        block_nodes = [n for n in result.path if n.type == NodeType.BLOCK]
+        block_nodes = [n for n in result.route if n.type == NodeType.BLOCK]
         assert len(block_nodes) == 4
 
     async def test_unknown_platform_rejected(self):
@@ -165,7 +165,7 @@ class TestUpdateServiceRoute:
             RouteStop(node_id=PLATFORM_ID_BY_NAME["P3B"], dwell_time=30),
         ]
         result = await app.update_service_route(svc.id, stops2, start_time=500)
-        assert result.path[0].id == PLATFORM_ID_BY_NAME["P2A"]
+        assert result.route[0].id == PLATFORM_ID_BY_NAME["P2A"]
         assert result.timetable[0].arrival == 500
 
 

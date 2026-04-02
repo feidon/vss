@@ -49,7 +49,7 @@ class TestServiceAppService:
         result = await app.create_service(name="Express", vehicle_id=v.id)
         assert result.name == "Express"
         assert result.vehicle_id == v.id
-        assert result.path == []
+        assert result.route == []
         assert result.timetable == []
 
     async def test_create_service_rejects_empty_name(self, app, vehicle_repo):

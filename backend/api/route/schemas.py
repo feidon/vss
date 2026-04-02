@@ -19,5 +19,5 @@ class BatteryConflictSchema(BaseModel):
 
 
 class ValidateRouteResponse(BaseModel):
-    path: list[UUID]
+    route: list[UUID]
     battery_conflicts: list[BatteryConflictSchema]

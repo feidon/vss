@@ -83,7 +83,7 @@ def build_battery_steps(
         if service.vehicle_id != vehicle_id or not service.timetable:
             continue
 
-        node_map = {n.id: n.type for n in service.path}
+        node_map = {n.id: n.type for n in service.route}
         for t in service.timetable:
             if node_map[t.node_id] != NodeType.PLATFORM:
                 node_entries.append(

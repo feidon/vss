@@ -20,7 +20,7 @@ class TestValidateRoute:
         )
         assert resp.status_code == HTTP_200_OK
         data = resp.json()
-        assert len(data["path"]) == 4
+        assert len(data["route"]) == 4
         assert data["battery_conflicts"] == []
 
     async def test_unreachable_returns_422(self, client):
@@ -51,7 +51,7 @@ class TestValidateRoute:
         )
         assert resp.status_code == HTTP_200_OK
         data = resp.json()
-        assert len(data["path"]) >= 2
+        assert len(data["route"]) >= 2
 
     async def test_single_stop_rejected(self, client):
         resp = await client.post(

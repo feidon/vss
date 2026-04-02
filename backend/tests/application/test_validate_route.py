@@ -60,10 +60,10 @@ class TestValidateRoute:
             start_time=1000,
         )
 
-        # Path: P1A -> B3 -> B5 -> P2A
-        assert len(result.path) == 4
-        assert result.path[0].id == PLATFORM_ID_BY_NAME["P1A"]
-        assert result.path[3].id == PLATFORM_ID_BY_NAME["P2A"]
+        # Route: P1A -> B3 -> B5 -> P2A
+        assert len(result.route) == 4
+        assert result.route[0].id == PLATFORM_ID_BY_NAME["P1A"]
+        assert result.route[3].id == PLATFORM_ID_BY_NAME["P2A"]
         assert result.battery_conflicts == []
 
     async def test_yard_as_stop(self):
@@ -79,8 +79,8 @@ class TestValidateRoute:
             start_time=0,
         )
 
-        assert result.path[0].id == YARD_ID
-        assert len(result.path) >= 2
+        assert result.route[0].id == YARD_ID
+        assert len(result.route) >= 2
 
     async def test_unreachable_route_raises(self):
         app, _ = _make_app()

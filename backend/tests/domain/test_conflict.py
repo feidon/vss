@@ -32,7 +32,7 @@ def make_service_with_window(
         id=next(_id_counter),
         name="S",
         vehicle_id=vehicle_id,
-        path=[node],
+        route=[node],
         timetable=[entry],
     )
 
@@ -81,7 +81,7 @@ class TestVehicleConflicts:
         node = make_block_node()
         s1 = make_service_with_window(vid, node, arrival=0, departure=10)
         s2 = Service(
-            id=next(_id_counter), name="S", vehicle_id=vid, path=[], timetable=[]
+            id=next(_id_counter), name="S", vehicle_id=vid, route=[], timetable=[]
         )
 
         result = validate(s2, [s1])
@@ -223,7 +223,7 @@ def make_multi_block_service(
         id=next(_id_counter),
         name="S",
         vehicle_id=vehicle_id,
-        path=path,
+        route=path,
         timetable=timetable,
     )
 
@@ -258,7 +258,7 @@ def make_service_with_mid_yard(
         id=next(_id_counter),
         name="S",
         vehicle_id=vehicle_id,
-        path=path,
+        route=path,
         timetable=timetable,
     )
 

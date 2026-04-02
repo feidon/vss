@@ -48,7 +48,7 @@ class ServiceAppService:
         service = Service(
             name=name,
             vehicle_id=vehicle_id,
-            path=[],
+            route=[],
             timetable=[],
         )
 
@@ -72,9 +72,9 @@ class ServiceAppService:
     ) -> Service:
         service = await self.get_service(id)
 
-        full_path, timetable = await self._build_route(stops, start_time)
+        full_route, timetable = await self._build_route(stops, start_time)
         connections = await self._connection_repo.find_all()
-        service.update_route(full_path, timetable, connections)
+        service.update_route(full_route, timetable, connections)
 
         all_services = await self._service_repo.find_all()
         all_blocks = await self._block_repo.find_all()
@@ -101,13 +101,13 @@ class ServiceAppService:
         if vehicle is None:
             raise DomainError(ErrorCode.VALIDATION, f"Vehicle {vehicle_id} not found")
 
-        full_path, timetable = await self._build_route(stops, start_time)
+        full_route, timetable = await self._build_route(stops, start_time)
 
         temp_service = Service(
             id=0,
             name="_validation",
             vehicle_id=vehicle_id,
-            path=full_path,
+            route=full_route,
             timetable=timetable,
         )
 
@@ -115,7 +115,7 @@ class ServiceAppService:
         low_battery, insufficient_charge = detect_battery_conflicts(vehicle, steps)
 
         return RouteValidationResult(
-            path=full_path,
+            route=full_route,
             battery_conflicts=[*low_battery, *insufficient_charge],
         )
 
@@ -138,14 +138,14 @@ class ServiceAppService:
             stop_ids, connections, {b.id for b in all_blocks}
         )
 
-        full_path = self._resolve_nodes(
+        full_route = self._resolve_nodes(
             full_path_ids, blocks_by_id, all_platforms, yards
         )
         timetable = self._compute_timetable(
-            full_path, blocks_by_id, all_platforms, yards, dwell_by_stop, start_time
+            full_route, blocks_by_id, all_platforms, yards, dwell_by_stop, start_time
         )
 
-        return full_path, timetable
+        return full_route, timetable
 
     async def delete_service(self, id: int) -> None:
         await self._service_repo.delete(id)

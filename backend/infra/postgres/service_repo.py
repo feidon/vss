@@ -57,7 +57,7 @@ class PostgresServiceRepository(ServiceRepository):
 
     @staticmethod
     def _to_entity(row) -> Service:
-        path = [Node(id=UUID(n["id"]), type=NodeType(n["type"])) for n in row["path"]]
+        route = [Node(id=UUID(n["id"]), type=NodeType(n["type"])) for n in row["route"]]
         timetable = [
             TimetableEntry(
                 order=e["order"],
@@ -71,7 +71,7 @@ class PostgresServiceRepository(ServiceRepository):
             id=row["id"],
             name=row["name"],
             vehicle_id=row["vehicle_id"],
-            path=path,
+            route=route,
             timetable=timetable,
         )
 
@@ -80,7 +80,7 @@ class PostgresServiceRepository(ServiceRepository):
         return {
             "name": service.name,
             "vehicle_id": service.vehicle_id,
-            "path": [{"id": str(n.id), "type": n.type.value} for n in service.path],
+            "route": [{"id": str(n.id), "type": n.type.value} for n in service.route],
             "timetable": [
                 {
                     "order": e.order,

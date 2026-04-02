@@ -14,14 +14,14 @@ def make_service(vehicle_id=None, with_route=False) -> Service:
     vid = vehicle_id or uuid7()
     if with_route:
         node_id = uuid7()
-        path = [Node(id=node_id, type=NodeType.PLATFORM)]
+        route = [Node(id=node_id, type=NodeType.PLATFORM)]
         timetable = [
             TimetableEntry(order=0, node_id=node_id, arrival=1000, departure=1060)
         ]
     else:
-        path = []
+        route = []
         timetable = []
-    return Service(name="S1", vehicle_id=vid, path=path, timetable=timetable)
+    return Service(name="S1", vehicle_id=vid, route=route, timetable=timetable)
 
 
 class TestPostgresServiceRepository:
@@ -49,8 +49,8 @@ class TestPostgresServiceRepository:
         assert found.id == service.id
         assert found.name == "S1"
         assert found.vehicle_id == vid
-        assert len(found.path) == 1
-        assert found.path[0].type == NodeType.PLATFORM
+        assert len(found.route) == 1
+        assert found.route[0].type == NodeType.PLATFORM
         assert len(found.timetable) == 1
         assert found.timetable[0].arrival == 1000
 
@@ -62,7 +62,7 @@ class TestPostgresServiceRepository:
 
         # Update with a route
         node_id = uuid7()
-        service.path = [Node(id=node_id, type=NodeType.BLOCK)]
+        service.route = [Node(id=node_id, type=NodeType.BLOCK)]
         service.timetable = [
             TimetableEntry(order=0, node_id=node_id, arrival=2000, departure=2030)
         ]
@@ -70,8 +70,8 @@ class TestPostgresServiceRepository:
 
         found = await repo.find_by_id(service.id)
         assert found is not None
-        assert len(found.path) == 1
-        assert found.path[0].type == NodeType.BLOCK
+        assert len(found.route) == 1
+        assert found.route[0].type == NodeType.BLOCK
         assert found.timetable[0].arrival == 2000
 
     async def test_find_by_vehicle_id(self, repo, pg_session):

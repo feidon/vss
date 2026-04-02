@@ -51,7 +51,7 @@ services_table = Table(
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("name", String, nullable=False),
     Column("vehicle_id", Uuid, ForeignKey("vehicles.id"), nullable=False),
-    Column("path", JSONB, nullable=False),
+    Column("route", JSONB, nullable=False),
     Column("timetable", JSONB, nullable=False),
 )
 

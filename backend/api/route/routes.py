@@ -47,6 +47,6 @@ async def validate_route(
                 )
 
     return ValidateRouteResponse(
-        path=[n.id for n in result.path],
+        route=[n.id for n in result.route],
         battery_conflicts=battery_conflicts,
     )

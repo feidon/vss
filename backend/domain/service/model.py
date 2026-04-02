@@ -13,23 +13,23 @@ class Service:
     id: int | None = None
     name: str
     vehicle_id: UUID
-    path: list[Node]
+    route: list[Node]
     timetable: list[TimetableEntry]
 
     def __post_init__(self) -> None:
         self._validate_entry_ordering(self.timetable)
-        self._validate_entries_in_path(self.timetable, self.path)
+        self._validate_entries_in_route(self.timetable, self.route)
 
     def update_route(
         self,
-        path: list[Node],
+        route: list[Node],
         timetable: list[TimetableEntry],
         connections: frozenset[NodeConnection],
     ) -> None:
         self._validate_entry_ordering(timetable)
-        self._validate_entries_in_path(timetable, path)
-        self._validate_connectivity(path, connections)
-        self.path = list(path)
+        self._validate_entries_in_route(timetable, route)
+        self._validate_connectivity(route, connections)
+        self.route = list(route)
         self.timetable = list(timetable)
 
     def __eq__(self, other: object) -> bool:
@@ -59,31 +59,31 @@ class Service:
                 )
 
     @staticmethod
-    def _validate_entries_in_path(
-        entries: list[TimetableEntry], path: list[Node]
+    def _validate_entries_in_route(
+        entries: list[TimetableEntry], route: list[Node]
     ) -> None:
-        node_ids = {n.id for n in path}
+        node_ids = {n.id for n in route}
         for entry in entries:
             if entry.node_id not in node_ids:
                 raise DomainError(
                     ErrorCode.VALIDATION,
-                    f"Entry references node {entry.node_id} not in path",
+                    f"Entry references node {entry.node_id} not in route",
                 )
 
     @staticmethod
     def _validate_connectivity(
-        path: list[Node], connections: frozenset[NodeConnection]
+        route: list[Node], connections: frozenset[NodeConnection]
     ) -> None:
-        if not path:
+        if not route:
             raise DomainError(
-                ErrorCode.VALIDATION, "Path must contain at least one node"
+                ErrorCode.VALIDATION, "Route must contain at least one node"
             )
-        for i in range(len(path) - 1):
-            link = NodeConnection(from_id=path[i].id, to_id=path[i + 1].id)
+        for i in range(len(route) - 1):
+            link = NodeConnection(from_id=route[i].id, to_id=route[i + 1].id)
             if link not in connections:
                 raise DomainError(
                     ErrorCode.VALIDATION,
-                    f"No connection: {path[i].id} -> {path[i + 1].id}",
+                    f"No connection: {route[i].id} -> {route[i + 1].id}",
                 )
 
 
