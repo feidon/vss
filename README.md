@@ -349,3 +349,5 @@ vss/
 
 - [ ] in-memory repo only for tests
 - [ ] create ci
+- [ ] create domain error and error handler
+- [ ] not consist starlette.status
