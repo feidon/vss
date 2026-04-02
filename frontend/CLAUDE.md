@@ -2,9 +2,33 @@
 
 ## Tech Stack
 
-- Angular (latest stable)
-- Node.js LTS (managed via mise)
+- Angular 21 (standalone components, signals)
+- TypeScript 5.9 (strict mode)
+- Tailwind CSS 4 (via PostCSS)
+- Vitest (unit tests)
 - d3.js (interactive track map)
+- Prettier (100 char, single quotes)
+
+## Architecture
+
+Feature-based structure with standalone components:
+
+```
+src/app/
+├── core/           # Singleton services (API clients, interceptors, guards)
+├── shared/         # Shared components, pipes, directives, API models/types
+├── features/
+│   ├── schedule-editor/    # Create/edit/delete services
+│   ├── schedule-viewer/    # Read-only schedule display
+│   ├── block-config/       # Block traversal time configuration
+│   └── track-map/          # d3.js interactive track visualization (bonus)
+└── app.routes.ts
+```
+
+- Standalone components (no NgModules)
+- Angular signals for reactive state
+- Lazy-loaded feature routes
+- Services handle API calls; components handle presentation
 
 ## Pages
 
@@ -46,7 +70,42 @@ Base URL: `http://localhost:8000`
 | PATCH  | `/services/{id}/route`     | Update service route               |
 | DELETE | `/services/{id}`           | Delete service                     |
 
-Route update returns 409 with conflict details (block occupancy, interlocking, vehicle, battery).
+### Key Response Schemas
+
+**Node** (discriminated union by `type`):
+```json
+{ "type": "block|platform|yard", "id": "uuid", "name": "B1" }
+```
+Blocks additionally include: `group`, `traversal_time_seconds`
+
+**Service**:
+```json
+{ "id": 101, "name": "S101", "vehicle_id": "uuid", "path": [Node], "timetable": [TimetableEntry] }
+```
+
+**TimetableEntry**:
+```json
+{ "order": 0, "node_id": "uuid", "arrival": 1700000000, "departure": 1700000030 }
+```
+
+**Route Update Request** (PATCH `/services/{id}/route`):
+```json
+{ "stops": [{ "platform_id": "uuid", "dwell_time": 30 }], "start_time": 1700000000 }
+```
+
+**409 Conflict Response** (route update):
+```json
+{
+  "detail": {
+    "message": "Conflicts detected",
+    "vehicle_conflicts": [{ "vehicle_id": "uuid", "service_a_id": 1, "service_b_id": 2, "reason": "Overlapping time windows" }],
+    "block_conflicts": [{ "block_id": "uuid", "service_a_id": 1, "service_b_id": 2, "overlap_start": 170000, "overlap_end": 170030 }],
+    "interlocking_conflicts": [{ "group": 1, "block_a_id": "uuid", "block_b_id": "uuid", "service_a_id": 1, "service_b_id": 2, "overlap_start": 170000, "overlap_end": 170030 }],
+    "low_battery_conflicts": [{ "service_id": 1 }],
+    "insufficient_charge_conflicts": [{ "service_id": 1 }]
+  }
+}
+```
 
 ## Running
 
@@ -58,6 +117,12 @@ ng serve
 ## Testing
 
 ```bash
-ng test          # Unit tests (Karma)
-ng e2e           # E2E tests
+ng test          # Unit tests (Vitest)
 ```
+
+## Conventions
+
+- Strict TypeScript — no `any`, no implicit returns
+- Tailwind utility classes for styling
+- Immutable state updates
+- Conventional commits: feat, fix, refactor, docs, test, chore

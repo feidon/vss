@@ -1,20 +1,86 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  ## Project
+  Vehicle Scheduling System (VSS) Frontend — Angular SPA for managing railway vehicle
+  services on a fixed track network with stations, platforms, blocks, and interlocking constraints.
+  Interview assignment with 2-week deadline.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  ## Tech Stack
+  - Angular 21 (standalone components, signals)
+  - TypeScript 5.9 (strict mode)
+  - Tailwind CSS 4 (via PostCSS)
+  - Vitest (unit tests)
+  - d3.js (interactive track map — bonus)
+  - Package manager: npm
+  - Formatter: Prettier (100 char width, single quotes)
+
+  ## Architecture
+  Feature-based structure with standalone components.
+  ```
+  src/app/
+  ├── core/           # Singleton services, interceptors, guards
+  ├── shared/         # Shared components, pipes, directives, models
+  ├── features/
+  │   ├── schedule-editor/    # Create/edit/delete services (CRUD)
+  │   ├── schedule-viewer/    # Read-only schedule display
+  │   ├── block-config/       # Block traversal time configuration
+  │   └── track-map/          # d3.js interactive track visualization (bonus)
+  └── app.routes.ts
+  ```
+  - Standalone components (no NgModules)
+  - Angular signals for reactive state
+  - Services use HttpClient with typed API responses
+  - Feature components lazy-loaded via router
+
+  ## Domain Model (API Types)
+  - Block: { id: UUID, name: string, group: number, traversal_time_seconds: number }
+  - Service: { id: number, name: string, vehicle_id: UUID, path: Node[], timetable: TimetableEntry[] }
+  - Node: discriminated union { type: "block" | "platform" | "yard", id: UUID, name: string }
+  - TimetableEntry: { order: number, node_id: UUID, arrival: EpochSeconds, departure: EpochSeconds }
+  - Vehicle: { id: UUID, name: string }
+  - Station: { id: UUID, name: string, is_yard: boolean, platform_ids: UUID[] }
+  - GraphResponse: { nodes: Node[], connections: Connection[], stations: Station[], vehicles: Vehicle[] }
+
+  ## API Integration
+  Backend base URL: http://localhost:8000
+  - Route update (PATCH /services/{id}/route) returns 409 with conflict details:
+    vehicle_conflicts, block_conflicts, interlocking_conflicts,
+    low_battery_conflicts, insufficient_charge_conflicts
+  - Display conflict details to user on 409 responses
+
+  ## Track Network
+  14 blocks (B1-B14), 4 stations (Y, S1, S2, S3), 6 platforms (P1A/B, P2A/B, P3A/B).
+  Blocks are unidirectional. Three interlocking groups enforce mutual exclusion:
+  - Group 1: B1, B2
+  - Group 2: B3, B4, B13, B14
+  - Group 3: B7, B8, B9, B10
+
+  ## Conventions
+  - Conventional commits: feat, fix, refactor, docs, test, chore, perf, ci
+  - Strict TypeScript (no any, no implicit returns)
+  - Tailwind utility classes for styling (no component CSS unless necessary)
+  - Immutable state updates (create new objects, don't mutate)
+  - Services handle API calls; components handle presentation
+  - Reactive patterns: signals for synchronous state, observables for async streams
+
+rules:
+  proposal:
+    - Keep proposals concise — under 500 words
+    - Always include a "Non-goals" section
+    - Reference the specific Angular components and services affected
+  design:
+    - Document decisions with rationale and alternatives considered
+    - Call out risks and trade-offs explicitly
+    - Respect feature-based architecture (core/ → shared/ → features/)
+    - Consider component boundaries — smart (container) vs dumb (presentational)
+  spec:
+    - Include acceptance criteria as testable assertions
+    - Specify which feature module each change belongs to
+    - Reference existing test patterns (component tests, service tests)
+    - Include accessibility requirements where applicable
+  tasks:
+    - Break tasks into chunks of max 2 hours
+    - Group by feature area, then by layer (service → component → template)
+    - Include test tasks alongside implementation tasks (TDD)
+    - Create shared models/services before feature components that depend on them
