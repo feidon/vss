@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+from domain.network.model import NodeConnection
+from domain.network.repository import ConnectionRepository
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from domain.network.model import NodeConnection
-from domain.network.repository import ConnectionRepository
 from infra.postgres.tables import node_connections_table
 
 

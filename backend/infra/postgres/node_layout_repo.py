@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from domain.network.node_layout_repository import NodeLayoutRepository
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from domain.network.node_layout_repository import NodeLayoutRepository
 from infra.postgres.tables import node_layouts_table
 
 

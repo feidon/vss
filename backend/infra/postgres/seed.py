@@ -55,15 +55,17 @@ async def seed_database(session: AsyncSession) -> None:
     # Blocks
     await session.execute(
         insert(blocks_table)
-        .values([
-            {
-                "id": b.id,
-                "name": b.name,
-                "group": b.group,
-                "traversal_time_seconds": b.traversal_time_seconds,
-            }
-            for b in blocks
-        ])
+        .values(
+            [
+                {
+                    "id": b.id,
+                    "name": b.name,
+                    "group": b.group,
+                    "traversal_time_seconds": b.traversal_time_seconds,
+                }
+                for b in blocks
+            ]
+        )
         .on_conflict_do_nothing(index_elements=["id"])
     )
 

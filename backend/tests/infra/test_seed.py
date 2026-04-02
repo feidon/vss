@@ -59,9 +59,7 @@ class TestSeedStations:
 
     def test_platform_names(self):
         stations = create_stations()
-        platform_names = {
-            p.name for s in stations for p in s.platforms
-        }
+        platform_names = {p.name for s in stations for p in s.platforms}
         assert platform_names == {"P1A", "P1B", "P2A", "P2B", "P3A", "P3B"}
 
 
@@ -137,5 +135,10 @@ class TestDeterministicIds:
             | set(STATION_ID_BY_NAME.values())
             | set(VEHICLE_ID_BY_NAME.values())
         )
-        expected_count = len(BLOCK_ID_BY_NAME) + len(PLATFORM_ID_BY_NAME) + len(STATION_ID_BY_NAME) + len(VEHICLE_ID_BY_NAME)
+        expected_count = (
+            len(BLOCK_ID_BY_NAME)
+            + len(PLATFORM_ID_BY_NAME)
+            + len(STATION_ID_BY_NAME)
+            + len(VEHICLE_ID_BY_NAME)
+        )
         assert len(all_ids) == expected_count

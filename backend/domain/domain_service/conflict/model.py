@@ -7,7 +7,6 @@ from uuid import UUID
 from domain.network.model import NodeType
 from domain.shared.types import EpochSeconds
 
-
 # ── Public conflict types ──────────────────────────────────
 
 
@@ -28,7 +27,9 @@ class BlockConflict:
     overlap_end: int
 
     @classmethod
-    def from_overlap(cls, block_id: UUID, a: BlockOccupancy, b: BlockOccupancy) -> BlockConflict:
+    def from_overlap(
+        cls, block_id: UUID, a: BlockOccupancy, b: BlockOccupancy
+    ) -> BlockConflict:
         return cls(
             block_id=block_id,
             service_a_id=a.service_id,
@@ -49,7 +50,9 @@ class InterlockingConflict:
     overlap_end: int
 
     @classmethod
-    def from_overlap(cls, group: int, a: GroupOccupancy, b: GroupOccupancy) -> InterlockingConflict:
+    def from_overlap(
+        cls, group: int, a: GroupOccupancy, b: GroupOccupancy
+    ) -> InterlockingConflict:
         return cls(
             group=group,
             block_a_id=a.block_id,
@@ -60,13 +63,16 @@ class InterlockingConflict:
             overlap_end=a.departure,
         )
 
+
 @dataclass(frozen=True)
 class LowBatteryConflict:
     service_id: int
 
+
 @dataclass(frozen=True)
 class InsufficientChargeConflict:
     service_id: int
+
 
 @dataclass(frozen=True)
 class ServiceConflicts:
@@ -74,7 +80,9 @@ class ServiceConflicts:
     block_conflicts: list[BlockConflict]
     interlocking_conflicts: list[InterlockingConflict]
     low_battery_conflicts: list[LowBatteryConflict] = field(default_factory=list)
-    insufficient_charge_conflicts: list[InsufficientChargeConflict] = field(default_factory=list)
+    insufficient_charge_conflicts: list[InsufficientChargeConflict] = field(
+        default_factory=list
+    )
 
     @property
     def has_conflicts(self) -> bool:
@@ -134,6 +142,7 @@ class GroupOccupancy:
 @dataclass(frozen=True)
 class NodeEntry:
     """Intermediate timetable entry for battery simulation."""
+
     time: EpochSeconds
     node_type: NodeType
     service_id: int
@@ -142,6 +151,7 @@ class NodeEntry:
 @dataclass(frozen=True)
 class ChargeStop:
     """A yard stop where the vehicle charges."""
+
     charge_seconds: int
     service_id: int
 
@@ -149,4 +159,5 @@ class ChargeStop:
 @dataclass(frozen=True)
 class BlockTraversal:
     """A block traversal that consumes 1% battery."""
+
     service_id: int

@@ -4,6 +4,7 @@ from uuid import UUID
 
 from domain.block.model import Block
 from domain.block.repository import BlockRepository
+from domain.error import DomainError, ErrorCode
 
 
 class BlockAppService:
@@ -16,6 +17,6 @@ class BlockAppService:
     async def update_block(self, id: UUID, traversal_time_seconds: int) -> None:
         block = await self._block_repo.find_by_id(id)
         if block is None:
-            raise ValueError(f"Block {id} not found")
+            raise DomainError(ErrorCode.NOT_FOUND, f"Block {id} not found")
         block.update_traversal_time(traversal_time_seconds)
         await self._block_repo.save(block)

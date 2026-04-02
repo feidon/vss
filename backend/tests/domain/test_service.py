@@ -2,7 +2,7 @@ from itertools import count
 from uuid import uuid7
 
 import pytest
-
+from domain.error import DomainError
 from domain.network.model import Node, NodeConnection, NodeType
 from domain.service.model import Service, TimetableEntry
 
@@ -41,7 +41,7 @@ class TestTimetableEntry:
         assert entry.arrival == entry.departure
 
     def test_arrival_after_departure_rejected(self):
-        with pytest.raises(ValueError, match="must be <="):
+        with pytest.raises(DomainError, match="must be <="):
             TimetableEntry(order=0, node_id=uuid7(), arrival=10, departure=5)
 
     def test_frozen(self):
@@ -70,7 +70,7 @@ class TestServiceCreation:
             TimetableEntry(order=0, node_id=n.id, arrival=0, departure=5),
             TimetableEntry(order=0, node_id=n.id, arrival=10, departure=15),
         ]
-        with pytest.raises(ValueError, match="Duplicate entry orders"):
+        with pytest.raises(DomainError, match="Duplicate entry orders"):
             make_service(path=[n], timetable=entries)
 
     def test_unordered_entries_rejected(self):
@@ -79,7 +79,7 @@ class TestServiceCreation:
             TimetableEntry(order=1, node_id=n1.id, arrival=0, departure=5),
             TimetableEntry(order=0, node_id=n2.id, arrival=10, departure=15),
         ]
-        with pytest.raises(ValueError, match="ascending order"):
+        with pytest.raises(DomainError, match="ascending order"):
             make_service(path=[n1, n2], timetable=entries)
 
     def test_overlapping_time_windows_rejected(self):
@@ -88,7 +88,7 @@ class TestServiceCreation:
             TimetableEntry(order=0, node_id=n1.id, arrival=0, departure=15),
             TimetableEntry(order=1, node_id=n2.id, arrival=10, departure=20),
         ]
-        with pytest.raises(ValueError, match="continuous"):
+        with pytest.raises(DomainError, match="continuous"):
             make_service(path=[n1, n2], timetable=entries)
 
     def test_gap_between_entries_rejected(self):
@@ -97,7 +97,7 @@ class TestServiceCreation:
             TimetableEntry(order=0, node_id=n1.id, arrival=0, departure=10),
             TimetableEntry(order=1, node_id=n2.id, arrival=15, departure=20),
         ]
-        with pytest.raises(ValueError, match="continuous"):
+        with pytest.raises(DomainError, match="continuous"):
             make_service(path=[n1, n2], timetable=entries)
 
     def test_entry_referencing_unknown_node_rejected(self):
@@ -105,7 +105,7 @@ class TestServiceCreation:
         entries = [
             TimetableEntry(order=0, node_id=uuid7(), arrival=0, departure=10),
         ]
-        with pytest.raises(ValueError, match="not in path"):
+        with pytest.raises(DomainError, match="not in path"):
             make_service(path=[n], timetable=entries)
 
     def test_equality_by_id(self):
@@ -139,14 +139,14 @@ class TestServiceUpdateRoute:
             TimetableEntry(order=0, node_id=n.id, arrival=100, departure=105),
         ]
         service = make_service(path=[n])
-        with pytest.raises(ValueError, match="ascending order"):
+        with pytest.raises(DomainError, match="ascending order"):
             service.update_route([n], entries, frozenset())
 
     def test_update_route_rejects_entry_not_in_path(self):
         n = make_node()
         entries = [TimetableEntry(order=0, node_id=uuid7(), arrival=0, departure=10)]
         service = make_service(path=[n])
-        with pytest.raises(ValueError, match="not in path"):
+        with pytest.raises(DomainError, match="not in path"):
             service.update_route([n], entries, frozenset())
 
     def test_update_route_rejects_disconnected_path(self):
@@ -156,7 +156,5 @@ class TestServiceUpdateRoute:
             TimetableEntry(order=1, node_id=n2.id, arrival=10, departure=20),
         ]
         service = make_service(path=[make_node()])
-        with pytest.raises(ValueError, match="No connection"):
+        with pytest.raises(DomainError, match="No connection"):
             service.update_route([n1, n2], entries, frozenset())
-
-

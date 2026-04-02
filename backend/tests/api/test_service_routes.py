@@ -1,7 +1,6 @@
 from uuid import uuid7
 
 import pytest
-
 from infra.seed import PLATFORM_ID_BY_NAME, VEHICLE_ID_BY_NAME
 
 pytestmark = pytest.mark.postgres
@@ -148,7 +147,7 @@ class TestServiceRouteUpdate:
         )
         assert resp.status_code == 404
 
-    async def test_update_route_no_route_returns_400(self, client):
+    async def test_update_route_no_route_returns_422(self, client):
         sid = await create_service(client)
         # P2A -> P1A has no route
         resp = await client.patch(
@@ -161,7 +160,7 @@ class TestServiceRouteUpdate:
                 "start_time": 0,
             },
         )
-        assert resp.status_code == 400
+        assert resp.status_code == 422
 
     async def test_update_route_conflict_returns_409(self, client):
         vid = str(VEHICLE_ID_BY_NAME["V1"])
@@ -187,8 +186,7 @@ class TestServiceRouteUpdate:
         assert resp.status_code == 409
         detail = resp.json()["detail"]
         assert (
-            len(detail["vehicle_conflicts"]) > 0
-            or len(detail["block_conflicts"]) > 0
+            len(detail["vehicle_conflicts"]) > 0 or len(detail["block_conflicts"]) > 0
         )
         # Battery conflict fields present in response
         assert "low_battery_conflicts" in detail

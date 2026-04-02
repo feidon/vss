@@ -1,11 +1,9 @@
 from uuid import uuid7
 
 import pytest
-
-from sqlalchemy.dialects.postgresql import insert
-
 from infra.postgres.node_layout_repo import PostgresNodeLayoutRepository
 from infra.postgres.tables import node_layouts_table
+from sqlalchemy.dialects.postgresql import insert
 
 pytestmark = pytest.mark.postgres
 

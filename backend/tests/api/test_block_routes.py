@@ -1,7 +1,6 @@
 from uuid import uuid7
 
 import pytest
-
 from infra.seed import BLOCK_ID_BY_NAME
 
 pytestmark = pytest.mark.postgres

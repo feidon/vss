@@ -1,8 +1,8 @@
 from uuid import uuid7
 
 import pytest
-
 from domain.block.model import Block
+from domain.error import DomainError
 from domain.network.model import NodeType
 
 
@@ -14,11 +14,15 @@ class TestBlock:
         assert block.traversal_time_seconds == 30
 
     def test_rejects_zero_traversal_time(self):
-        with pytest.raises(ValueError, match="traversal_time_seconds must be positive"):
+        with pytest.raises(
+            DomainError, match="traversal_time_seconds must be positive"
+        ):
             Block(id=uuid7(), name="B1", group=1, traversal_time_seconds=0)
 
     def test_rejects_negative_traversal_time(self):
-        with pytest.raises(ValueError, match="traversal_time_seconds must be positive"):
+        with pytest.raises(
+            DomainError, match="traversal_time_seconds must be positive"
+        ):
             Block(id=uuid7(), name="B1", group=1, traversal_time_seconds=-5)
 
     def test_to_node(self):
@@ -51,7 +55,9 @@ class TestBlock:
 
     def test_update_traversal_time_rejects_invalid(self):
         block = Block(id=uuid7(), name="B1", group=1, traversal_time_seconds=30)
-        with pytest.raises(ValueError, match="traversal_time_seconds must be positive"):
+        with pytest.raises(
+            DomainError, match="traversal_time_seconds must be positive"
+        ):
             block.update_traversal_time(0)
 
     def test_to_timetable_entry(self):

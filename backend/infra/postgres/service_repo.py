@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from domain.network.model import Node, NodeType
+from domain.service.model import Service, TimetableEntry
+from domain.service.repository import ServiceRepository
 from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from domain.network.model import Node, NodeType
-from domain.service.model import Service, TimetableEntry
-from domain.service.repository import ServiceRepository
 from infra.postgres.tables import services_table
 
 
@@ -57,10 +57,7 @@ class PostgresServiceRepository(ServiceRepository):
 
     @staticmethod
     def _to_entity(row) -> Service:
-        path = [
-            Node(id=UUID(n["id"]), type=NodeType(n["type"]))
-            for n in row["path"]
-        ]
+        path = [Node(id=UUID(n["id"]), type=NodeType(n["type"])) for n in row["path"]]
         timetable = [
             TimetableEntry(
                 order=e["order"],
@@ -83,10 +80,7 @@ class PostgresServiceRepository(ServiceRepository):
         return {
             "name": service.name,
             "vehicle_id": service.vehicle_id,
-            "path": [
-                {"id": str(n.id), "type": n.type.value}
-                for n in service.path
-            ],
+            "path": [{"id": str(n.id), "type": n.type.value} for n in service.path],
             "timetable": [
                 {
                     "order": e.order,

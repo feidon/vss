@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from application.graph.service import GraphAppService
+from application.service.dto import RouteStop
+from application.service.service import ServiceAppService
+from fastapi import APIRouter, Depends
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
 from api.dependencies import get_graph_service, get_service_app_service
@@ -11,46 +14,8 @@ from api.service.schemas import (
     ServiceResponse,
     UpdateRouteRequest,
 )
-from application.graph.service import GraphAppService
-from application.service.dto import RouteStop
-from application.service.errors import ConflictError
-from application.service.service import ServiceAppService
 
 router = APIRouter(prefix="/services", tags=["services"])
-
-
-def _conflict_response(e: ConflictError) -> HTTPException:
-    c = e.conflicts
-    detail = {
-        "message": str(e),
-        "vehicle_conflicts": [
-            {"vehicle_id": str(vc.vehicle_id), "service_a_id": vc.service_a_id,
-             "service_b_id": vc.service_b_id, "reason": vc.reason}
-            for vc in c.vehicle_conflicts
-        ],
-        "block_conflicts": [
-            {"block_id": str(bc.block_id), "service_a_id": bc.service_a_id,
-             "service_b_id": bc.service_b_id,
-             "overlap_start": bc.overlap_start, "overlap_end": bc.overlap_end}
-            for bc in c.block_conflicts
-        ],
-        "interlocking_conflicts": [
-            {"group": ic.group, "block_a_id": str(ic.block_a_id),
-             "block_b_id": str(ic.block_b_id), "service_a_id": ic.service_a_id,
-             "service_b_id": ic.service_b_id,
-             "overlap_start": ic.overlap_start, "overlap_end": ic.overlap_end}
-            for ic in c.interlocking_conflicts
-        ],
-        "low_battery_conflicts": [
-            {"service_id": lbc.service_id}
-            for lbc in c.low_battery_conflicts
-        ],
-        "insufficient_charge_conflicts": [
-            {"service_id": icc.service_id}
-            for icc in c.insufficient_charge_conflicts
-        ],
-    }
-    return HTTPException(status_code=409, detail=detail)
 
 
 @router.post("", response_model=ServiceIdResponse, status_code=HTTP_201_CREATED)
@@ -58,12 +23,9 @@ async def create_service(
     request: CreateServiceRequest,
     service_app_service: ServiceAppService = Depends(get_service_app_service),
 ):
-    try:
-        service = await service_app_service.create_service(
-            name=request.name, vehicle_id=request.vehicle_id
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    service = await service_app_service.create_service(
+        name=request.name, vehicle_id=request.vehicle_id
+    )
     return ServiceIdResponse(id=service.id)
 
 
@@ -73,8 +35,7 @@ async def list_services(
 ):
     services = await service_app_service.list_services()
     return [
-        ServiceResponse(id=s.id, name=s.name, vehicle_id=s.vehicle_id)
-        for s in services
+        ServiceResponse(id=s.id, name=s.name, vehicle_id=s.vehicle_id) for s in services
     ]
 
 
@@ -84,10 +45,7 @@ async def get_service(
     service_app_service: ServiceAppService = Depends(get_service_app_service),
     graph_service: GraphAppService = Depends(get_graph_service),
 ):
-    try:
-        service = await service_app_service.get_service(service_id)
-    except ValueError:
-        raise HTTPException(status_code=404, detail=f"Service {service_id} not found")
+    service = await service_app_service.get_service(service_id)
     graph_data = await graph_service.get_graph()
     return ServiceDetailResponse.from_domain(service, graph_data)
 
@@ -99,19 +57,11 @@ async def update_route(
     service_app_service: ServiceAppService = Depends(get_service_app_service),
 ):
     stops = [
-        RouteStop(node_id=s.node_id, dwell_time=s.dwell_time)
-        for s in request.stops
+        RouteStop(node_id=s.node_id, dwell_time=s.dwell_time) for s in request.stops
     ]
-    try:
-        service = await service_app_service.update_service_route(
-            service_id, stops, request.start_time
-        )
-    except ConflictError as e:
-        raise _conflict_response(e)
-    except ValueError as e:
-        if str(e).startswith(f"Service {service_id}"):
-            raise HTTPException(status_code=404, detail=str(e))
-        raise HTTPException(status_code=400, detail=str(e))
+    service = await service_app_service.update_service_route(
+        service_id, stops, request.start_time
+    )
     return ServiceIdResponse(id=service.id)
 
 

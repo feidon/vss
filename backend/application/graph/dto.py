@@ -19,11 +19,7 @@ class GraphData:
 
     @property
     def platform_to_station(self) -> dict[UUID, Station]:
-        return {
-            p.id: s
-            for s in self.stations
-            for p in s.platforms
-        }
+        return {p.id: s for s in self.stations for p in s.platforms}
 
     @property
     def all_platforms(self) -> list[Platform]:

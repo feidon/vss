@@ -1,12 +1,6 @@
 from __future__ import annotations
 
 import pytest
-from fastapi import Depends
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.pool import NullPool
-
 from api.dependencies import (
     get_block_repo,
     get_connection_repo,
@@ -14,6 +8,8 @@ from api.dependencies import (
     get_station_repo,
     get_vehicle_repo,
 )
+from fastapi import Depends
+from httpx import ASGITransport, AsyncClient
 from infra.postgres.block_repo import PostgresBlockRepository
 from infra.postgres.connection_repo import PostgresConnectionRepository
 from infra.postgres.seed import seed_database
@@ -23,6 +19,10 @@ from infra.postgres.station_repo import PostgresStationRepository
 from infra.postgres.tables import metadata
 from infra.postgres.vehicle_repo import PostgresVehicleRepository
 from main import app
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
+
 from tests.pg_config import TEST_DATABASE_URL
 
 _TABLE_NAMES = ", ".join(t.name for t in metadata.sorted_tables)

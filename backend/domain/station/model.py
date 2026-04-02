@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from uuid import UUID
 
+from domain.error import DomainError, ErrorCode
 from domain.network.model import Node, NodeType
 from domain.service.model import TimetableEntry
 from domain.shared.types import EpochSeconds
@@ -17,10 +18,16 @@ class Platform:
         return Node(id=self.id, type=NodeType.PLATFORM)
 
     def to_timetable_entry(
-        self, order: int, arrival: EpochSeconds, departure: EpochSeconds,
+        self,
+        order: int,
+        arrival: EpochSeconds,
+        departure: EpochSeconds,
     ) -> TimetableEntry:
         return TimetableEntry(
-            order=order, node_id=self.id, arrival=arrival, departure=departure,
+            order=order,
+            node_id=self.id,
+            arrival=arrival,
+            departure=departure,
         )
 
     def __eq__(self, other: object) -> bool:
@@ -39,28 +46,40 @@ class Station:
 
     def to_node(self) -> Node:
         if not self.is_yard:
-            raise ValueError("Only yards can be converted to nodes")
+            raise DomainError(
+                ErrorCode.VALIDATION, "Only yards can be converted to nodes"
+            )
         return Node(id=self.id, type=NodeType.YARD)
 
     def to_timetable_entry(
-        self, order: int, arrival: EpochSeconds, departure: EpochSeconds,
+        self,
+        order: int,
+        arrival: EpochSeconds,
+        departure: EpochSeconds,
     ) -> TimetableEntry:
         if not self.is_yard:
-            raise ValueError("Only yards can be converted to timetable entries")
+            raise DomainError(
+                ErrorCode.VALIDATION, "Only yards can be converted to timetable entries"
+            )
         return TimetableEntry(
-            order=order, node_id=self.id, arrival=arrival, departure=departure,
+            order=order,
+            node_id=self.id,
+            arrival=arrival,
+            departure=departure,
         )
 
     def add_platform(self, platform: Platform) -> None:
         if any(p.id == platform.id for p in self.platforms):
-            raise ValueError(f"Platform {platform.id} already exists")
+            raise DomainError(
+                ErrorCode.VALIDATION, f"Platform {platform.id} already exists"
+            )
         self.platforms.append(platform)
 
     def remove_platform(self, platform_id: UUID) -> None:
         original_len = len(self.platforms)
         self.platforms = [p for p in self.platforms if p.id != platform_id]
         if len(self.platforms) == original_len:
-            raise ValueError(f"Platform {platform_id} not found")
+            raise DomainError(ErrorCode.VALIDATION, f"Platform {platform_id} not found")
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Station) and self.id == other.id

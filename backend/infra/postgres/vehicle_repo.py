@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from domain.vehicle.model import Vehicle
+from domain.vehicle.repository import VehicleRepository
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from domain.vehicle.model import Vehicle
-from domain.vehicle.repository import VehicleRepository
 from infra.postgres.tables import vehicles_table
 
 

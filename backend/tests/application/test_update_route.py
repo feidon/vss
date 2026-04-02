@@ -1,10 +1,10 @@
 from uuid import uuid7
 
 import pytest
-
-from application.service.errors import ConflictError
 from application.service.dto import RouteStop
+from application.service.errors import ConflictError
 from application.service.service import ServiceAppService
+from domain.error import DomainError
 from domain.network.model import NodeType
 from domain.vehicle.model import Vehicle
 from infra.memory.block_repo import InMemoryBlockRepository
@@ -91,8 +91,12 @@ class TestUpdateServiceRoute:
         # Path: P1A, B3, B5, P2A, B6, B7, P3A
         assert len(result.path) == 7
         assert [n.id for n in result.path] == [
-            PLATFORM_ID_BY_NAME["P1A"], BLOCK_ID_BY_NAME["B3"], BLOCK_ID_BY_NAME["B5"],
-            PLATFORM_ID_BY_NAME["P2A"], BLOCK_ID_BY_NAME["B6"], BLOCK_ID_BY_NAME["B7"],
+            PLATFORM_ID_BY_NAME["P1A"],
+            BLOCK_ID_BY_NAME["B3"],
+            BLOCK_ID_BY_NAME["B5"],
+            PLATFORM_ID_BY_NAME["P2A"],
+            BLOCK_ID_BY_NAME["B6"],
+            BLOCK_ID_BY_NAME["B7"],
             PLATFORM_ID_BY_NAME["P3A"],
         ]
 
@@ -109,7 +113,7 @@ class TestUpdateServiceRoute:
             RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
             RouteStop(node_id=uuid7(), dwell_time=60),
         ]
-        with pytest.raises(ValueError, match="Stop.*not found"):
+        with pytest.raises(DomainError, match="Stop.*not found"):
             await app.update_service_route(svc.id, stops, start_time=0)
 
     async def test_service_not_found(self):
@@ -118,7 +122,7 @@ class TestUpdateServiceRoute:
             RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
             RouteStop(node_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=60),
         ]
-        with pytest.raises(ValueError, match="not found"):
+        with pytest.raises(DomainError, match="not found"):
             await app.update_service_route(999, stops, start_time=0)
 
     async def test_single_stop_rejected(self):
@@ -127,7 +131,7 @@ class TestUpdateServiceRoute:
         svc = await app.create_service(name="S1", vehicle_id=v.id)
 
         stops = [RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60)]
-        with pytest.raises(ValueError, match="At least two stops"):
+        with pytest.raises(DomainError, match="At least two stops"):
             await app.update_service_route(svc.id, stops, start_time=0)
 
     async def test_no_route_between_platforms_rejected(self):
@@ -140,7 +144,7 @@ class TestUpdateServiceRoute:
             RouteStop(node_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=60),
             RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
         ]
-        with pytest.raises(ValueError, match="No route"):
+        with pytest.raises(DomainError, match="No route"):
             await app.update_service_route(svc.id, stops, start_time=0)
 
     async def test_route_update_replaces_previous(self):
@@ -266,8 +270,8 @@ class TestRouteConflicts:
             await app.update_service_route(s3.id, stops_s3, start_time=0)
 
         conflicts = exc_info.value.conflicts.block_conflicts
-        conflicting_service_ids = {c.service_a_id for c in conflicts} | {c.service_b_id for c in conflicts}
+        conflicting_service_ids = {c.service_a_id for c in conflicts} | {
+            c.service_b_id for c in conflicts
+        }
         assert s1.id in conflicting_service_ids, "Should detect conflict with S1"
         assert s2.id in conflicting_service_ids, "Should detect conflict with S2"
-
-

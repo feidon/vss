@@ -1,9 +1,8 @@
 from uuid import uuid7
 
 import pytest
-
 from infra.postgres.station_repo import PostgresStationRepository
-from infra.postgres.tables import stations_table, platforms_table
+from infra.postgres.tables import platforms_table, stations_table
 from sqlalchemy.dialects.postgresql import insert
 
 pytestmark = pytest.mark.postgres

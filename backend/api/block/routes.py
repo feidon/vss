@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from application.block.service import BlockAppService
+from fastapi import APIRouter, Depends
 
 from api.block.schemas import BlockIdResponse, BlockResponse, UpdateBlockRequest
-from application.block.service import BlockAppService
 from api.dependencies import get_block_service
 
 router = APIRouter(prefix="/blocks", tags=["blocks"])
@@ -23,10 +23,5 @@ async def update_block(
     request: UpdateBlockRequest,
     block_service: BlockAppService = Depends(get_block_service),
 ):
-    try:
-        await block_service.update_block(block_id, request.traversal_time_seconds)
-    except ValueError as e:
-        if "not found" in str(e):
-            raise HTTPException(status_code=404, detail=str(e))
-        raise HTTPException(status_code=400, detail=str(e))
+    await block_service.update_block(block_id, request.traversal_time_seconds)
     return BlockIdResponse(id=block_id)

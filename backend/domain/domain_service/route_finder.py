@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import deque
 from uuid import UUID
 
+from domain.error import DomainError, ErrorCode
 from domain.network.model import NodeConnection
 
 
@@ -41,7 +42,7 @@ class RouteFinder:
                     visited.add(neighbor)
                     queue.append((neighbor, path + [neighbor]))
 
-        raise ValueError(f"No route from {from_id} to {to_id}")
+        raise DomainError(ErrorCode.NO_ROUTE, f"No route from {from_id} to {to_id}")
 
     @classmethod
     def build_full_path(
@@ -55,7 +56,7 @@ class RouteFinder:
         Example: [P1A, P2A, P3A] -> [P1A, B3, B5, P2A, B6, B7, P3A]
         """
         if len(stop_ids) < 2:
-            raise ValueError("At least two stops are required")
+            raise DomainError(ErrorCode.VALIDATION, "At least two stops are required")
 
         result: list[UUID] = [stop_ids[0]]
         for i in range(len(stop_ids) - 1):

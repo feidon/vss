@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from domain.block.model import Block
+from domain.block.repository import BlockRepository
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from domain.block.model import Block
-from domain.block.repository import BlockRepository
 from infra.postgres.tables import blocks_table
 
 

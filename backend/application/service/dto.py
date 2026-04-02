@@ -3,7 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from uuid import UUID
 
-from domain.domain_service.conflict.model import InsufficientChargeConflict, LowBatteryConflict
+from domain.domain_service.conflict.model import (
+    InsufficientChargeConflict,
+    LowBatteryConflict,
+)
 from domain.network.model import Node
 
 

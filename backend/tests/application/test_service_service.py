@@ -1,8 +1,8 @@
 from uuid import UUID, uuid7
 
 import pytest
-
 from application.service.service import ServiceAppService
+from domain.error import DomainError
 from domain.vehicle.model import Vehicle
 from infra.memory.block_repo import InMemoryBlockRepository
 from infra.memory.connection_repo import InMemoryConnectionRepository
@@ -12,8 +12,11 @@ from infra.memory.vehicle_repo import InMemoryVehicleRepository
 
 
 def _make_app(
-    service_repo=None, block_repo=None, connection_repo=None,
-    vehicle_repo=None, station_repo=None,
+    service_repo=None,
+    block_repo=None,
+    connection_repo=None,
+    vehicle_repo=None,
+    station_repo=None,
 ):
     return ServiceAppService(
         service_repo=service_repo or InMemoryServiceRepository(),
@@ -24,7 +27,9 @@ def _make_app(
     )
 
 
-def seed_vehicle(vehicle_repo: InMemoryVehicleRepository, vid: UUID | None = None) -> Vehicle:
+def seed_vehicle(
+    vehicle_repo: InMemoryVehicleRepository, vid: UUID | None = None
+) -> Vehicle:
     vehicle = Vehicle(id=vid or uuid7(), name="V1")
     vehicle_repo._store[vehicle.id] = vehicle
     return vehicle
@@ -49,11 +54,11 @@ class TestServiceAppService:
 
     async def test_create_service_rejects_empty_name(self, app, vehicle_repo):
         v = seed_vehicle(vehicle_repo)
-        with pytest.raises(ValueError, match="name"):
+        with pytest.raises(DomainError, match="name"):
             await app.create_service(name="", vehicle_id=v.id)
 
     async def test_create_service_rejects_unknown_vehicle(self, app):
-        with pytest.raises(ValueError, match="Vehicle.*not found"):
+        with pytest.raises(DomainError, match="Vehicle.*not found"):
             await app.create_service(name="S1", vehicle_id=uuid7())
 
     async def test_get_service(self, app, vehicle_repo):
@@ -63,7 +68,7 @@ class TestServiceAppService:
         assert result == created
 
     async def test_get_service_not_found(self, app):
-        with pytest.raises(ValueError, match="not found"):
+        with pytest.raises(DomainError, match="not found"):
             await app.get_service(999)
 
     async def test_list_services(self, app, vehicle_repo):

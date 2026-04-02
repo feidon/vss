@@ -9,12 +9,12 @@ from __future__ import annotations
 from uuid import UUID
 
 import pytest
+from infra.postgres.tables import metadata, vehicles_table
 from sqlalchemy import create_engine, text
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from infra.postgres.tables import metadata, vehicles_table
 from tests.pg_config import TEST_DATABASE_URL, TEST_DATABASE_URL_SYNC
 
 _TABLE_NAMES = ", ".join(t.name for t in metadata.sorted_tables)
@@ -46,9 +46,9 @@ async def pg_session(_pg_tables):
     await engine.dispose()
 
 
-async def insert_vehicle(session: AsyncSession, vehicle_id: UUID, name: str = "V1") -> None:
+async def insert_vehicle(
+    session: AsyncSession, vehicle_id: UUID, name: str = "V1"
+) -> None:
     """Insert a vehicle row (shared helper for FK setup)."""
-    await session.execute(
-        insert(vehicles_table).values(id=vehicle_id, name=name)
-    )
+    await session.execute(insert(vehicles_table).values(id=vehicle_id, name=name))
     await session.commit()

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from domain.domain_service.conflict import ServiceConflicts
+from domain.error import DomainError, ErrorCode
 
 
-class ConflictError(Exception):
+class ConflictError(DomainError):
     def __init__(self, conflicts: ServiceConflicts) -> None:
         self.conflicts = conflicts
-        super().__init__("Service has scheduling conflicts")
+        super().__init__(ErrorCode.CONFLICT, "Service has scheduling conflicts")

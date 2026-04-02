@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from uuid import UUID
 
+from domain.error import DomainError, ErrorCode
 from domain.network.model import Node, NodeConnection
 from domain.shared.types import EpochSeconds
 
@@ -45,28 +46,45 @@ class Service:
     def _validate_entry_ordering(entries: list[TimetableEntry]) -> None:
         orders = [e.order for e in entries]
         if len(orders) != len(set(orders)):
-            raise ValueError("Duplicate entry orders")
+            raise DomainError(ErrorCode.VALIDATION, "Duplicate entry orders")
         if orders != sorted(orders):
-            raise ValueError("Entries must be in ascending order")
+            raise DomainError(
+                ErrorCode.VALIDATION, "Entries must be in ascending order"
+            )
         for i in range(1, len(entries)):
             if entries[i].arrival != entries[i - 1].departure:
-                raise ValueError("Entries must be continuous: departure must equal next arrival")
+                raise DomainError(
+                    ErrorCode.VALIDATION,
+                    "Entries must be continuous: departure must equal next arrival",
+                )
 
     @staticmethod
-    def _validate_entries_in_path(entries: list[TimetableEntry], path: list[Node]) -> None:
+    def _validate_entries_in_path(
+        entries: list[TimetableEntry], path: list[Node]
+    ) -> None:
         node_ids = {n.id for n in path}
         for entry in entries:
             if entry.node_id not in node_ids:
-                raise ValueError(f"Entry references node {entry.node_id} not in path")
+                raise DomainError(
+                    ErrorCode.VALIDATION,
+                    f"Entry references node {entry.node_id} not in path",
+                )
 
     @staticmethod
-    def _validate_connectivity(path: list[Node], connections: frozenset[NodeConnection]) -> None:
+    def _validate_connectivity(
+        path: list[Node], connections: frozenset[NodeConnection]
+    ) -> None:
         if not path:
-            raise ValueError("Path must contain at least one node")
+            raise DomainError(
+                ErrorCode.VALIDATION, "Path must contain at least one node"
+            )
         for i in range(len(path) - 1):
             link = NodeConnection(from_id=path[i].id, to_id=path[i + 1].id)
             if link not in connections:
-                raise ValueError(f"No connection: {path[i].id} -> {path[i + 1].id}")
+                raise DomainError(
+                    ErrorCode.VALIDATION,
+                    f"No connection: {path[i].id} -> {path[i + 1].id}",
+                )
 
 
 @dataclass(frozen=True)
@@ -78,4 +96,7 @@ class TimetableEntry:
 
     def __post_init__(self) -> None:
         if self.arrival > self.departure:
-            raise ValueError(f"Arrival ({self.arrival}) must be <= departure ({self.departure})")
+            raise DomainError(
+                ErrorCode.VALIDATION,
+                f"Arrival ({self.arrival}) must be <= departure ({self.departure})",
+            )

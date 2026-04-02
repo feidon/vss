@@ -1,7 +1,6 @@
 from uuid import uuid7
 
 import pytest
-
 from application.graph.service import GraphAppService
 from domain.block.model import Block
 from domain.network.model import NodeConnection
@@ -18,9 +17,14 @@ class TestGraphAppService:
     @pytest.fixture
     def station_repo(self):
         repo = InMemoryStationRepository()
-        s = Station(id=uuid7(), name="S1", is_yard=False, platforms=[
-            Platform(id=uuid7(), name="P1A"),
-        ])
+        s = Station(
+            id=uuid7(),
+            name="S1",
+            is_yard=False,
+            platforms=[
+                Platform(id=uuid7(), name="P1A"),
+            ],
+        )
         repo._store[s.id] = s
         return repo
 
@@ -33,9 +37,13 @@ class TestGraphAppService:
 
     @pytest.fixture
     def connection_repo(self):
-        return InMemoryConnectionRepository(frozenset({
-            NodeConnection(from_id=uuid7(), to_id=uuid7()),
-        }))
+        return InMemoryConnectionRepository(
+            frozenset(
+                {
+                    NodeConnection(from_id=uuid7(), to_id=uuid7()),
+                }
+            )
+        )
 
     @pytest.fixture
     def vehicle_repo(self):
@@ -49,7 +57,9 @@ class TestGraphAppService:
         return InMemoryNodeLayoutRepository()
 
     @pytest.fixture
-    def service(self, station_repo, block_repo, connection_repo, vehicle_repo, node_layout_repo):
+    def service(
+        self, station_repo, block_repo, connection_repo, vehicle_repo, node_layout_repo
+    ):
         return GraphAppService(
             station_repo=station_repo,
             block_repo=block_repo,
@@ -58,7 +68,9 @@ class TestGraphAppService:
             node_layout_repo=node_layout_repo,
         )
 
-    async def test_get_graph_assembles_all_data(self, service, station_repo, block_repo, vehicle_repo):
+    async def test_get_graph_assembles_all_data(
+        self, service, station_repo, block_repo, vehicle_repo
+    ):
         graph = await service.get_graph()
         assert len(graph.stations) == 1
         assert len(graph.blocks) == 1

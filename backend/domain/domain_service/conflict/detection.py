@@ -3,8 +3,6 @@ from __future__ import annotations
 from dataclasses import replace
 from uuid import UUID
 
-from domain.vehicle.model import Vehicle
-
 from domain.domain_service.conflict.model import (
     BlockConflict,
     BlockOccupancy,
@@ -19,6 +17,7 @@ from domain.domain_service.conflict.model import (
     Timed,
     VehicleConflict,
 )
+from domain.vehicle.model import Vehicle
 
 
 def find_time_overlaps[T: Timed](entries: list[T]) -> list[tuple[T, T]]:
@@ -50,10 +49,14 @@ def detect_time_overlap_conflicts(
             prev, curr = windows[i], windows[j]
             if curr.start >= prev.end:
                 break
-            conflicts.append(VehicleConflict(
-                vehicle_id, prev.service_id, curr.service_id,
-                "Overlapping time windows",
-            ))
+            conflicts.append(
+                VehicleConflict(
+                    vehicle_id,
+                    prev.service_id,
+                    curr.service_id,
+                    "Overlapping time windows",
+                )
+            )
     return conflicts
 
 
@@ -65,10 +68,14 @@ def detect_location_discontinuity_conflicts(
     for i in range(1, len(endpoints)):
         prev, curr = endpoints[i - 1], endpoints[i]
         if curr.first_node_id != prev.last_node_id:
-            conflicts.append(VehicleConflict(
-                vehicle_id, prev.service_id, curr.service_id,
-                "Location discontinuity",
-            ))
+            conflicts.append(
+                VehicleConflict(
+                    vehicle_id,
+                    prev.service_id,
+                    curr.service_id,
+                    "Location discontinuity",
+                )
+            )
     return conflicts
 
 
@@ -115,7 +122,9 @@ def detect_battery_conflicts(
             case ChargeStop():
                 sim.charge(step.charge_seconds)
                 if not sim.can_depart():
-                    insufficient_charge.append(InsufficientChargeConflict(service_id=step.service_id))
+                    insufficient_charge.append(
+                        InsufficientChargeConflict(service_id=step.service_id)
+                    )
                     break
             case BlockTraversal():
                 sim.traverse_block()

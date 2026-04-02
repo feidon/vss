@@ -1,15 +1,15 @@
 from uuid import uuid7
 
 import pytest
-
 from application.service.dto import RouteStop
 from application.service.service import ServiceAppService
+from domain.error import DomainError
+from domain.vehicle.model import Vehicle
 from infra.memory.block_repo import InMemoryBlockRepository
 from infra.memory.connection_repo import InMemoryConnectionRepository
 from infra.memory.service_repo import InMemoryServiceRepository
 from infra.memory.station_repo import InMemoryStationRepository
 from infra.memory.vehicle_repo import InMemoryVehicleRepository
-from domain.vehicle.model import Vehicle
 from infra.seed import (
     PLATFORM_ID_BY_NAME,
     VEHICLE_ID_BY_NAME,
@@ -55,7 +55,9 @@ class TestValidateRoute:
             RouteStop(node_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=90),
         ]
         result = await app.validate_route(
-            VEHICLE_ID_BY_NAME["V1"], stops, start_time=1000,
+            VEHICLE_ID_BY_NAME["V1"],
+            stops,
+            start_time=1000,
         )
 
         # Path: P1A -> B3 -> B5 -> P2A
@@ -72,7 +74,9 @@ class TestValidateRoute:
             RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
         ]
         result = await app.validate_route(
-            VEHICLE_ID_BY_NAME["V1"], stops, start_time=0,
+            VEHICLE_ID_BY_NAME["V1"],
+            stops,
+            start_time=0,
         )
 
         assert result.path[0].id == YARD_ID
@@ -86,9 +90,11 @@ class TestValidateRoute:
             RouteStop(node_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=60),
             RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
         ]
-        with pytest.raises(ValueError, match="No route"):
+        with pytest.raises(DomainError, match="No route"):
             await app.validate_route(
-                VEHICLE_ID_BY_NAME["V1"], stops, start_time=0,
+                VEHICLE_ID_BY_NAME["V1"],
+                stops,
+                start_time=0,
             )
 
     async def test_low_battery_detected(self):
@@ -115,9 +121,11 @@ class TestValidateRoute:
             RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
             RouteStop(node_id=uuid7(), dwell_time=60),
         ]
-        with pytest.raises(ValueError, match="Stop.*not found"):
+        with pytest.raises(DomainError, match="Stop.*not found"):
             await app.validate_route(
-                VEHICLE_ID_BY_NAME["V1"], stops, start_time=0,
+                VEHICLE_ID_BY_NAME["V1"],
+                stops,
+                start_time=0,
             )
 
     async def test_vehicle_not_found_rejected(self):
@@ -127,5 +135,5 @@ class TestValidateRoute:
             RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
             RouteStop(node_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=60),
         ]
-        with pytest.raises(ValueError, match="Vehicle.*not found"):
+        with pytest.raises(DomainError, match="Vehicle.*not found"):
             await app.validate_route(uuid7(), stops, start_time=0)

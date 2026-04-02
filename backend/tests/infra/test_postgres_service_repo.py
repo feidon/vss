@@ -1,10 +1,10 @@
 from uuid import uuid7
 
 import pytest
-
 from domain.network.model import Node, NodeType
 from domain.service.model import Service, TimetableEntry
 from infra.postgres.service_repo import PostgresServiceRepository
+
 from tests.conftest import insert_vehicle
 
 pytestmark = pytest.mark.postgres
@@ -15,7 +15,9 @@ def make_service(vehicle_id=None, with_route=False) -> Service:
     if with_route:
         node_id = uuid7()
         path = [Node(id=node_id, type=NodeType.PLATFORM)]
-        timetable = [TimetableEntry(order=0, node_id=node_id, arrival=1000, departure=1060)]
+        timetable = [
+            TimetableEntry(order=0, node_id=node_id, arrival=1000, departure=1060)
+        ]
     else:
         path = []
         timetable = []
@@ -61,7 +63,9 @@ class TestPostgresServiceRepository:
         # Update with a route
         node_id = uuid7()
         service.path = [Node(id=node_id, type=NodeType.BLOCK)]
-        service.timetable = [TimetableEntry(order=0, node_id=node_id, arrival=2000, departure=2030)]
+        service.timetable = [
+            TimetableEntry(order=0, node_id=node_id, arrival=2000, departure=2030)
+        ]
         await repo.save(service)
 
         found = await repo.find_by_id(service.id)

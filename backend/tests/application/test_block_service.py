@@ -1,9 +1,9 @@
 from uuid import uuid7
 
 import pytest
-
 from application.block.service import BlockAppService
 from domain.block.model import Block
+from domain.error import DomainError
 from infra.memory.block_repo import InMemoryBlockRepository
 
 
@@ -37,9 +37,11 @@ class TestBlockAppService:
 
     async def test_update_block_rejects_invalid_time(self, service, repo):
         block = await self._given_block(repo)
-        with pytest.raises(ValueError, match="traversal_time_seconds must be positive"):
+        with pytest.raises(
+            DomainError, match="traversal_time_seconds must be positive"
+        ):
             await service.update_block(block.id, traversal_time_seconds=0)
 
     async def test_update_block_not_found(self, service):
-        with pytest.raises(ValueError, match="not found"):
+        with pytest.raises(DomainError, match="not found"):
             await service.update_block(uuid7(), traversal_time_seconds=60)

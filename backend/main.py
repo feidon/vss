@@ -1,34 +1,33 @@
-import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from api.block.routes import router as block_router
+from api.error_handler import domain_error_handler
+from api.route.routes import router as route_router
+from api.service.routes import router as service_router
+from domain.error import DomainError
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-
-from api.block.routes import router as block_router
-from api.route.routes import router as route_router
-from api.service.routes import router as service_router
+from infra.postgres.seed import seed_database
+from infra.postgres.session import async_session, engine
+from infra.postgres.tables import metadata
 
 STATIC_DIR = Path(__file__).parent / "static"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if os.getenv("DB") == "postgres":
-        from infra.postgres.tables import metadata
-        from infra.postgres.seed import seed_database
-        from infra.postgres.session import async_session, engine
+    async with engine.begin() as conn:
+        await conn.run_sync(metadata.create_all)
 
-        async with engine.begin() as conn:
-            await conn.run_sync(metadata.create_all)
-
-        async with async_session() as session:
-            await seed_database(session)
+    async with async_session() as session:
+        await seed_database(session)
     yield
 
 
 app = FastAPI(lifespan=lifespan)
+app.add_exception_handler(DomainError, domain_error_handler)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

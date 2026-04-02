@@ -1,7 +1,7 @@
 from uuid import uuid7
 
 import pytest
-
+from domain.error import DomainError
 from domain.network.model import NodeType
 from domain.station.model import Platform, Station
 
@@ -61,7 +61,7 @@ class TestStation:
         pid = uuid7()
         p = Platform(id=pid, name="P1")
         s = Station(id=uuid7(), name="S1", is_yard=False, platforms=[p])
-        with pytest.raises(ValueError, match="already exists"):
+        with pytest.raises(DomainError, match="already exists"):
             s.add_platform(Platform(id=pid, name="P1-dup"))
 
     def test_remove_platform(self):
@@ -74,7 +74,7 @@ class TestStation:
 
     def test_remove_nonexistent_platform_rejected(self):
         s = Station(id=uuid7(), name="S1", is_yard=False, platforms=[])
-        with pytest.raises(ValueError, match="not found"):
+        with pytest.raises(DomainError, match="not found"):
             s.remove_platform(uuid7())
 
     def test_equality_by_id(self):
@@ -92,7 +92,7 @@ class TestStation:
 
     def test_to_timetable_entry_non_yard_rejected(self):
         s = Station(id=uuid7(), name="S1", is_yard=False, platforms=[])
-        with pytest.raises(ValueError, match="Only yards"):
+        with pytest.raises(DomainError, match="Only yards"):
             s.to_timetable_entry(order=0, arrival=0, departure=10)
 
     def test_hashable(self):

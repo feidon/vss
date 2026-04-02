@@ -1,5 +1,4 @@
 import pytest
-
 from infra.seed import PLATFORM_ID_BY_NAME, VEHICLE_ID_BY_NAME, YARD_ID
 
 pytestmark = pytest.mark.postgres

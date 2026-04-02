@@ -1,7 +1,6 @@
 from uuid import uuid7
 
 import pytest
-
 from domain.network.model import NodeConnection
 from infra.postgres.connection_repo import PostgresConnectionRepository
 from infra.postgres.tables import node_connections_table
@@ -18,10 +17,12 @@ class TestPostgresConnectionRepository:
     async def test_find_all_returns_frozenset(self, repo, pg_session):
         id_a, id_b, id_c = uuid7(), uuid7(), uuid7()
         await pg_session.execute(
-            insert(node_connections_table).values([
-                {"from_id": id_a, "to_id": id_b},
-                {"from_id": id_b, "to_id": id_c},
-            ])
+            insert(node_connections_table).values(
+                [
+                    {"from_id": id_a, "to_id": id_b},
+                    {"from_id": id_b, "to_id": id_c},
+                ]
+            )
         )
         await pg_session.commit()
 

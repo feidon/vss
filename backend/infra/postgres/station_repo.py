@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from domain.station.model import Platform, Station
+from domain.station.repository import StationRepository
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from domain.station.model import Platform, Station
-from domain.station.repository import StationRepository
 from infra.postgres.tables import platforms_table, stations_table
 
 

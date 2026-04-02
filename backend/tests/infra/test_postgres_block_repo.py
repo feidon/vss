@@ -1,7 +1,6 @@
 from uuid import uuid7
 
 import pytest
-
 from domain.block.model import Block
 from infra.postgres.block_repo import PostgresBlockRepository
 

@@ -1,9 +1,9 @@
 from uuid import uuid7
 
 import pytest
-
 from domain.vehicle.model import Vehicle
 from infra.postgres.vehicle_repo import PostgresVehicleRepository
+
 from tests.conftest import insert_vehicle
 
 pytestmark = pytest.mark.postgres

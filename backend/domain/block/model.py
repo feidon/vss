@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from uuid import UUID
 
+from domain.error import DomainError, ErrorCode
 from domain.network.model import Node, NodeType
 from domain.service.model import TimetableEntry
 from domain.shared.types import EpochSeconds
@@ -42,4 +43,6 @@ class Block:
     @staticmethod
     def _validate_traversal_time(value: int) -> None:
         if value <= 0:
-            raise ValueError("traversal_time_seconds must be positive")
+            raise DomainError(
+                ErrorCode.VALIDATION, "traversal_time_seconds must be positive"
+            )

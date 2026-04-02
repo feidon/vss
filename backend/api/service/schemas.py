@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from application.graph.dto import GraphData
+from domain.network.model import NodeType
+from domain.service.model import Service
 from pydantic import BaseModel, Field
 
 from api.shared.schemas import (
@@ -11,11 +14,6 @@ from api.shared.schemas import (
     TimetableEntrySchema,
     YardNodeSchema,
 )
-from application.graph.dto import GraphData
-from domain.block.model import Block
-from domain.network.model import NodeType
-from domain.service.model import Service
-from domain.station.model import Platform
 
 
 class CreateServiceRequest(BaseModel):
@@ -47,6 +45,7 @@ class ServiceResponse(BaseModel):
 
 
 # ── Graph sub-schemas (for service detail) ────────────────────
+
 
 class ConnectionSchema(BaseModel):
     from_id: UUID
@@ -82,18 +81,22 @@ class GraphSchema(BaseModel):
 
         for platform in data.all_platforms:
             x, y = layouts.get(platform.id, (0.0, 0.0))
-            nodes.append(PlatformNodeSchema(id=platform.id, name=platform.name, x=x, y=y))
+            nodes.append(
+                PlatformNodeSchema(id=platform.id, name=platform.name, x=x, y=y)
+            )
 
         for block in data.blocks:
             x, y = layouts.get(block.id, (0.0, 0.0))
-            nodes.append(BlockNodeSchema(
-                id=block.id,
-                name=block.name,
-                group=block.group,
-                traversal_time_seconds=block.traversal_time_seconds,
-                x=x,
-                y=y,
-            ))
+            nodes.append(
+                BlockNodeSchema(
+                    id=block.id,
+                    name=block.name,
+                    group=block.group,
+                    traversal_time_seconds=block.traversal_time_seconds,
+                    x=x,
+                    y=y,
+                )
+            )
 
         return cls(
             nodes=nodes,
@@ -110,10 +113,7 @@ class GraphSchema(BaseModel):
                 )
                 for s in data.stations
             ],
-            vehicles=[
-                VehicleSchema(id=v.id, name=v.name)
-                for v in data.vehicles
-            ],
+            vehicles=[VehicleSchema(id=v.id, name=v.name) for v in data.vehicles],
         )
 
 
@@ -142,16 +142,24 @@ class ServiceDetailResponse(BaseModel):
         for node in service.path:
             if node.type == NodeType.BLOCK and node.id in blocks:
                 b = blocks[node.id]
-                path_nodes.append(BlockNodeSchema(
-                    id=b.id, name=b.name, group=b.group, traversal_time_seconds=b.traversal_time_seconds,
-                ))
+                path_nodes.append(
+                    BlockNodeSchema(
+                        id=b.id,
+                        name=b.name,
+                        group=b.group,
+                        traversal_time_seconds=b.traversal_time_seconds,
+                    )
+                )
             elif node.type == NodeType.PLATFORM and node.id in platforms:
                 p = platforms[node.id]
                 path_nodes.append(PlatformNodeSchema(id=p.id, name=p.name))
             elif node.type == NodeType.YARD:
-                path_nodes.append(YardNodeSchema(
-                    id=node.id, name=yards.get(node.id, "Y"),
-                ))
+                path_nodes.append(
+                    YardNodeSchema(
+                        id=node.id,
+                        name=yards.get(node.id, "Y"),
+                    )
+                )
 
         return cls(
             id=service.id,
