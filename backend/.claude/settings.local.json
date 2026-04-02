@@ -30,7 +30,8 @@
       "Bash(sudo docker:*)",
       "Bash(PGPASSWORD=vss psql:*)",
       "Bash(python3:*)",
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "Bash(openspec --version)"
     ]
   },
   "enabledMcpjsonServers": [

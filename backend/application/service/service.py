@@ -9,11 +9,12 @@ from domain.domain_service.conflict.detection import detect_battery_conflicts
 from domain.domain_service.conflict.preparation import build_battery_steps
 from domain.domain_service.route_finder import RouteFinder
 from domain.error import DomainError, ErrorCode
-from domain.network.model import Node, NodeType
+from domain.network.model import Node
 from domain.network.repository import ConnectionRepository
 from domain.service.model import Service, TimetableEntry
 from domain.service.repository import ServiceRepository
 from domain.shared.types import EpochSeconds
+from domain.station.model import Platform, Station
 from domain.station.repository import StationRepository
 from domain.vehicle.repository import VehicleRepository
 
@@ -122,21 +123,26 @@ class ServiceAppService:
         self, stops: list[RouteStop], start_time: EpochSeconds
     ) -> tuple[list[Node], list[TimetableEntry]]:
         stations = await self._station_repo.find_all()
-        all_platforms = {p.id: p for s in stations for p in s.platforms}
-        yard_ids = {s.id for s in stations if s.is_yard}
-        self._validate_stops_exist(stops, all_platforms, yard_ids)
-
         connections = await self._connection_repo.find_all()
         all_blocks = await self._block_repo.find_all()
 
-        full_path = self._build_node_path(
-            stops, connections, all_blocks, all_platforms, yard_ids
+        all_platforms = {p.id: p for s in stations for p in s.platforms}
+        yards = {s.id: s for s in stations if s.is_yard}
+        blocks_by_id = {b.id: b for b in all_blocks}
+
+        self._validate_stops_exist(stops, all_platforms, yards)
+
+        stop_ids = [s.node_id for s in stops]
+        dwell_by_stop = {s.node_id: s.dwell_time for s in stops}
+        full_path_ids = RouteFinder.build_full_path(
+            stop_ids, connections, {b.id for b in all_blocks}
+        )
+
+        full_path = self._resolve_nodes(
+            full_path_ids, blocks_by_id, all_platforms, yards
         )
         timetable = self._compute_timetable(
-            full_path,
-            {b.id: b for b in all_blocks},
-            {s.node_id: s.dwell_time for s in stops},
-            start_time,
+            full_path, blocks_by_id, all_platforms, yards, dwell_by_stop, start_time
         )
 
         return full_path, timetable
@@ -147,10 +153,10 @@ class ServiceAppService:
     @staticmethod
     def _validate_stops_exist(
         stops: list[RouteStop],
-        all_platforms: dict[UUID, object],
-        yard_ids: set[UUID],
+        all_platforms: dict[UUID, Platform],
+        yards: dict[UUID, Station],
     ) -> None:
-        valid_ids = set(all_platforms.keys()) | yard_ids
+        valid_ids = set(all_platforms.keys()) | set(yards.keys())
         for stop in stops:
             if stop.node_id not in valid_ids:
                 raise DomainError(
@@ -158,31 +164,30 @@ class ServiceAppService:
                 )
 
     @staticmethod
-    def _build_node_path(
-        stops: list[RouteStop],
-        connections: frozenset,
-        all_blocks: list[Block],
-        all_platforms: dict[UUID, object],
-        yard_ids: set[UUID],
+    def _resolve_nodes(
+        path_ids: list[UUID],
+        blocks_by_id: dict[UUID, Block],
+        all_platforms: dict[UUID, Platform],
+        yards: dict[UUID, Station],
     ) -> list[Node]:
-        block_ids = {b.id for b in all_blocks}
-        stop_ids = [s.node_id for s in stops]
-        full_path_ids = RouteFinder.build_full_path(stop_ids, connections, block_ids)
-
-        node_types: dict[UUID, NodeType] = {}
-        for b in all_blocks:
-            node_types[b.id] = NodeType.BLOCK
-        for pid in all_platforms:
-            node_types[pid] = NodeType.PLATFORM
-        for yid in yard_ids:
-            node_types[yid] = NodeType.YARD
-
-        return [Node(id=nid, type=node_types[nid]) for nid in full_path_ids]
+        nodes: list[Node] = []
+        for nid in path_ids:
+            if nid in blocks_by_id:
+                nodes.append(blocks_by_id[nid].to_node())
+            elif nid in all_platforms:
+                nodes.append(all_platforms[nid].to_node())
+            elif nid in yards:
+                nodes.append(yards[nid].to_node())
+            else:
+                raise DomainError(ErrorCode.VALIDATION, f"Unknown node {nid} in path")
+        return nodes
 
     @staticmethod
     def _compute_timetable(
         full_path: list[Node],
         blocks_by_id: dict[UUID, Block],
+        all_platforms: dict[UUID, Platform],
+        yards: dict[UUID, Station],
         dwell_by_stop: dict[UUID, int],
         start_time: EpochSeconds,
     ) -> list[TimetableEntry]:
@@ -190,21 +195,21 @@ class ServiceAppService:
         current_time = start_time
 
         for order, node in enumerate(full_path):
-            if node.type == NodeType.BLOCK:
-                block = blocks_by_id[node.id]
-                departure = current_time + block.traversal_time_seconds
-            else:
+            if node.id in blocks_by_id:
+                entry = blocks_by_id[node.id].to_timetable_entry(order, current_time)
+            elif node.id in all_platforms:
                 dwell = dwell_by_stop.get(node.id, 0)
-                departure = current_time + dwell
-
-            entries.append(
-                TimetableEntry(
-                    order=order,
-                    node_id=node.id,
-                    arrival=current_time,
-                    departure=departure,
+                entry = all_platforms[node.id].to_timetable_entry(
+                    order, current_time, dwell
                 )
-            )
-            current_time = departure
+            elif node.id in yards:
+                dwell = dwell_by_stop.get(node.id, 0)
+                entry = yards[node.id].to_timetable_entry(order, current_time, dwell)
+            else:
+                raise DomainError(
+                    ErrorCode.VALIDATION, f"Unknown node {node.id} in timetable"
+                )
+            entries.append(entry)
+            current_time = entry.departure
 
         return entries

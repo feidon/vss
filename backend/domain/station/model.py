@@ -21,13 +21,13 @@ class Platform:
         self,
         order: int,
         arrival: EpochSeconds,
-        departure: EpochSeconds,
+        dwell_time: int,
     ) -> TimetableEntry:
         return TimetableEntry(
             order=order,
             node_id=self.id,
             arrival=arrival,
-            departure=departure,
+            departure=arrival + dwell_time,
         )
 
     def __eq__(self, other: object) -> bool:
@@ -55,7 +55,7 @@ class Station:
         self,
         order: int,
         arrival: EpochSeconds,
-        departure: EpochSeconds,
+        dwell_time: int,
     ) -> TimetableEntry:
         if not self.is_yard:
             raise DomainError(
@@ -65,7 +65,7 @@ class Station:
             order=order,
             node_id=self.id,
             arrival=arrival,
-            departure=departure,
+            departure=arrival + dwell_time,
         )
 
     def add_platform(self, platform: Platform) -> None:

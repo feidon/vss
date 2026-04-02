@@ -19,7 +19,7 @@ class TestPlatform:
 
     def test_to_timetable_entry(self):
         p = Platform(id=uuid7(), name="P1")
-        entry = p.to_timetable_entry(order=0, arrival=100, departure=200)
+        entry = p.to_timetable_entry(order=0, arrival=100, dwell_time=100)
         assert entry.node_id == p.id
         assert entry.order == 0
         assert entry.arrival == 100
@@ -85,7 +85,7 @@ class TestStation:
 
     def test_to_timetable_entry_yard(self):
         s = Station(id=uuid7(), name="Yard", is_yard=True, platforms=[])
-        entry = s.to_timetable_entry(order=0, arrival=50, departure=100)
+        entry = s.to_timetable_entry(order=0, arrival=50, dwell_time=50)
         assert entry.node_id == s.id
         assert entry.arrival == 50
         assert entry.departure == 100
@@ -93,7 +93,7 @@ class TestStation:
     def test_to_timetable_entry_non_yard_rejected(self):
         s = Station(id=uuid7(), name="S1", is_yard=False, platforms=[])
         with pytest.raises(DomainError, match="Only yards"):
-            s.to_timetable_entry(order=0, arrival=0, departure=10)
+            s.to_timetable_entry(order=0, arrival=0, dwell_time=10)
 
     def test_hashable(self):
         sid = uuid7()
