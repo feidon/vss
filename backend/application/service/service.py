@@ -7,9 +7,9 @@ from application.service.errors import ConflictError
 from domain.block.model import Block
 from domain.block.repository import BlockRepository
 from domain.network.model import Node, NodeType
-from domain.network.pathfinder import RouteFinder
+from domain.domain_service.pathfinder import RouteFinder
 from domain.network.repository import ConnectionRepository
-from domain.service.conflict import detect_conflicts
+from domain.domain_service.conflict import detect_conflicts
 from domain.service.model import Service, TimetableEntry
 from domain.shared.types import EpochSeconds
 from domain.service.repository import ServiceRepository

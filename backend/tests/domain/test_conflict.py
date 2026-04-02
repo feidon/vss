@@ -5,7 +5,7 @@ import pytest
 
 from domain.block.model import Block
 from domain.network.model import Node, NodeType
-from domain.service.conflict import detect_conflicts
+from domain.domain_service.conflict import detect_conflicts
 from domain.service.model import Service, TimetableEntry
 from domain.vehicle.model import Vehicle
 
@@ -170,6 +170,16 @@ class TestInterlockingConflicts:
         assert result.interlocking_conflicts == []
 
 
+def _build_block_segment(path, timetable, num_blocks, t, order, block_time):
+    for _ in range(num_blocks):
+        node = Node(id=uuid7(), type=NodeType.BLOCK)
+        path.append(node)
+        timetable.append(TimetableEntry(order=order, node_id=node.id, arrival=t, departure=t + block_time))
+        t += block_time
+        order += 1
+    return t, order
+
+
 def make_multi_block_service(
     vehicle_id,
     num_blocks: int,
@@ -194,16 +204,40 @@ def make_multi_block_service(
         path.append(yard_node)
         timetable.append(TimetableEntry(order=order, node_id=yard_node.id, arrival=t, departure=t))
         order += 1
-    for i in range(num_blocks):
-        node = Node(id=uuid7(), type=NodeType.BLOCK)
-        path.append(node)
-        timetable.append(TimetableEntry(order=order, node_id=node.id, arrival=t, departure=t + block_time))
-        t += block_time
-        order += 1
+    t, order = _build_block_segment(path, timetable, num_blocks, t, order, block_time)
     if ends_at_yard:
         yard_node = Node(id=uuid7(), type=NodeType.YARD)
         path.append(yard_node)
         timetable.append(TimetableEntry(order=order, node_id=yard_node.id, arrival=t, departure=t))
+    return Service(
+        id=next(_id_counter),
+        name="S",
+        vehicle_id=vehicle_id,
+        path=path,
+        timetable=timetable,
+    )
+
+
+def make_service_with_mid_yard(
+    vehicle_id,
+    blocks_before: int,
+    yard_dwell: int,
+    blocks_after: int,
+    arrival: int = 0,
+    block_time: int = 10,
+) -> Service:
+    """Create a service: N blocks -> yard (dwell) -> M blocks."""
+    path = []
+    timetable = []
+    t = arrival
+    order = 0
+    t, order = _build_block_segment(path, timetable, blocks_before, t, order, block_time)
+    yard = Node(id=uuid7(), type=NodeType.YARD)
+    path.append(yard)
+    timetable.append(TimetableEntry(order=order, node_id=yard.id, arrival=t, departure=t + yard_dwell))
+    t += yard_dwell
+    order += 1
+    t, order = _build_block_segment(path, timetable, blocks_after, t, order, block_time)
     return Service(
         id=next(_id_counter),
         name="S",
@@ -294,29 +328,7 @@ class TestBatteryConflicts:
         # Without yard: 80 - 55 = 25 < 30 → low battery
         # With yard: 80 - 45 = 35, charge 960 // 12 = 80 → 100 (capped), can_depart OK,
         #   then 10 blocks → 90. No conflict.
-        yard = Node(id=uuid7(), type=NodeType.YARD)
-        path = []
-        timetable = []
-        t = 0
-        order = 0
-        for _ in range(45):
-            node = Node(id=uuid7(), type=NodeType.BLOCK)
-            path.append(node)
-            timetable.append(TimetableEntry(order=order, node_id=node.id, arrival=t, departure=t + 10))
-            t += 10
-            order += 1
-        # Yard with 960s dwell time
-        path.append(yard)
-        timetable.append(TimetableEntry(order=order, node_id=yard.id, arrival=t, departure=t + 960))
-        t += 960
-        order += 1
-        for _ in range(10):
-            node = Node(id=uuid7(), type=NodeType.BLOCK)
-            path.append(node)
-            timetable.append(TimetableEntry(order=order, node_id=node.id, arrival=t, departure=t + 10))
-            t += 10
-            order += 1
-        s = Service(id=next(_id_counter), name="S", vehicle_id=v.id, path=path, timetable=timetable)
+        s = make_service_with_mid_yard(v.id, blocks_before=45, yard_dwell=960, blocks_after=10)
 
         result = validate(s, [], vehicles=[v])
         assert result.low_battery_conflicts == []
@@ -325,27 +337,9 @@ class TestBatteryConflicts:
     def test_mid_service_yard_insufficient_charge(self):
         """Yard mid-service but dwell too short to reach 80% → can't depart."""
         v = Vehicle(id=uuid7(), name="V1")
-        # 50 blocks → yard (100s dwell) → blocks
+        # 50 blocks → yard (100s dwell) → 1 block
         # 80 - 50 = 30, charge 100 // 12 = 8 → 38 < 80 → insufficient charge
-        yard = Node(id=uuid7(), type=NodeType.YARD)
-        path = []
-        timetable = []
-        t = 0
-        order = 0
-        for _ in range(50):
-            node = Node(id=uuid7(), type=NodeType.BLOCK)
-            path.append(node)
-            timetable.append(TimetableEntry(order=order, node_id=node.id, arrival=t, departure=t + 10))
-            t += 10
-            order += 1
-        path.append(yard)
-        timetable.append(TimetableEntry(order=order, node_id=yard.id, arrival=t, departure=t + 100))
-        t += 100
-        order += 1
-        node = Node(id=uuid7(), type=NodeType.BLOCK)
-        path.append(node)
-        timetable.append(TimetableEntry(order=order, node_id=node.id, arrival=t, departure=t + 10))
-        s = Service(id=next(_id_counter), name="S", vehicle_id=v.id, path=path, timetable=timetable)
+        s = make_service_with_mid_yard(v.id, blocks_before=50, yard_dwell=100, blocks_after=1)
 
         result = validate(s, [], vehicles=[v])
         assert len(result.insufficient_charge_conflicts) == 1
@@ -390,13 +384,10 @@ class TestBatteryConflicts:
         assert result.low_battery_conflicts == []
         assert result.insufficient_charge_conflicts == []
 
-    def test_yard_at_end_of_last_service_no_conflict(self):
-        """A trailing yard with no subsequent entry charges 0 but battery was fine before it."""
+    def test_yard_at_end_triggers_insufficient_charge_when_battery_low(self):
+        """Trailing yard with no idle time → charge 0 → battery < 80% → insufficient charge."""
         v = Vehicle(id=uuid7(), name="V1")
         # 5 blocks → 75%, yard at end → charge 0 → 75% < 80% → can't depart
-        # But this is correct — vehicle is parked at yard, that's fine if no next service
-        # Actually, can_depart is checked at the yard. 75 < 80 → insufficient charge.
-        # This is the expected behavior: the yard check is unconditional.
         s = make_multi_block_service(v.id, num_blocks=5, arrival=0, block_time=10, ends_at_yard=True)
 
         result = validate(s, [], vehicles=[v])

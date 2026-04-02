@@ -2,7 +2,7 @@ from uuid import uuid7
 
 import pytest
 
-from domain.network.pathfinder import RouteFinder
+from domain.domain_service.pathfinder import RouteFinder
 from infra.seed import BLOCK_ID_BY_NAME, PLATFORM_ID_BY_NAME, create_connections
 
 

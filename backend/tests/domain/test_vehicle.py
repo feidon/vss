@@ -62,20 +62,20 @@ class TestVehicleCanDepart:
         assert v.can_depart() is False
 
 
-class TestVehicleConsumeBattery:
-    def test_normal_deduction(self):
+class TestVehicleTraverseBlock:
+    def test_traversal_costs_one_percent(self):
         v = Vehicle(id=uuid7(), name="V1", battery=100)
-        v.consume_battery(5)
-        assert v.battery == 95
+        v.traverse_block()
+        assert v.battery == 99
 
     def test_exactly_at_critical(self):
-        v = Vehicle(id=uuid7(), name="V1", battery=35)
-        v.consume_battery(5)  # 35 - 5 = 30, exactly at threshold
+        v = Vehicle(id=uuid7(), name="V1", battery=31)
+        v.traverse_block()  # 31 - 1 = 30, exactly at threshold
         assert v.battery == 30
         assert v.is_battery_critical() is False
 
     def test_below_critical(self):
-        v = Vehicle(id=uuid7(), name="V1", battery=35)
-        v.consume_battery(6)  # 35 - 6 = 29 < 30
+        v = Vehicle(id=uuid7(), name="V1", battery=30)
+        v.traverse_block()  # 30 - 1 = 29 < 30
         assert v.battery == 29
         assert v.is_battery_critical() is True

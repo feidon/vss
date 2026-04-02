@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from domain.service.conflict import ServiceConflicts
+from domain.domain_service.conflict import ServiceConflicts
 
 
 class ConflictError(Exception):

@@ -20,8 +20,8 @@ class Vehicle:
     def can_depart(self) -> bool:
         return self.battery >= 80
 
-    def consume_battery(self, block_num: int) -> None:
-        self.battery -= block_num
+    def traverse_block(self) -> None:
+        self.battery -= 1
 
     def is_battery_critical(self) -> bool:
         return self.battery < 30

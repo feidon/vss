@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Protocol
 from uuid import UUID
 
@@ -31,6 +31,16 @@ class BlockConflict:
     overlap_start: int
     overlap_end: int
 
+    @classmethod
+    def from_overlap(cls, block_id: UUID, a: _BlockOccupancy, b: _BlockOccupancy) -> BlockConflict:
+        return cls(
+            block_id=block_id,
+            service_a_id=a.service_id,
+            service_b_id=b.service_id,
+            overlap_start=b.arrival,
+            overlap_end=a.departure,
+        )
+
 
 @dataclass(frozen=True)
 class InterlockingConflict:
@@ -41,6 +51,18 @@ class InterlockingConflict:
     service_b_id: int
     overlap_start: int
     overlap_end: int
+
+    @classmethod
+    def from_overlap(cls, group: int, a: _GroupOccupancy, b: _GroupOccupancy) -> InterlockingConflict:
+        return cls(
+            group=group,
+            block_a_id=a.block_id,
+            block_b_id=b.block_id,
+            service_a_id=a.service_id,
+            service_b_id=b.service_id,
+            overlap_start=b.arrival,
+            overlap_end=a.departure,
+        )
 
 @dataclass(frozen=True)
 class LowBatteryConflict:
@@ -85,11 +107,17 @@ class _ServiceWindow:
 
 
 @dataclass(frozen=True)
-class _ServiceNode:
+class _ServiceEndpoints:
     service_id: int
     first_node_id: UUID
     last_node_id: UUID
     start: EpochSeconds
+
+
+@dataclass(frozen=True)
+class _VehicleSchedule:
+    windows: list[_ServiceWindow]
+    endpoints: list[_ServiceEndpoints]
 
 
 @dataclass(frozen=True)
@@ -108,9 +136,23 @@ class _GroupOccupancy:
 
 
 @dataclass(frozen=True)
-class _BatteryCost:
-    cost: int
+class _NodeEntry:
+    """Intermediate timetable entry for battery simulation."""
+    time: EpochSeconds
     node_type: NodeType
+    service_id: int
+
+
+@dataclass(frozen=True)
+class _ChargeStop:
+    """A yard stop where the vehicle charges."""
+    charge_seconds: int
+    service_id: int
+
+
+@dataclass(frozen=True)
+class _BlockTraversal:
+    """A block traversal that consumes 1% battery."""
     service_id: int
 
 
@@ -127,7 +169,7 @@ def detect_conflicts(
     all_services = [s for s in other_services if s.id != candidate.id]
     all_services.append(candidate)
 
-    windows, nodes = _build_service_windows(candidate.vehicle_id, all_services)
+    schedule = _build_vehicle_schedule(candidate.vehicle_id, all_services)
     block_occupancies, group_occupancies = _build_occupancies(all_services, blocks)
 
     low_battery: list[LowBatteryConflict] = []
@@ -136,16 +178,16 @@ def detect_conflicts(
         vehicle_by_id = {v.id: v for v in vehicles}
         candidate_vehicle = vehicle_by_id.get(candidate.vehicle_id)
         if candidate_vehicle is not None:
-            battery_entries = _build_battery_entries(
+            battery_steps = _build_battery_steps(
                 candidate_vehicle.id, all_services,
             )
             low_battery, insufficient_charge = _detect_battery_conflicts(
-                candidate_vehicle.battery, battery_entries,
+                candidate_vehicle, battery_steps,
             )
 
     vehicle_conflicts = (
-        _detect_time_overlap_conflicts(candidate.vehicle_id, windows)
-        + _detect_location_discontinuity_conflicts(candidate.vehicle_id, nodes)
+        _detect_time_overlap_conflicts(candidate.vehicle_id, schedule.windows)
+        + _detect_location_discontinuity_conflicts(candidate.vehicle_id, schedule.endpoints)
     )
 
     return ServiceConflicts(
@@ -160,34 +202,34 @@ def detect_conflicts(
 # ── Data preparation ───────────────────────────────────────
 
 
-def _build_service_windows(
+def _build_vehicle_schedule(
     vehicle_id: UUID,
     services: list[Service],
-) -> tuple[list[_ServiceWindow], list[_ServiceNode]]:
+) -> _VehicleSchedule:
     windows: list[_ServiceWindow] = []
-    nodes: list[_ServiceNode] = []
+    endpoints: list[_ServiceEndpoints] = []
     for svc in services:
         if svc.vehicle_id != vehicle_id or not svc.timetable:
             continue
-        
+
         entries = sorted(svc.timetable, key=lambda e: e.order)
-        
+
         windows.append(_ServiceWindow(
             service_id=svc.id,
             start=min(e.arrival for e in entries),
             end=max(e.departure for e in entries),
         ))
-        
-        nodes.append(_ServiceNode(
+
+        endpoints.append(_ServiceEndpoints(
             service_id=svc.id,
             first_node_id=entries[0].node_id,
             last_node_id=entries[-1].node_id,
             start=min(e.arrival for e in entries),
         ))
-        
+
     windows.sort(key=lambda w: w.start)
-    nodes.sort(key=lambda w: w.start)
-    return (windows, nodes)
+    endpoints.sort(key=lambda w: w.start)
+    return _VehicleSchedule(windows, endpoints)
 
 
 def _build_occupancies(
@@ -211,38 +253,32 @@ def _build_occupancies(
     return (by_block, by_group)
 
 
-def _build_battery_entries(
+def _build_battery_steps(
     vehicle_id: UUID,
     services: list[Service],
-) -> list[_BatteryCost]:
-    entries: list[tuple[EpochSeconds, NodeType, int]] = []
+) -> list[_ChargeStop | _BlockTraversal]:
+    node_entries: list[_NodeEntry] = []
 
     for service in services:
-        if service.vehicle_id != vehicle_id:
+        if service.vehicle_id != vehicle_id or not service.timetable:
             continue
 
-        if not service.timetable:
-            continue
-
-        node_map = {n.id:n.type for n in service.path}
+        node_map = {n.id: n.type for n in service.path}
         for t in service.timetable:
             if node_map[t.node_id] != NodeType.PLATFORM:
-                entries.append((t.arrival, node_map[t.node_id], service.id))
+                node_entries.append(_NodeEntry(t.arrival, node_map[t.node_id], service.id))
 
-    entries.sort(key=lambda e: e[0])
+    node_entries.sort(key=lambda e: e.time)
 
-    costs: list[_BatteryCost] = []
-    for i in range(len(entries)):
-        if entries[i][1] == NodeType.YARD:
-            if i + 1 < len(entries):
-                charge_time = entries[i + 1][0] - entries[i][0]
-            else:
-                charge_time = 0
-            costs.append(_BatteryCost(charge_time, NodeType.YARD, entries[i][2]))
+    steps: list[_ChargeStop | _BlockTraversal] = []
+    for i, entry in enumerate(node_entries):
+        if entry.node_type == NodeType.YARD:
+            next_time = node_entries[i + 1].time if i + 1 < len(node_entries) else entry.time
+            steps.append(_ChargeStop(next_time - entry.time, entry.service_id))
         else:
-            costs.append(_BatteryCost(1, NodeType.BLOCK, entries[i][2]))
+            steps.append(_BlockTraversal(entry.service_id))
 
-    return costs
+    return steps
 
 
 # ── Detection logic ─────────────────────────────────────────
@@ -286,11 +322,11 @@ def _detect_time_overlap_conflicts(
 
 def _detect_location_discontinuity_conflicts(
     vehicle_id: UUID,
-    nodes: list[_ServiceNode],
+    endpoints: list[_ServiceEndpoints],
 ) -> list[VehicleConflict]:
     conflicts: list[VehicleConflict] = []
-    for i in range(1, len(nodes)):
-        prev, curr = nodes[i - 1], nodes[i]
+    for i in range(1, len(endpoints)):
+        prev, curr = endpoints[i - 1], endpoints[i]
         if curr.first_node_id != prev.last_node_id:
             conflicts.append(VehicleConflict(
                 vehicle_id, prev.service_id, curr.service_id,
@@ -305,13 +341,7 @@ def _detect_block_conflicts(
     conflicts: list[BlockConflict] = []
     for block_id, occupancies in by_block.items():
         for a, b in _find_time_overlaps(occupancies):
-            conflicts.append(BlockConflict(
-                block_id=block_id,
-                service_a_id=a.service_id,
-                service_b_id=b.service_id,
-                overlap_start=b.arrival,
-                overlap_end=a.departure,
-            ))
+            conflicts.append(BlockConflict.from_overlap(block_id, a, b))
     return conflicts
 
 
@@ -327,40 +357,33 @@ def _detect_interlocking_conflicts(
         for a, b in _find_time_overlaps(occupancies):
             if a.block_id == b.block_id:
                 continue  # already caught by block conflict detection
-            conflicts.append(InterlockingConflict(
-                group=group,
-                block_a_id=a.block_id,
-                block_b_id=b.block_id,
-                service_a_id=a.service_id,
-                service_b_id=b.service_id,
-                overlap_start=b.arrival,
-                overlap_end=a.departure,
-            ))
+            conflicts.append(InterlockingConflict.from_overlap(group, a, b))
     return conflicts
 
 
 def _detect_battery_conflicts(
-    initial_battery: int,
-    entries: list[_BatteryCost],
+    vehicle: Vehicle,
+    steps: list[_ChargeStop | _BlockTraversal],
 ) -> tuple[list[LowBatteryConflict], list[InsufficientChargeConflict]]:
     low_battery: list[LowBatteryConflict] = []
     insufficient_charge: list[InsufficientChargeConflict] = []
 
-    if not entries:
+    if not steps:
         return (low_battery, insufficient_charge)
 
-    sim = Vehicle(id=UUID(int=0), name="", battery=initial_battery)
+    sim = replace(vehicle)
 
-    for entry in entries:
-        if entry.node_type == NodeType.YARD:
-            sim.charge(entry.cost)
-            if not sim.can_depart():
-                insufficient_charge.append(InsufficientChargeConflict(service_id=entry.service_id))
-                break
-        else:
-            sim.consume_battery(entry.cost)
-            if sim.is_battery_critical():
-                low_battery.append(LowBatteryConflict(service_id=entry.service_id))
-                break
+    for step in steps:
+        match step:
+            case _ChargeStop():
+                sim.charge(step.charge_seconds)
+                if not sim.can_depart():
+                    insufficient_charge.append(InsufficientChargeConflict(service_id=step.service_id))
+                    break
+            case _BlockTraversal():
+                sim.traverse_block()
+                if sim.is_battery_critical():
+                    low_battery.append(LowBatteryConflict(service_id=step.service_id))
+                    break
 
     return (low_battery, insufficient_charge)
