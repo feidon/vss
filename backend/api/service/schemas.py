@@ -23,7 +23,7 @@ class CreateServiceRequest(BaseModel):
 
 
 class RouteStopInput(BaseModel):
-    platform_id: UUID
+    node_id: UUID
     dwell_time: int = Field(ge=0)
 
 

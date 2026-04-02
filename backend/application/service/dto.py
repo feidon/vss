@@ -6,5 +6,5 @@ from uuid import UUID
 
 @dataclass(frozen=True)
 class RouteStop:
-    platform_id: UUID
+    node_id: UUID
     dwell_time: int  # seconds

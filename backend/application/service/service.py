@@ -69,16 +69,17 @@ class ServiceAppService:
 
         stations = await self._station_repo.find_all()
         all_platforms = {p.id: p for s in stations for p in s.platforms}
-        self._validate_platforms_exist(stops, all_platforms)
+        yard_ids = {s.id for s in stations if s.is_yard}
+        self._validate_stops_exist(stops, all_platforms, yard_ids)
 
         connections = await self._connection_repo.find_all()
         all_blocks = await self._block_repo.find_all()
 
-        full_path = self._build_node_path(stops, connections, all_blocks, all_platforms)
+        full_path = self._build_node_path(stops, connections, all_blocks, all_platforms, yard_ids)
         timetable = self._compute_timetable(
             full_path,
             {b.id: b for b in all_blocks},
-            {s.platform_id: s.dwell_time for s in stops},
+            {s.node_id: s.dwell_time for s in stops},
             start_time,
         )
 
@@ -99,12 +100,15 @@ class ServiceAppService:
         await self._service_repo.delete(id)
 
     @staticmethod
-    def _validate_platforms_exist(
-        stops: list[RouteStop], all_platforms: dict[UUID, object]
+    def _validate_stops_exist(
+        stops: list[RouteStop],
+        all_platforms: dict[UUID, object],
+        yard_ids: set[UUID],
     ) -> None:
+        valid_ids = set(all_platforms.keys()) | yard_ids
         for stop in stops:
-            if stop.platform_id not in all_platforms:
-                raise ValueError(f"Platform {stop.platform_id} not found")
+            if stop.node_id not in valid_ids:
+                raise ValueError(f"Stop {stop.node_id} not found")
 
     @staticmethod
     def _build_node_path(
@@ -112,9 +116,10 @@ class ServiceAppService:
         connections: frozenset,
         all_blocks: list[Block],
         all_platforms: dict[UUID, object],
+        yard_ids: set[UUID],
     ) -> list[Node]:
         block_ids = {b.id for b in all_blocks}
-        stop_ids = [s.platform_id for s in stops]
+        stop_ids = [s.node_id for s in stops]
         full_path_ids = RouteFinder.build_full_path(stop_ids, connections, block_ids)
 
         node_types: dict[UUID, NodeType] = {}
@@ -122,6 +127,8 @@ class ServiceAppService:
             node_types[b.id] = NodeType.BLOCK
         for pid in all_platforms:
             node_types[pid] = NodeType.PLATFORM
+        for yid in yard_ids:
+            node_types[yid] = NodeType.YARD
 
         return [Node(id=nid, type=node_types[nid]) for nid in full_path_ids]
 
@@ -129,7 +136,7 @@ class ServiceAppService:
     def _compute_timetable(
         full_path: list[Node],
         blocks_by_id: dict[UUID, Block],
-        dwell_by_platform: dict[UUID, int],
+        dwell_by_stop: dict[UUID, int],
         start_time: EpochSeconds,
     ) -> list[TimetableEntry]:
         entries: list[TimetableEntry] = []
@@ -140,7 +147,7 @@ class ServiceAppService:
                 block = blocks_by_id[node.id]
                 departure = current_time + block.traversal_time_seconds
             else:
-                dwell = dwell_by_platform.get(node.id, 0)
+                dwell = dwell_by_stop.get(node.id, 0)
                 departure = current_time + dwell
 
             entries.append(TimetableEntry(

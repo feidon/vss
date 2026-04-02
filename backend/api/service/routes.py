@@ -116,7 +116,7 @@ async def update_route(
     service_app_service: ServiceAppService = Depends(get_service_app_service),
 ):
     stops = [
-        RouteStop(platform_id=s.platform_id, dwell_time=s.dwell_time)
+        RouteStop(node_id=s.node_id, dwell_time=s.dwell_time)
         for s in request.stops
     ]
     try:

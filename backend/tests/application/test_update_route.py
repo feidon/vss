@@ -56,8 +56,8 @@ class TestUpdateServiceRoute:
         svc = await app.create_service(name="S1", vehicle_id=v.id)
 
         stops = [
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=90),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=90),
         ]
         result = await app.update_service_route(svc.id, stops, start_time=1000)
 
@@ -82,9 +82,9 @@ class TestUpdateServiceRoute:
         svc = await app.create_service(name="S1", vehicle_id=v.id)
 
         stops = [
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=30),
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P3A"], dwell_time=60),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=30),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P3A"], dwell_time=60),
         ]
         result = await app.update_service_route(svc.id, stops, start_time=0)
 
@@ -106,17 +106,17 @@ class TestUpdateServiceRoute:
         svc = await app.create_service(name="S1", vehicle_id=v.id)
 
         stops = [
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
-            RouteStop(platform_id=uuid7(), dwell_time=60),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
+            RouteStop(node_id=uuid7(), dwell_time=60),
         ]
-        with pytest.raises(ValueError, match="Platform.*not found"):
+        with pytest.raises(ValueError, match="Stop.*not found"):
             await app.update_service_route(svc.id, stops, start_time=0)
 
     async def test_service_not_found(self):
         app, _ = _make_app()
         stops = [
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=60),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=60),
         ]
         with pytest.raises(ValueError, match="not found"):
             await app.update_service_route(999, stops, start_time=0)
@@ -126,7 +126,7 @@ class TestUpdateServiceRoute:
         v = seed_vehicle(vehicle_repo)
         svc = await app.create_service(name="S1", vehicle_id=v.id)
 
-        stops = [RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60)]
+        stops = [RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60)]
         with pytest.raises(ValueError, match="At least two stops"):
             await app.update_service_route(svc.id, stops, start_time=0)
 
@@ -137,8 +137,8 @@ class TestUpdateServiceRoute:
 
         # P2A -> P1A has no route (wrong direction)
         stops = [
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=60),
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=60),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
         ]
         with pytest.raises(ValueError, match="No route"):
             await app.update_service_route(svc.id, stops, start_time=0)
@@ -150,15 +150,15 @@ class TestUpdateServiceRoute:
 
         # First route
         stops1 = [
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=60),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=60),
         ]
         await app.update_service_route(svc.id, stops1, start_time=0)
 
         # Second route replaces first
         stops2 = [
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=30),
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P3B"], dwell_time=30),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=30),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P3B"], dwell_time=30),
         ]
         result = await app.update_service_route(svc.id, stops2, start_time=500)
         assert result.path[0].id == PLATFORM_ID_BY_NAME["P2A"]
@@ -175,8 +175,8 @@ class TestRouteConflicts:
         s2 = await app.create_service(name="S2", vehicle_id=vid)
 
         stops = [
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=60),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=60),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=60),
         ]
         await app.update_service_route(s1.id, stops, start_time=0)
 
@@ -194,8 +194,8 @@ class TestRouteConflicts:
         s2 = await app.create_service(name="S2", vehicle_id=v2.id)
 
         stops = [
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=0),
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=0),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=0),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=0),
         ]
         await app.update_service_route(s1.id, stops, start_time=0)
 
@@ -214,15 +214,15 @@ class TestRouteConflicts:
 
         # S1: P1A -> P2A (uses B3 in group 2)
         stops1 = [
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=0),
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=0),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=0),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=0),
         ]
         await app.update_service_route(s1.id, stops1, start_time=0)
 
         # S2: P1B -> P2A (uses B4 in group 2, interlocks with B3)
         stops2 = [
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1B"], dwell_time=0),
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=0),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P1B"], dwell_time=0),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=0),
         ]
         with pytest.raises(ConflictError) as exc_info:
             await app.update_service_route(s2.id, stops2, start_time=0)
@@ -241,16 +241,16 @@ class TestRouteConflicts:
 
         # S1: P1A -> P2A at time 0 (B3: 0-30, B5: 30-60)
         stops_s1 = [
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=0),
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=0),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=0),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=0),
         ]
         await app.update_service_route(s1.id, stops_s1, start_time=0)
 
         # S2: P2A -> P3A at time 60 (B6: 60-90, B7: 90-120)
         # B5 (group 0) ends at 60, B6 (group 0) starts at 60 → no interlocking overlap
         stops_s2 = [
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=0),
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P3A"], dwell_time=0),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=0),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P3A"], dwell_time=0),
         ]
         await app.update_service_route(s2.id, stops_s2, start_time=60)
 
@@ -258,9 +258,9 @@ class TestRouteConflicts:
         # B3: 0-30, B5: 30-60, B6: 60-90, B7: 90-120
         # Overlaps S1 on B3 and B5, overlaps S2 on B6 and B7
         stops_s3 = [
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=0),
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=0),
-            RouteStop(platform_id=PLATFORM_ID_BY_NAME["P3A"], dwell_time=0),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=0),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=0),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P3A"], dwell_time=0),
         ]
         with pytest.raises(ConflictError) as exc_info:
             await app.update_service_route(s3.id, stops_s3, start_time=0)
