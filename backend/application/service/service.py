@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from application.service.dto import RouteStop
+from application.service.dto import RouteStop, RouteValidationResult
 from application.service.errors import ConflictError
 from domain.block.model import Block
 from domain.block.repository import BlockRepository
@@ -10,6 +10,8 @@ from domain.network.model import Node, NodeType
 from domain.domain_service.route_finder import RouteFinder
 from domain.network.repository import ConnectionRepository
 from domain.domain_service.conflict import detect_conflicts
+from domain.domain_service.conflict.detection import detect_battery_conflicts
+from domain.domain_service.conflict.preparation import build_battery_steps
 from domain.service.model import Service, TimetableEntry
 from domain.shared.types import EpochSeconds
 from domain.service.repository import ServiceRepository
@@ -82,6 +84,31 @@ class ServiceAppService:
 
         await self._service_repo.save(service)
         return service
+
+    async def validate_route(
+        self, vehicle_id: UUID, stops: list[RouteStop], start_time: EpochSeconds,
+    ) -> RouteValidationResult:
+        vehicle = await self._vehicle_repo.find_by_id(vehicle_id)
+        if vehicle is None:
+            raise ValueError(f"Vehicle {vehicle_id} not found")
+
+        full_path, timetable = await self._build_route(stops, start_time)
+
+        temp_service = Service(
+            id=0,
+            name="_validation",
+            vehicle_id=vehicle_id,
+            path=full_path,
+            timetable=timetable,
+        )
+
+        steps = build_battery_steps(vehicle_id, [temp_service])
+        low_battery, insufficient_charge = detect_battery_conflicts(vehicle, steps)
+
+        return RouteValidationResult(
+            path=full_path,
+            battery_conflicts=[*low_battery, *insufficient_charge],
+        )
 
     async def _build_route(
         self, stops: list[RouteStop], start_time: EpochSeconds

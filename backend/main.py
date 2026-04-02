@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse
 
 from api.block.routes import router as block_router
 from api.graph.routes import router as graph_router
+from api.route.routes import router as route_router
 from api.service.routes import router as service_router
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -38,6 +39,7 @@ app.add_middleware(
 app.include_router(block_router)
 app.include_router(service_router)
 app.include_router(graph_router)
+app.include_router(route_router)
 
 if STATIC_DIR.is_dir():
 
