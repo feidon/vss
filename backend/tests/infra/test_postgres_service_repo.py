@@ -5,7 +5,7 @@ import pytest
 from domain.network.model import Node, NodeType
 from domain.service.model import Service, TimetableEntry
 from infra.postgres.service_repo import PostgresServiceRepository
-from tests.infra.conftest import insert_vehicle
+from tests.conftest import insert_vehicle
 
 pytestmark = pytest.mark.postgres
 

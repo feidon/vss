@@ -4,7 +4,7 @@ import pytest
 
 from domain.vehicle.model import Vehicle
 from infra.postgres.vehicle_repo import PostgresVehicleRepository
-from tests.infra.conftest import insert_vehicle
+from tests.conftest import insert_vehicle
 
 pytestmark = pytest.mark.postgres
 

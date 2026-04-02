@@ -48,13 +48,29 @@ Route update returns 409 with conflict details when scheduling conflicts are det
 uv sync
 uv run uvicorn main:app --reload
 
-# Tests
+# Unit tests only (no database needed)
 uv run pytest
+
+# PostgreSQL integration tests (requires running container)
+uv run pytest -m postgres
+
+# All tests
+uv run pytest -m ''
 ```
 
 ## Database
 
 PostgreSQL via Docker Compose. Connection: `postgresql://vss:vss@localhost:5432/vss`
+
+Before running integration tests (`-m postgres`), the PostgreSQL container must be running and the test database must exist. Ask the user to start it if needed:
+
+```bash
+# From repo root (/home/feidon/Documents/vss)
+sudo docker compose up -d
+
+# Create test database (one-time)
+sudo docker exec <container> psql -U vss -c "CREATE DATABASE vss_test;"
+```
 
 ## Persistence Strategy: SQLAlchemy Core + Manual Mapper
 
@@ -82,8 +98,8 @@ In a monolith with single DB, prefer querying at use time (load both aggregates 
 
 - **Domain tests**: pure unit tests, no I/O
 - **Application tests**: integration with in-memory repos, `@pytest.mark.asyncio`
-- **API tests**: `TestClient` with dependency overrides
-- **Infra tests**: repository contract verification
+- **API tests**: PostgreSQL integration tests via `httpx.AsyncClient`, marked `@pytest.mark.postgres`
+- **Infra tests**: repository contract verification against PostgreSQL, marked `@pytest.mark.postgres`
 - Helper factories: `make_block()`, `make_service_with_window()`, seed data utilities
 
 

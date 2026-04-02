@@ -1,142 +1,79 @@
 from uuid import uuid7
 
 import pytest
-from fastapi.testclient import TestClient
 
-from api.dependencies import (
-    get_block_repo,
-    get_connection_repo,
-    get_service_repo,
-    get_station_repo,
-    get_vehicle_repo,
-)
-from domain.vehicle.model import Vehicle
-from infra.memory.block_repo import InMemoryBlockRepository
-from infra.memory.connection_repo import InMemoryConnectionRepository
-from infra.memory.service_repo import InMemoryServiceRepository
-from infra.memory.station_repo import InMemoryStationRepository
-from infra.memory.vehicle_repo import InMemoryVehicleRepository
-from infra.seed import (
-    BLOCK_ID_BY_NAME,
-    PLATFORM_ID_BY_NAME,
-    create_blocks,
-    create_connections,
-    create_stations,
-)
-from main import app
+from infra.seed import PLATFORM_ID_BY_NAME, VEHICLE_ID_BY_NAME
+
+pytestmark = pytest.mark.postgres
 
 
-@pytest.fixture
-def service_repo():
-    return InMemoryServiceRepository()
-
-
-@pytest.fixture
-def block_repo():
-    repo = InMemoryBlockRepository()
-    for b in create_blocks():
-        repo._store[b.id] = b
-    return repo
-
-
-@pytest.fixture
-def station_repo():
-    repo = InMemoryStationRepository()
-    for s in create_stations():
-        repo._store[s.id] = s
-    return repo
-
-
-@pytest.fixture
-def connection_repo():
-    return InMemoryConnectionRepository(create_connections())
-
-
-@pytest.fixture
-def vehicle_repo():
-    return InMemoryVehicleRepository()
-
-
-@pytest.fixture
-def client(service_repo, block_repo, station_repo, connection_repo, vehicle_repo):
-    app.dependency_overrides[get_service_repo] = lambda: service_repo
-    app.dependency_overrides[get_block_repo] = lambda: block_repo
-    app.dependency_overrides[get_station_repo] = lambda: station_repo
-    app.dependency_overrides[get_connection_repo] = lambda: connection_repo
-    app.dependency_overrides[get_vehicle_repo] = lambda: vehicle_repo
-    yield TestClient(app)
-    app.dependency_overrides.clear()
-
-
-def seed_vehicle(vehicle_repo, vid=None, battery=100):
-    v = Vehicle(id=vid or uuid7(), name="V1", battery=battery)
-    vehicle_repo._store[v.id] = v
-    return v
-
-
-def create_service(client, vehicle_repo):
-    v = seed_vehicle(vehicle_repo)
-    resp = client.post("/services", json={"name": "S1", "vehicle_id": str(v.id)})
+async def create_service(client, vehicle_name="V1"):
+    vid = str(VEHICLE_ID_BY_NAME[vehicle_name])
+    resp = await client.post("/services", json={"name": "S1", "vehicle_id": vid})
     assert resp.status_code == 201
-    return resp.json()["id"], v
+    return resp.json()["id"]
 
 
 class TestServiceCRUD:
-    def test_create_service(self, client, vehicle_repo):
-        v = seed_vehicle(vehicle_repo)
-        resp = client.post("/services", json={"name": "Express", "vehicle_id": str(v.id)})
+    async def test_create_service(self, client):
+        vid = str(VEHICLE_ID_BY_NAME["V1"])
+        resp = await client.post(
+            "/services", json={"name": "Express", "vehicle_id": vid}
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert "id" in data
         assert set(data.keys()) == {"id"}
 
-    def test_create_service_empty_name_rejected(self, client, vehicle_repo):
-        v = seed_vehicle(vehicle_repo)
-        resp = client.post("/services", json={"name": "", "vehicle_id": str(v.id)})
+    async def test_create_service_empty_name_rejected(self, client):
+        vid = str(VEHICLE_ID_BY_NAME["V1"])
+        resp = await client.post("/services", json={"name": "", "vehicle_id": vid})
         assert resp.status_code == 422
 
-    def test_create_service_unknown_vehicle_rejected(self, client):
-        resp = client.post("/services", json={"name": "S1", "vehicle_id": str(uuid7())})
+    async def test_create_service_unknown_vehicle_rejected(self, client):
+        resp = await client.post(
+            "/services", json={"name": "S1", "vehicle_id": str(uuid7())}
+        )
         assert resp.status_code == 400
 
-    def test_list_services_empty(self, client):
-        resp = client.get("/services")
+    async def test_list_services_empty(self, client):
+        resp = await client.get("/services")
         assert resp.status_code == 200
         assert resp.json() == []
 
-    def test_list_services(self, client, vehicle_repo):
-        v1 = seed_vehicle(vehicle_repo)
-        v2 = seed_vehicle(vehicle_repo)
-        client.post("/services", json={"name": "S1", "vehicle_id": str(v1.id)})
-        client.post("/services", json={"name": "S2", "vehicle_id": str(v2.id)})
-        resp = client.get("/services")
+    async def test_list_services(self, client):
+        vid1 = str(VEHICLE_ID_BY_NAME["V1"])
+        vid2 = str(VEHICLE_ID_BY_NAME["V2"])
+        await client.post("/services", json={"name": "S1", "vehicle_id": vid1})
+        await client.post("/services", json={"name": "S2", "vehicle_id": vid2})
+        resp = await client.get("/services")
         assert len(resp.json()) == 2
 
-    def test_get_service(self, client, vehicle_repo):
-        sid, _ = create_service(client, vehicle_repo)
-        resp = client.get(f"/services/{sid}")
+    async def test_get_service(self, client):
+        sid = await create_service(client)
+        resp = await client.get(f"/services/{sid}")
         assert resp.status_code == 200
         assert resp.json()["name"] == "S1"
 
-    def test_get_service_not_found(self, client):
-        resp = client.get("/services/999")
+    async def test_get_service_not_found(self, client):
+        resp = await client.get("/services/999")
         assert resp.status_code == 404
 
-    def test_delete_service(self, client, vehicle_repo):
-        sid, _ = create_service(client, vehicle_repo)
-        resp = client.delete(f"/services/{sid}")
+    async def test_delete_service(self, client):
+        sid = await create_service(client)
+        resp = await client.delete(f"/services/{sid}")
         assert resp.status_code == 204
-        assert client.get(f"/services/{sid}").status_code == 404
+        assert (await client.get(f"/services/{sid}")).status_code == 404
 
-    def test_delete_service_idempotent(self, client):
-        resp = client.delete("/services/999")
+    async def test_delete_service_idempotent(self, client):
+        resp = await client.delete("/services/999")
         assert resp.status_code == 204
 
 
 class TestServiceRouteUpdate:
-    def test_update_route(self, client, vehicle_repo):
-        sid, _ = create_service(client, vehicle_repo)
-        resp = client.patch(
+    async def test_update_route(self, client):
+        sid = await create_service(client)
+        resp = await client.patch(
             f"/services/{sid}/route",
             json={
                 "stops": [
@@ -150,7 +87,7 @@ class TestServiceRouteUpdate:
         assert resp.json() == {"id": sid}
 
         # Verify full state via GET
-        get_resp = client.get(f"/services/{sid}")
+        get_resp = await client.get(f"/services/{sid}")
         data = get_resp.json()
 
         # Path: P1A -> B3 -> B5 -> P2A
@@ -173,9 +110,9 @@ class TestServiceRouteUpdate:
         assert tt[2]["arrival"] == 1090 and tt[2]["departure"] == 1120  # B5 traverse=30
         assert tt[3]["arrival"] == 1120 and tt[3]["departure"] == 1210  # P2A dwell=90
 
-    def test_update_route_unknown_platform(self, client, vehicle_repo):
-        sid, _ = create_service(client, vehicle_repo)
-        resp = client.patch(
+    async def test_update_route_unknown_platform(self, client):
+        sid = await create_service(client)
+        resp = await client.patch(
             f"/services/{sid}/route",
             json={
                 "stops": [
@@ -187,8 +124,8 @@ class TestServiceRouteUpdate:
         )
         assert resp.status_code == 400
 
-    def test_update_route_service_not_found(self, client):
-        resp = client.patch(
+    async def test_update_route_service_not_found(self, client):
+        resp = await client.patch(
             "/services/999/route",
             json={
                 "stops": [
@@ -200,10 +137,10 @@ class TestServiceRouteUpdate:
         )
         assert resp.status_code == 404
 
-    def test_update_route_no_route_returns_400(self, client, vehicle_repo):
-        sid, _ = create_service(client, vehicle_repo)
+    async def test_update_route_no_route_returns_400(self, client):
+        sid = await create_service(client)
         # P2A -> P1A has no route
-        resp = client.patch(
+        resp = await client.patch(
             f"/services/{sid}/route",
             json={
                 "stops": [
@@ -215,12 +152,11 @@ class TestServiceRouteUpdate:
         )
         assert resp.status_code == 400
 
-    def test_update_route_conflict_returns_409(self, client, vehicle_repo):
-        v = seed_vehicle(vehicle_repo)
-        vid = str(v.id)
+    async def test_update_route_conflict_returns_409(self, client):
+        vid = str(VEHICLE_ID_BY_NAME["V1"])
 
-        r1 = client.post("/services", json={"name": "S1", "vehicle_id": vid})
-        r2 = client.post("/services", json={"name": "S2", "vehicle_id": vid})
+        r1 = await client.post("/services", json={"name": "S1", "vehicle_id": vid})
+        r2 = await client.post("/services", json={"name": "S2", "vehicle_id": vid})
         s1_id, s2_id = r1.json()["id"], r2.json()["id"]
 
         route = {
@@ -230,10 +166,10 @@ class TestServiceRouteUpdate:
             ],
             "start_time": 0,
         }
-        client.patch(f"/services/{s1_id}/route", json=route)
+        await client.patch(f"/services/{s1_id}/route", json=route)
 
         # Overlapping route with same vehicle
-        resp = client.patch(
+        resp = await client.patch(
             f"/services/{s2_id}/route",
             json={**route, "start_time": 10},
         )
@@ -246,5 +182,3 @@ class TestServiceRouteUpdate:
         # Battery conflict fields present in response
         assert "low_battery_conflicts" in detail
         assert "insufficient_charge_conflicts" in detail
-
-
