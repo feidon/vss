@@ -56,9 +56,9 @@ uv run lint-imports        # verify architectural layer dependencies
 
 ## Architecture
 
-### DDD + Clean Architecture
+### DDD + Hexagonal Architecture
 
-The backend follows **Domain-Driven Design** with **Clean Architecture** layering (Ports & Adapters):
+The backend follows **Domain-Driven Design** with **Hexagonal Architecture** (Ports & Adapters):
 
 ```
 api/  →  application/  →  domain/  ←  infra/

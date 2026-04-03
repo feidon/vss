@@ -93,10 +93,9 @@ Rationale:
 
 This mirrors the QueryDSL SQL + Flyway pattern: schema-first, codegen/table definitions separate from domain, explicit mapper at repository boundary.
 
-### Write vs Read paths (CQRS-lite)
+### Read and Write paths
 
-- **Write side (commands)**: Use repositories, load aggregates separately, enforce domain rules. Multiple queries across aggregates is fine.
-- **Read side (queries)**: Use direct SQL with joins for list/display endpoints. No aggregate boundaries needed. Return DTOs, not domain entities.
+Currently all reads and writes go through domain repositories. If a read endpoint needs joins across multiple aggregates that don't map to a single domain entity, introduce a query service with direct SQL returning DTOs — bypassing the domain layer (CQRS-lite). Until then, keep the single path.
 
 ### Cross-aggregate data
 
