@@ -54,26 +54,22 @@ import { ConflictResponse } from '../../shared/models';
         </div>
       }
 
-      @if (conflicts().low_battery_conflicts.length > 0) {
-        <div class="mb-2">
-          <h5 class="font-medium text-red-700">Low Battery</h5>
-          <ul class="ml-4 list-disc">
-            @for (c of conflicts().low_battery_conflicts; track $index) {
+      @for (c of conflicts().battery_conflicts; track $index) {
+        @if (c.type === 'low_battery') {
+          <div class="mb-2">
+            <h5 class="font-medium text-red-700">Low Battery</h5>
+            <ul class="ml-4 list-disc">
               <li>Service {{ c.service_id }} has insufficient battery to complete the route</li>
-            }
-          </ul>
-        </div>
-      }
-
-      @if (conflicts().insufficient_charge_conflicts.length > 0) {
-        <div class="mb-2">
-          <h5 class="font-medium text-red-700">Insufficient Charge</h5>
-          <ul class="ml-4 list-disc">
-            @for (c of conflicts().insufficient_charge_conflicts; track $index) {
+            </ul>
+          </div>
+        } @else if (c.type === 'insufficient_charge') {
+          <div class="mb-2">
+            <h5 class="font-medium text-red-700">Insufficient Charge</h5>
+            <ul class="ml-4 list-disc">
               <li>Service {{ c.service_id }} — insufficient charging time between services</li>
-            }
-          </ul>
-        </div>
+            </ul>
+          </div>
+        }
       }
     </div>
   `,

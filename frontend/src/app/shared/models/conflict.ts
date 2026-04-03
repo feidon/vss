@@ -23,11 +23,8 @@ export interface InterlockingConflict {
   readonly overlap_end: number;
 }
 
-export interface LowBatteryConflict {
-  readonly service_id: number;
-}
-
-export interface InsufficientChargeConflict {
+export interface BatteryConflict {
+  readonly type: 'low_battery' | 'insufficient_charge';
   readonly service_id: number;
 }
 
@@ -36,6 +33,5 @@ export interface ConflictResponse {
   readonly vehicle_conflicts: readonly VehicleConflict[];
   readonly block_conflicts: readonly BlockConflict[];
   readonly interlocking_conflicts: readonly InterlockingConflict[];
-  readonly low_battery_conflicts: readonly LowBatteryConflict[];
-  readonly insufficient_charge_conflicts: readonly InsufficientChargeConflict[];
+  readonly battery_conflicts: readonly BatteryConflict[];
 }

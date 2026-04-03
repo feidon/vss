@@ -10,8 +10,7 @@ describe('ConflictAlertComponent', () => {
     vehicle_conflicts: [],
     block_conflicts: [],
     interlocking_conflicts: [],
-    low_battery_conflicts: [],
-    insufficient_charge_conflicts: [],
+    battery_conflicts: [],
   };
 
   beforeEach(async () => {
@@ -81,8 +80,10 @@ describe('ConflictAlertComponent', () => {
   it('should display battery conflicts', async () => {
     const conflicts: ConflictResponse = {
       ...emptyConflicts,
-      low_battery_conflicts: [{ service_id: 1 }],
-      insufficient_charge_conflicts: [{ service_id: 1 }],
+      battery_conflicts: [
+        { type: 'low_battery' as const, service_id: 1 },
+        { type: 'insufficient_charge' as const, service_id: 1 },
+      ],
     };
     fixture.componentRef.setInput('conflicts', conflicts);
     await fixture.whenStable();

@@ -53,19 +53,21 @@ describe('BlockConfigComponent', () => {
 
   it('should group blocks by interlocking group with headers sorted numerically', () => {
     fixture.detectChanges();
-    // Provide blocks out of order to verify sorting
+    // Provide blocks out of order to verify sorting, including group 0
     flushBlocks([
       { id: 'b7', name: 'B7', group: 3, traversal_time_seconds: 40 },
+      { id: 'b5', name: 'B5', group: 0, traversal_time_seconds: 20 },
       { id: 'b2', name: 'B2', group: 1, traversal_time_seconds: 45 },
       { id: 'b3', name: 'B3', group: 2, traversal_time_seconds: 30 },
       { id: 'b1', name: 'B1', group: 1, traversal_time_seconds: 60 },
     ]);
 
     const groupHeaders = fixture.nativeElement.querySelectorAll('[data-testid="group-header"]');
-    expect(groupHeaders.length).toBe(3);
-    expect(groupHeaders[0].textContent).toContain('Group 1');
-    expect(groupHeaders[1].textContent).toContain('Group 2');
-    expect(groupHeaders[2].textContent).toContain('Group 3');
+    expect(groupHeaders.length).toBe(4);
+    expect(groupHeaders[0].textContent).toContain('Ungrouped');
+    expect(groupHeaders[1].textContent).toContain('Group 1');
+    expect(groupHeaders[2].textContent).toContain('Group 2');
+    expect(groupHeaders[3].textContent).toContain('Group 3');
 
     // Blocks within group 1 should be sorted by name: B1 before B2
     const rows = fixture.nativeElement.querySelectorAll(
@@ -74,7 +76,7 @@ describe('BlockConfigComponent', () => {
     const blockNames = Array.from(rows as NodeListOf<HTMLElement>)
       .map((r) => r.querySelector('td')?.textContent?.trim())
       .filter(Boolean);
-    expect(blockNames).toEqual(['B1', 'B2', 'B3', 'B7']);
+    expect(blockNames).toEqual(['B5', 'B1', 'B2', 'B3', 'B7']);
   });
 
   it('should show pencil icon next to traversal time', () => {
@@ -173,7 +175,7 @@ describe('BlockConfigComponent', () => {
     expect(span2.textContent.trim()).toContain('60');
   });
 
-  it('should save on blur', () => {
+  it('should cancel on blur without saving', () => {
     fixture.detectChanges();
     flushBlocks();
 
@@ -189,10 +191,15 @@ describe('BlockConfigComponent', () => {
     input.dispatchEvent(new Event('blur'));
     fixture.detectChanges();
 
-    const req = httpTesting.expectOne(`${API_BASE_URL}/blocks/b1`);
-    expect(req.request.method).toBe('PATCH');
-    expect(req.request.body).toEqual({ traversal_time_seconds: 75 });
-    req.flush({ id: 'b1' });
+    // Should exit edit mode, no PATCH request
+    const inputAfter = fixture.nativeElement.querySelector('input[type="number"]');
+    expect(inputAfter).toBeNull();
+
+    // Original value should be displayed
+    const span2 = fixture.nativeElement.querySelector(
+      'tbody tr:not([data-testid="group-header"]) td:nth-child(3) span',
+    );
+    expect(span2.textContent.trim()).toContain('60');
   });
 
   it('should reject non-positive values and show validation error', () => {

@@ -14,7 +14,6 @@ export type {
   VehicleConflict,
   BlockConflict,
   InterlockingConflict,
-  LowBatteryConflict,
-  InsufficientChargeConflict,
+  BatteryConflict,
   ConflictResponse,
 } from './conflict';

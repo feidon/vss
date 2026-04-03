@@ -28,7 +28,7 @@ interface BlockGroup {
         <tbody>
           <tr data-testid="group-header">
             <td colspan="3" class="bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
-              Group {{ g.group }}
+              {{ g.group === 0 ? 'Ungrouped' : 'Group ' + g.group }}
             </td>
           </tr>
           @for (block of g.blocks; track block.id) {
@@ -43,7 +43,7 @@ interface BlockGroup {
                     [value]="editValue()"
                     (input)="onEditInput($event)"
                     (keydown)="onKeydown($event, block)"
-                    (blur)="onBlur(block)"
+                    (blur)="onBlur()"
                   />
                   @if (validationError()) {
                     <span class="ml-2 text-xs text-red-500">{{ validationError() }}</span>
@@ -126,10 +126,8 @@ export class BlockConfigComponent implements OnInit {
     }
   }
 
-  onBlur(block: BlockResponse): void {
-    if (this.editingBlockId() === block.id) {
-      this.save(block);
-    }
+  onBlur(): void {
+    this.cancelEdit();
   }
 
   private save(block: BlockResponse): void {
