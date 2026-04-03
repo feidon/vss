@@ -17,7 +17,7 @@ from infra.postgres.session import get_session
 from infra.postgres.station_repo import PostgresStationRepository
 from infra.postgres.tables import metadata
 from infra.postgres.vehicle_repo import PostgresVehicleRepository
-from main import app
+from main import API_PREFIX, app
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -64,7 +64,7 @@ async def client(_pg_tables):
 
     async with AsyncClient(
         transport=ASGITransport(app=app),
-        base_url="http://test",
+        base_url=f"http://test{API_PREFIX}/",
     ) as ac:
         yield ac
 

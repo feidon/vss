@@ -8,7 +8,7 @@ pytestmark = pytest.mark.postgres
 class TestValidateRoute:
     async def test_valid_route(self, client):
         resp = await client.post(
-            "/routes/validate",
+            "routes/validate",
             json={
                 "vehicle_id": str(VEHICLE_ID_BY_NAME["V1"]),
                 "stops": [
@@ -25,7 +25,7 @@ class TestValidateRoute:
 
     async def test_unreachable_returns_422(self, client):
         resp = await client.post(
-            "/routes/validate",
+            "routes/validate",
             json={
                 "vehicle_id": str(VEHICLE_ID_BY_NAME["V1"]),
                 "stops": [
@@ -39,7 +39,7 @@ class TestValidateRoute:
 
     async def test_yard_as_stop(self, client):
         resp = await client.post(
-            "/routes/validate",
+            "routes/validate",
             json={
                 "vehicle_id": str(VEHICLE_ID_BY_NAME["V1"]),
                 "stops": [
@@ -55,7 +55,7 @@ class TestValidateRoute:
 
     async def test_single_stop_rejected(self, client):
         resp = await client.post(
-            "/routes/validate",
+            "routes/validate",
             json={
                 "vehicle_id": str(VEHICLE_ID_BY_NAME["V1"]),
                 "stops": [

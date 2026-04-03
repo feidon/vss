@@ -17,7 +17,7 @@ pytestmark = pytest.mark.postgres
 
 async def create_service(client, vehicle_name="V1"):
     vid = str(VEHICLE_ID_BY_NAME[vehicle_name])
-    resp = await client.post("/services", json={"name": "S1", "vehicle_id": vid})
+    resp = await client.post("services", json={"name": "S1", "vehicle_id": vid})
     assert resp.status_code == HTTP_201_CREATED
     return resp.json()["id"]
 
@@ -26,7 +26,7 @@ class TestServiceCRUD:
     async def test_create_service(self, client):
         vid = str(VEHICLE_ID_BY_NAME["V1"])
         resp = await client.post(
-            "/services", json={"name": "Express", "vehicle_id": vid}
+            "services", json={"name": "Express", "vehicle_id": vid}
         )
         assert resp.status_code == HTTP_201_CREATED
         data = resp.json()
@@ -35,31 +35,31 @@ class TestServiceCRUD:
 
     async def test_create_service_empty_name_rejected(self, client):
         vid = str(VEHICLE_ID_BY_NAME["V1"])
-        resp = await client.post("/services", json={"name": "", "vehicle_id": vid})
+        resp = await client.post("services", json={"name": "", "vehicle_id": vid})
         assert resp.status_code == HTTP_422_UNPROCESSABLE_CONTENT
 
     async def test_create_service_unknown_vehicle_rejected(self, client):
         resp = await client.post(
-            "/services", json={"name": "S1", "vehicle_id": str(uuid7())}
+            "services", json={"name": "S1", "vehicle_id": str(uuid7())}
         )
         assert resp.status_code == HTTP_400_BAD_REQUEST
 
     async def test_list_services_empty(self, client):
-        resp = await client.get("/services")
+        resp = await client.get("services")
         assert resp.status_code == HTTP_200_OK
         assert resp.json() == []
 
     async def test_list_services(self, client):
         vid1 = str(VEHICLE_ID_BY_NAME["V1"])
         vid2 = str(VEHICLE_ID_BY_NAME["V2"])
-        await client.post("/services", json={"name": "S1", "vehicle_id": vid1})
-        await client.post("/services", json={"name": "S2", "vehicle_id": vid2})
-        resp = await client.get("/services")
+        await client.post("services", json={"name": "S1", "vehicle_id": vid1})
+        await client.post("services", json={"name": "S2", "vehicle_id": vid2})
+        resp = await client.get("services")
         assert len(resp.json()) == 2
 
     async def test_list_services_returns_summary_only(self, client):
         await create_service(client)
-        resp = await client.get("/services")
+        resp = await client.get("services")
         for item in resp.json():
             assert set(item.keys()) == {"id", "name", "vehicle_id"}
             assert "graph" not in item
@@ -68,24 +68,24 @@ class TestServiceCRUD:
 
     async def test_get_service(self, client):
         sid = await create_service(client)
-        resp = await client.get(f"/services/{sid}")
+        resp = await client.get(f"services/{sid}")
         assert resp.status_code == HTTP_200_OK
         data = resp.json()
         assert data["name"] == "S1"
         assert "graph" in data
 
     async def test_get_service_not_found(self, client):
-        resp = await client.get("/services/999")
+        resp = await client.get("services/999")
         assert resp.status_code == HTTP_404_NOT_FOUND
 
     async def test_delete_service(self, client):
         sid = await create_service(client)
-        resp = await client.delete(f"/services/{sid}")
+        resp = await client.delete(f"services/{sid}")
         assert resp.status_code == HTTP_204_NO_CONTENT
-        assert (await client.get(f"/services/{sid}")).status_code == HTTP_404_NOT_FOUND
+        assert (await client.get(f"services/{sid}")).status_code == HTTP_404_NOT_FOUND
 
     async def test_delete_service_idempotent(self, client):
-        resp = await client.delete("/services/999")
+        resp = await client.delete("services/999")
         assert resp.status_code == HTTP_204_NO_CONTENT
 
 
@@ -93,7 +93,7 @@ class TestServiceRouteUpdate:
     async def test_update_route(self, client):
         sid = await create_service(client)
         resp = await client.patch(
-            f"/services/{sid}/route",
+            f"services/{sid}/route",
             json={
                 "stops": [
                     {"node_id": str(PLATFORM_ID_BY_NAME["P1A"]), "dwell_time": 60},
@@ -106,7 +106,7 @@ class TestServiceRouteUpdate:
         assert resp.json() == {"id": sid}
 
         # Verify full state via GET
-        get_resp = await client.get(f"/services/{sid}")
+        get_resp = await client.get(f"services/{sid}")
         data = get_resp.json()
 
         # Route: P1A -> B3 -> B5 -> P2A
@@ -132,7 +132,7 @@ class TestServiceRouteUpdate:
     async def test_update_route_unknown_platform(self, client):
         sid = await create_service(client)
         resp = await client.patch(
-            f"/services/{sid}/route",
+            f"services/{sid}/route",
             json={
                 "stops": [
                     {"node_id": str(PLATFORM_ID_BY_NAME["P1A"]), "dwell_time": 60},
@@ -145,7 +145,7 @@ class TestServiceRouteUpdate:
 
     async def test_update_route_service_not_found(self, client):
         resp = await client.patch(
-            "/services/999/route",
+            "services/999/route",
             json={
                 "stops": [
                     {"node_id": str(PLATFORM_ID_BY_NAME["P1A"]), "dwell_time": 60},
@@ -160,7 +160,7 @@ class TestServiceRouteUpdate:
         sid = await create_service(client)
         # P2A -> P1A has no route
         resp = await client.patch(
-            f"/services/{sid}/route",
+            f"services/{sid}/route",
             json={
                 "stops": [
                     {"node_id": str(PLATFORM_ID_BY_NAME["P2A"]), "dwell_time": 60},
@@ -174,8 +174,8 @@ class TestServiceRouteUpdate:
     async def test_update_route_conflict_returns_409(self, client):
         vid = str(VEHICLE_ID_BY_NAME["V1"])
 
-        r1 = await client.post("/services", json={"name": "S1", "vehicle_id": vid})
-        r2 = await client.post("/services", json={"name": "S2", "vehicle_id": vid})
+        r1 = await client.post("services", json={"name": "S1", "vehicle_id": vid})
+        r2 = await client.post("services", json={"name": "S2", "vehicle_id": vid})
         s1_id, s2_id = r1.json()["id"], r2.json()["id"]
 
         route = {
@@ -185,11 +185,11 @@ class TestServiceRouteUpdate:
             ],
             "start_time": 0,
         }
-        await client.patch(f"/services/{s1_id}/route", json=route)
+        await client.patch(f"services/{s1_id}/route", json=route)
 
         # Overlapping route with same vehicle
         resp = await client.patch(
-            f"/services/{s2_id}/route",
+            f"services/{s2_id}/route",
             json={**route, "start_time": 10},
         )
         assert resp.status_code == HTTP_409_CONFLICT

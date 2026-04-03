@@ -1,5 +1,4 @@
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from api.block.routes import router as block_router
 from api.error_handler import domain_error_handler
@@ -9,9 +8,6 @@ from api.vehicle.routes import router as vehicle_router
 from domain.error import DomainError
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-
-STATIC_DIR = Path(__file__).parent / "static"
 
 
 @asynccontextmanager
@@ -27,16 +23,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.include_router(block_router)
-app.include_router(service_router)
-app.include_router(route_router)
-app.include_router(vehicle_router)
-
-if STATIC_DIR.is_dir():
-
-    @app.get("/{full_path:path}", include_in_schema=False)
-    async def serve_spa(full_path: str):
-        file_path = (STATIC_DIR / full_path).resolve()
-        if file_path.is_file() and file_path.is_relative_to(STATIC_DIR.resolve()):
-            return FileResponse(file_path)
-        return FileResponse(STATIC_DIR / "index.html")
+API_PREFIX = "/api"
+app.include_router(block_router, prefix=API_PREFIX)
+app.include_router(service_router, prefix=API_PREFIX)
+app.include_router(route_router, prefix=API_PREFIX)
+app.include_router(vehicle_router, prefix=API_PREFIX)
