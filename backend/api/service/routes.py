@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from uuid import UUID
+
 from application.graph.service import GraphAppService
 from application.service.service import ServiceAppService
 from application.vehicle.service import VehicleAppService
@@ -37,12 +39,24 @@ async def create_service(
 async def list_services(
     service_app_service: ServiceAppService = Depends(get_service_app_service),
     vehicle_app_service: VehicleAppService = Depends(get_vehicle_service),
+    graph_service: GraphAppService = Depends(get_graph_service),
 ):
     services = await service_app_service.list_services()
     vehicles = await vehicle_app_service.list_vehicles()
+    graph = await graph_service.get_graph()
+
     vehicles_map = {v.id: v for v in vehicles}
+    node_names: dict[UUID, str] = {}
+    for block in graph.blocks:
+        node_names[block.id] = block.name
+    for platform in graph.all_platforms:
+        node_names[platform.id] = platform.name
+    for yard in graph.yards:
+        node_names[yard.id] = yard.name
+
     return [
-        ServiceResponse.from_domain(s, vehicles_map[s.vehicle_id]) for s in services
+        ServiceResponse.from_domain(s, vehicles_map[s.vehicle_id], node_names)
+        for s in services
     ]
 
 

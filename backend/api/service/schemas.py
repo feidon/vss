@@ -48,14 +48,36 @@ class ServiceResponse(BaseModel):
     name: str
     vehicle_id: UUID
     vehicle_name: str
+    start_time: int | None = None
+    origin_name: str | None = None
+    destination_name: str | None = None
 
     @classmethod
-    def from_domain(cls, service: Service, vehicle: Vehicle) -> ServiceResponse:
+    def from_domain(
+        cls,
+        service: Service,
+        vehicle: Vehicle,
+        node_names: dict[UUID, str],
+    ) -> ServiceResponse:
+        start_time = service.timetable[0].arrival if service.timetable else None
+
+        origin_name = node_names.get(service.route[0].id) if service.route else None
+
+        destination_name: str | None = None
+        if service.route:
+            for node in reversed(service.route):
+                if node.type != NodeType.BLOCK:
+                    destination_name = node_names.get(node.id)
+                    break
+
         return cls(
             id=service.id,
             name=service.name,
             vehicle_id=service.vehicle_id,
             vehicle_name=vehicle.name,
+            start_time=start_time,
+            origin_name=origin_name,
+            destination_name=destination_name,
         )
 
 

@@ -60,11 +60,46 @@ class TestServiceCRUD:
     async def test_list_services_returns_summary_only(self, client):
         await create_service(client)
         resp = await client.get("services")
+        expected_keys = {
+            "id",
+            "name",
+            "vehicle_id",
+            "vehicle_name",
+            "start_time",
+            "origin_name",
+            "destination_name",
+        }
         for item in resp.json():
-            assert set(item.keys()) == {"id", "name", "vehicle_id", "vehicle_name"}
+            assert set(item.keys()) == expected_keys
             assert "graph" not in item
             assert "route" not in item
             assert "timetable" not in item
+
+    async def test_list_services_new_service_has_null_summary(self, client):
+        await create_service(client)
+        resp = await client.get("services")
+        item = resp.json()[0]
+        assert item["start_time"] is None
+        assert item["origin_name"] is None
+        assert item["destination_name"] is None
+
+    async def test_list_services_with_route_has_summary(self, client):
+        sid = await create_service(client)
+        await client.patch(
+            f"services/{sid}/route",
+            json={
+                "stops": [
+                    {"node_id": str(PLATFORM_ID_BY_NAME["P1A"]), "dwell_time": 60},
+                    {"node_id": str(PLATFORM_ID_BY_NAME["P2A"]), "dwell_time": 90},
+                ],
+                "start_time": 1000,
+            },
+        )
+        resp = await client.get("services")
+        item = resp.json()[0]
+        assert item["start_time"] == 1000
+        assert item["origin_name"] == "P1A"
+        assert item["destination_name"] == "P2A"
 
     async def test_get_service(self, client):
         sid = await create_service(client)
