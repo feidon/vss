@@ -19,7 +19,8 @@
       "Bash(/home/feidon/.cache/pre-commit/repobd57k9me/py_env-python3.14/bin/ruff check:*)",
       "Bash(chmod 600:*)",
       "mcp__plugin_discord_discord__reply",
-      "Bash(DATABASE_URL=postgresql+asyncpg://vss:vss@localhost:5432/vss uv run:*)"
+      "Bash(DATABASE_URL=postgresql+asyncpg://vss:vss@localhost:5432/vss uv run:*)",
+      "Bash(docker run hello-world:*)"
     ]
   },
   "enabledMcpjsonServers": [
