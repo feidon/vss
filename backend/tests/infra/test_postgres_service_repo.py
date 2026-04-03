@@ -29,24 +29,25 @@ class TestPostgresServiceRepository:
     def repo(self, pg_session):
         return PostgresServiceRepository(pg_session)
 
-    async def test_save_new_assigns_id(self, repo, pg_session):
+    async def test_create_assigns_id(self, repo, pg_session):
         vid = uuid7()
         await insert_vehicle(pg_session, vid)
         service = make_service(vehicle_id=vid)
         assert service.id is None
-        await repo.save(service)
-        assert service.id is not None
-        assert isinstance(service.id, int)
+        created = await repo.create(service)
+        assert created.id is not None
+        assert isinstance(created.id, int)
+        assert service.id is None  # original not mutated
 
-    async def test_save_and_find_by_id(self, repo, pg_session):
+    async def test_create_and_find_by_id(self, repo, pg_session):
         vid = uuid7()
         await insert_vehicle(pg_session, vid)
         service = make_service(vehicle_id=vid, with_route=True)
-        await repo.save(service)
+        created = await repo.create(service)
 
-        found = await repo.find_by_id(service.id)
+        found = await repo.find_by_id(created.id)
         assert found is not None
-        assert found.id == service.id
+        assert found.id == created.id
         assert found.name == "S1"
         assert found.vehicle_id == vid
         assert len(found.route) == 1
@@ -54,21 +55,21 @@ class TestPostgresServiceRepository:
         assert len(found.timetable) == 1
         assert found.timetable[0].arrival == 1000
 
-    async def test_save_existing_updates(self, repo, pg_session):
+    async def test_update_existing(self, repo, pg_session):
         vid = uuid7()
         await insert_vehicle(pg_session, vid)
         service = make_service(vehicle_id=vid)
-        await repo.save(service)
+        created = await repo.create(service)
 
         # Update with a route
         node_id = uuid7()
-        service.route = [Node(id=node_id, type=NodeType.BLOCK)]
-        service.timetable = [
+        created.route = [Node(id=node_id, type=NodeType.BLOCK)]
+        created.timetable = [
             TimetableEntry(order=0, node_id=node_id, arrival=2000, departure=2030)
         ]
-        await repo.save(service)
+        await repo.update(created)
 
-        found = await repo.find_by_id(service.id)
+        found = await repo.find_by_id(created.id)
         assert found is not None
         assert len(found.route) == 1
         assert found.route[0].type == NodeType.BLOCK
@@ -83,9 +84,9 @@ class TestPostgresServiceRepository:
         s1 = make_service(vehicle_id=vid)
         s2 = make_service(vehicle_id=vid)
         s3 = make_service(vehicle_id=other_vid)
-        await repo.save(s1)
-        await repo.save(s2)
-        await repo.save(s3)
+        await repo.create(s1)
+        await repo.create(s2)
+        await repo.create(s3)
 
         result = await repo.find_by_vehicle_id(vid)
         assert len(result) == 2
@@ -95,8 +96,8 @@ class TestPostgresServiceRepository:
         await insert_vehicle(pg_session, vid)
         s1 = make_service(vehicle_id=vid)
         s2 = make_service(vehicle_id=vid)
-        await repo.save(s1)
-        await repo.save(s2)
+        await repo.create(s1)
+        await repo.create(s2)
         result = await repo.find_all()
         assert len(result) == 2
 
@@ -104,9 +105,9 @@ class TestPostgresServiceRepository:
         vid = uuid7()
         await insert_vehicle(pg_session, vid)
         service = make_service(vehicle_id=vid)
-        await repo.save(service)
-        await repo.delete(service.id)
-        assert await repo.find_by_id(service.id) is None
+        created = await repo.create(service)
+        await repo.delete(created.id)
+        assert await repo.find_by_id(created.id) is None
 
     async def test_delete_nonexistent_is_idempotent(self, repo):
         await repo.delete(999)  # should not raise

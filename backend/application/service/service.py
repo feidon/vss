@@ -52,9 +52,7 @@ class ServiceAppService:
             timetable=[],
         )
 
-        await self._service_repo.save(service)
-
-        return service
+        return await self._service_repo.create(service)
 
     async def get_service(self, id: int) -> Service:
         service = await self._service_repo.find_by_id(id)
@@ -92,7 +90,7 @@ class ServiceAppService:
         if conflicts.has_conflicts:
             raise ConflictError(conflicts)
 
-        await self._service_repo.save(service)
+        await self._service_repo.update(service)
         return service
 
     async def validate_route(

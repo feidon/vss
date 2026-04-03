@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from uuid import UUID
 
 from domain.service.model import Service
@@ -20,10 +21,13 @@ class InMemoryServiceRepository(ServiceRepository):
     async def find_by_vehicle_id(self, vehicle_id: UUID) -> list[Service]:
         return [s for s in self._store.values() if s.vehicle_id == vehicle_id]
 
-    async def save(self, service: Service) -> None:
-        if service.id is None:
-            self._counter += 1
-            service.id = self._counter
+    async def create(self, service: Service) -> Service:
+        self._counter += 1
+        created = replace(service, id=self._counter)
+        self._store[created.id] = created
+        return created
+
+    async def update(self, service: Service) -> None:
         self._store[service.id] = service
 
     async def delete(self, id: int) -> None:

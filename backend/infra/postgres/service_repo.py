@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from uuid import UUID
 
 from domain.network.model import Node, NodeType
@@ -33,20 +34,21 @@ class PostgresServiceRepository(ServiceRepository):
         )
         return [self._to_entity(row) for row in result.mappings()]
 
-    async def save(self, service: Service) -> None:
-        if service.id is None:
-            result = await self._session.execute(
-                insert(services_table)
-                .values(**self._to_table_without_id(service))
-                .returning(services_table.c.id)
-            )
-            service.id = result.scalar_one()
-        else:
-            await self._session.execute(
-                update(services_table)
-                .where(services_table.c.id == service.id)
-                .values(**self._to_table_without_id(service))
-            )
+    async def create(self, service: Service) -> Service:
+        result = await self._session.execute(
+            insert(services_table)
+            .values(**self._to_table_without_id(service))
+            .returning(services_table.c.id)
+        )
+        await self._session.commit()
+        return replace(service, id=result.scalar_one())
+
+    async def update(self, service: Service) -> None:
+        await self._session.execute(
+            update(services_table)
+            .where(services_table.c.id == service.id)
+            .values(**self._to_table_without_id(service))
+        )
         await self._session.commit()
 
     async def delete(self, id: int) -> None:
