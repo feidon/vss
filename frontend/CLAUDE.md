@@ -56,19 +56,21 @@ src/app/
 
 ## Backend API
 
-Base URL: `http://localhost:8000`
+Base URL: configured via environment files (`src/environments/`).
+- Dev (`ng serve`): `http://localhost:8000/api`
+- Production (Docker): `/api` (relative, proxied by nginx)
 
 | Method | Path                       | Description                        |
 |--------|----------------------------|------------------------------------|
-| GET    | `/vehicles`                | List all vehicles                  |
-| GET    | `/blocks`                  | List all blocks                    |
-| PATCH  | `/blocks/{id}`             | Update traversal time              |
-| POST   | `/services`                | Create service                     |
-| GET    | `/services`                | List all services (summary only)   |
-| GET    | `/services/{id}`           | Get service detail (incl. graph)   |
-| PATCH  | `/services/{id}/route`     | Update service route               |
-| DELETE | `/services/{id}`           | Delete service                     |
-| POST   | `/routes/validate`         | Validate route for conflicts       |
+| GET    | `/api/vehicles`            | List all vehicles                  |
+| GET    | `/api/blocks`              | List all blocks                    |
+| PATCH  | `/api/blocks/{id}`         | Update traversal time              |
+| POST   | `/api/services`            | Create service                     |
+| GET    | `/api/services`            | List all services (summary only)   |
+| GET    | `/api/services/{id}`       | Get service detail (incl. graph)   |
+| PATCH  | `/api/services/{id}/route` | Update service route               |
+| DELETE | `/api/services/{id}`       | Delete service                     |
+| POST   | `/api/routes/validate`     | Validate route for conflicts       |
 
 ### Key Response Schemas
 
@@ -115,8 +117,13 @@ Blocks additionally include: `group`, `traversal_time_seconds`
 ## Running
 
 ```bash
+# Local development
+export DATABASE_URL=postgresql+asyncpg://vss:vss@localhost:5432/vss
 npm install
-ng serve
+ng serve              # Frontend on http://localhost:4200
+
+# Docker (production-like)
+docker compose up     # App on http://localhost:80
 ```
 
 ## Testing
