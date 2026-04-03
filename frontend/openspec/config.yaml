@@ -45,7 +45,7 @@ context: |
 
   ## Domain Model (API Types)
   - Block: { id: UUID, name: string, group: number, traversal_time_seconds: number }
-  - Service list: { id: number, name: string, vehicle_id: UUID }
+  - Service list: { id: number, name: string, vehicle_id: UUID, vehicle_name: string }
   - Service detail: { id, name, vehicle_id, route: Node[], timetable: TimetableEntry[], graph: GraphResponse }
   - Node: discriminated union { type: "block" | "platform" | "yard", id: UUID, name: string, x, y }
   - TimetableEntry: { order: number, node_id: UUID, arrival: EpochSeconds, departure: EpochSeconds }
@@ -65,7 +65,10 @@ context: |
   - DELETE /api/services/{id}, POST /api/routes/validate
 
   409 Conflict response fields: vehicle_conflicts, block_conflicts,
-  interlocking_conflicts, low_battery_conflicts, insufficient_charge_conflicts
+  interlocking_conflicts, battery_conflicts (each with type: "low_battery" | "insufficient_charge")
+
+  POST /api/routes/validate request adds vehicle_id field.
+  Response: { route: UUID[], battery_conflicts: [{type, service_id}] }
 
   ## Track Network
   14 blocks (B1-B14), 4 stations (Y, S1, S2, S3), 6 platforms (P1A/B, P2A/B, P3A/B).

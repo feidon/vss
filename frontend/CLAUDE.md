@@ -97,7 +97,7 @@ Blocks additionally include: `group`, `traversal_time_seconds`
 
 **Service list** (GET `/api/services`):
 ```json
-{ "id": 101, "name": "S101", "vehicle_id": "uuid" }
+{ "id": 101, "name": "S101", "vehicle_id": "uuid", "vehicle_name": "V1" }
 ```
 
 **Service detail** (GET `/api/services/{id}`):
@@ -123,10 +123,20 @@ Blocks additionally include: `group`, `traversal_time_seconds`
     "vehicle_conflicts": [{ "vehicle_id": "uuid", "service_a_id": 1, "service_b_id": 2, "reason": "Overlapping time windows" }],
     "block_conflicts": [{ "block_id": "uuid", "service_a_id": 1, "service_b_id": 2, "overlap_start": 170000, "overlap_end": 170030 }],
     "interlocking_conflicts": [{ "group": 1, "block_a_id": "uuid", "block_b_id": "uuid", "service_a_id": 1, "service_b_id": 2, "overlap_start": 170000, "overlap_end": 170030 }],
-    "low_battery_conflicts": [{ "service_id": 1 }],
-    "insufficient_charge_conflicts": [{ "service_id": 1 }]
+    "battery_conflicts": [{ "type": "low_battery", "service_id": 1 }]
   }
 }
+```
+`battery_conflicts[].type` is `"low_battery"` or `"insufficient_charge"`.
+
+**Route Validation Request** (POST `/api/routes/validate`):
+```json
+{ "vehicle_id": "uuid", "stops": [{ "node_id": "uuid", "dwell_time": 30 }], "start_time": 1700000000 }
+```
+
+**Route Validation Response**:
+```json
+{ "route": ["uuid", "uuid", "..."], "battery_conflicts": [{ "type": "low_battery", "service_id": 1 }] }
 ```
 
 ## Running
