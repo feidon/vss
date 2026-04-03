@@ -310,9 +310,20 @@ Conflict response includes structured details (block IDs, overlap windows, reaso
 10. **No high-concurrency support** — No connection pooling tuning, no rate limiting, no caching layer.
 11. **Small number of services** — Conflict detection loads all services into memory on every route save. Suitable for dozens or hundreds of services, not thousands.
 
+12. **No distributed deployment preparations** — The system is designed as a single-node monolith with no provisions for horizontal scaling or distributed operation. Specifically:
+    - **No message queue or event bus** — All communication is synchronous in-process function calls. No Kafka, RabbitMQ, or similar infrastructure for decoupling services.
+    - **No distributed caching** — No Redis or Memcached layer. All state lives in PostgreSQL or in-process memory.
+    - **No service discovery or load balancing** — Single backend instance serves all requests. No reverse proxy configuration, health check endpoints for orchestrators, or graceful shutdown handling.
+    - **No database replication or sharding** — Single PostgreSQL instance with no read replicas, no connection pooling (e.g., PgBouncer), and no partitioning strategy.
+    - **No distributed locking or consensus** — Conflict detection assumes a single process; no distributed locks (e.g., Redis-based) to coordinate concurrent writes across instances.
+    - **No observability stack** — No structured logging, distributed tracing (OpenTelemetry), or metrics export (Prometheus). Debugging relies on stdout logs.
+    - **No container orchestration readiness** — Docker Compose for local development only. No Kubernetes manifests, Helm charts, or cloud deployment configurations.
+
+    This is intentional for a project of this scope — the complexity of distributed infrastructure would far outweigh any benefit given the single-user, small-dataset assumptions above.
+
 ### Technical Choices
 
-12. **Time in Unix epoch seconds** — All timetable times use integer Unix timestamps. The frontend converts to/from local datetime for display. Avoids timezone complexity.
+13. **Time in Unix epoch seconds** — All timetable times use integer Unix timestamps. The frontend converts to/from local datetime for display. Avoids timezone complexity.
 
 ---
 
@@ -351,4 +362,3 @@ vss/
 - [ ] still no vehicle when create service, it might be the seeding problem
 - [ ] block traversal time editing still not intuitive enough, maybe just a edit button and show a dialog.
 - [ ] implement track map in editor
-- [ ] no distributed preparations
