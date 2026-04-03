@@ -61,7 +61,7 @@ class TestServiceCRUD:
         await create_service(client)
         resp = await client.get("services")
         for item in resp.json():
-            assert set(item.keys()) == {"id", "name", "vehicle_id"}
+            assert set(item.keys()) == {"id", "name", "vehicle_id", "vehicle_name"}
             assert "graph" not in item
             assert "route" not in item
             assert "timetable" not in item
