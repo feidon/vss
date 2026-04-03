@@ -23,7 +23,8 @@
       "Bash(curl -s -I -H \"Origin: http://localhost:4200\" http://localhost:8000/vehicles)",
       "Bash(curl -s http://localhost:4200/editor)",
       "Bash(.venv/bin/python -m pytest tests/api/test_block_routes.py tests/api/test_vehicle_routes.py -x -q)",
-      "Bash(.venv/bin/python -m pytest tests/api/test_block_routes.py tests/api/test_vehicle_routes.py -x -q -m postgres)"
+      "Bash(.venv/bin/python -m pytest tests/api/test_block_routes.py tests/api/test_vehicle_routes.py -x -q -m postgres)",
+      "mcp__filesystem__list_directory"
     ]
   },
   "enabledMcpjsonServers": [
