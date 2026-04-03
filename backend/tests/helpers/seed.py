@@ -1,12 +1,10 @@
-"""Seed the PostgreSQL database with the fixed track network.
+"""Test-only seed helper.
 
-Idempotent — uses ON CONFLICT DO NOTHING.
+Replicates the seed insert logic for use in test fixtures.
+Production seeding is handled by Alembic migration 002.
 """
 
 from __future__ import annotations
-
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from infra.postgres.tables import (
     blocks_table,
@@ -23,23 +21,23 @@ from infra.seed import (
     create_stations,
     create_vehicles,
 )
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
-async def seed_database(session: AsyncSession) -> None:
-    """Insert all reference data if not already present."""
+async def seed_test_database(session: AsyncSession) -> None:
+    """Insert all reference data for tests. Idempotent via ON CONFLICT DO NOTHING."""
     stations = create_stations()
     blocks = create_blocks()
     vehicles = create_vehicles()
     connections = create_connections()
 
-    # Stations
     await session.execute(
         insert(stations_table)
         .values([{"id": s.id, "name": s.name, "is_yard": s.is_yard} for s in stations])
         .on_conflict_do_nothing(index_elements=["id"])
     )
 
-    # Platforms
     platform_rows = [
         {"id": p.id, "name": p.name, "station_id": s.id}
         for s in stations
@@ -52,7 +50,6 @@ async def seed_database(session: AsyncSession) -> None:
             .on_conflict_do_nothing(index_elements=["id"])
         )
 
-    # Blocks
     await session.execute(
         insert(blocks_table)
         .values(
@@ -69,21 +66,18 @@ async def seed_database(session: AsyncSession) -> None:
         .on_conflict_do_nothing(index_elements=["id"])
     )
 
-    # Vehicles
     await session.execute(
         insert(vehicles_table)
         .values([{"id": v.id, "name": v.name} for v in vehicles])
         .on_conflict_do_nothing(index_elements=["id"])
     )
 
-    # Node connections
     await session.execute(
         insert(node_connections_table)
         .values([{"from_id": c.from_id, "to_id": c.to_id} for c in connections])
         .on_conflict_do_nothing()
     )
 
-    # Node layouts
     layouts = create_node_layouts()
     await session.execute(
         insert(node_layouts_table)

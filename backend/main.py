@@ -10,20 +10,12 @@ from domain.error import DomainError
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from infra.postgres.seed import seed_database
-from infra.postgres.session import async_session, engine
-from infra.postgres.tables import metadata
 
 STATIC_DIR = Path(__file__).parent / "static"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(metadata.create_all)
-
-    async with async_session() as session:
-        await seed_database(session)
     yield
 
 

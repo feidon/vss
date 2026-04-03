@@ -18,4 +18,4 @@ COPY backend/ .
 COPY --from=frontend /build/dist/frontend/browser ./static
 
 EXPOSE 8000
-CMD [".venv/bin/uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/bin/sh", "-c", ".venv/bin/alembic upgrade head && .venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000"]

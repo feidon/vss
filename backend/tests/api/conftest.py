@@ -12,7 +12,6 @@ from fastapi import Depends
 from httpx import ASGITransport, AsyncClient
 from infra.postgres.block_repo import PostgresBlockRepository
 from infra.postgres.connection_repo import PostgresConnectionRepository
-from infra.postgres.seed import seed_database
 from infra.postgres.service_repo import PostgresServiceRepository
 from infra.postgres.session import get_session
 from infra.postgres.station_repo import PostgresStationRepository
@@ -23,6 +22,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
+from tests.helpers.seed import seed_test_database
 from tests.pg_config import TEST_DATABASE_URL
 
 _TABLE_NAMES = ", ".join(t.name for t in metadata.sorted_tables)
@@ -34,7 +34,7 @@ async def client(_pg_tables):
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
     async with session_factory() as session:
-        await seed_database(session)
+        await seed_test_database(session)
 
     async def test_get_session():
         async with session_factory() as session:

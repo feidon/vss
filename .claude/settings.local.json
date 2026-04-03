@@ -16,7 +16,10 @@
       "Bash(python3 -c \"import yaml; yaml.safe_load\\(open\\('/home/feidon/Documents/vss/.github/workflows/ci.yml'\\)\\)\")",
       "Bash(npx prettier:*)",
       "Read(//home/feidon/.cache/pre-commit/**)",
-      "Bash(/home/feidon/.cache/pre-commit/repobd57k9me/py_env-python3.14/bin/ruff check:*)"
+      "Bash(/home/feidon/.cache/pre-commit/repobd57k9me/py_env-python3.14/bin/ruff check:*)",
+      "Bash(chmod 600:*)",
+      "mcp__plugin_discord_discord__reply",
+      "Bash(DATABASE_URL=postgresql+asyncpg://vss:vss@localhost:5432/vss uv run:*)"
     ]
   },
   "enabledMcpjsonServers": [
