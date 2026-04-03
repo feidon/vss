@@ -49,7 +49,8 @@ context: |
   ## Persistence Strategy
   - SQLAlchemy Core + manual _to_entity() / _to_table() mappers in repositories
   - Domain entities are pure Python dataclasses with zero SQLAlchemy imports
-  - save() uses upsert (insert on conflict update all columns)
+  - Repositories use explicit create() and update() — no generic save() or upsert
+  - Reference data repos (Block, Vehicle, Station) only expose update() — creation via seed migrations
   - Service path/timetable stored as JSONB (aggregate storage)
 
   ## Conventions

@@ -104,7 +104,8 @@ Rationale:
 - Repositories handle translation between domain entities and DB rows via `_to_entity()` / `_to_table()` methods
 - SQLAlchemy Core (`select()`, `insert()`, `update()`, `delete()` on `Table` objects) for all queries
 - No change tracking, no identity map, no lazy loading — all persistence is explicit
-- `save()` uses upsert (insert on conflict update all columns) — no need to diff changes
+- Repositories use explicit `create()` and `update()` methods — no generic `save()` or upsert
+- Reference data repos (Block, Vehicle, Station) only expose `update()` — creation is handled by seed migrations
 - Service path/timetable stored as JSONB (aggregate storage — loaded/persisted as whole units)
 
 This mirrors the QueryDSL SQL + Flyway pattern: schema-first, codegen/table definitions separate from domain, explicit mapper at repository boundary.
