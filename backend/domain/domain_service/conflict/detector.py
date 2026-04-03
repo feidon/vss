@@ -1,22 +1,18 @@
 from __future__ import annotations
 
 from domain.block.model import Block
-from domain.domain_service.conflict.detection import (
-    detect_battery_conflicts,
-    detect_block_conflicts,
-    detect_interlocking_conflicts,
-    detect_location_discontinuity_conflicts,
-    detect_time_overlap_conflicts,
-)
-from domain.domain_service.conflict.model import (
-    BatteryConflict,
-    ServiceConflicts,
-)
-from domain.domain_service.conflict.preparation import (
+from domain.domain_service.conflict.battery import (
     build_battery_steps,
+    detect_battery_conflicts,
+)
+from domain.domain_service.conflict.block import detect_block_conflicts
+from domain.domain_service.conflict.interlocking import detect_interlocking_conflicts
+from domain.domain_service.conflict.model import BatteryConflict, ServiceConflicts
+from domain.domain_service.conflict.shared import (
     build_occupancies,
     build_vehicle_schedule,
 )
+from domain.domain_service.conflict.vehicle import detect_vehicle_conflicts
 from domain.service.model import Service
 from domain.vehicle.model import Vehicle
 
@@ -49,14 +45,10 @@ def detect_conflicts(
                 battery_steps,
             )
 
-    vehicle_conflicts = detect_time_overlap_conflicts(
-        candidate.vehicle_id, schedule.windows
-    ) + detect_location_discontinuity_conflicts(
-        candidate.vehicle_id, schedule.endpoints
-    )
-
     return ServiceConflicts(
-        vehicle_conflicts=vehicle_conflicts,
+        vehicle_conflicts=detect_vehicle_conflicts(
+            candidate.vehicle_id, schedule.windows, schedule.endpoints
+        ),
         block_conflicts=detect_block_conflicts(block_occupancies),
         interlocking_conflicts=detect_interlocking_conflicts(group_occupancies),
         battery_conflicts=battery_conflicts,

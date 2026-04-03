@@ -2,19 +2,18 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from domain.block.model import Block
 from domain.block.repository import BlockRepository
 from domain.domain_service.conflict import detect_conflicts
-from domain.domain_service.conflict.detection import detect_battery_conflicts
-from domain.domain_service.conflict.preparation import build_battery_steps
-from domain.domain_service.route_finder import RouteFinder
+from domain.domain_service.conflict.battery import (
+    build_battery_steps,
+    detect_battery_conflicts,
+)
+from domain.domain_service.route_builder import build_full_route
 from domain.error import DomainError, ErrorCode
-from domain.network.model import Node, NodeConnection
 from domain.network.repository import ConnectionRepository
-from domain.service.model import Service, TimetableEntry
+from domain.service.model import Service
 from domain.service.repository import ServiceRepository
 from domain.shared.types import EpochSeconds
-from domain.station.model import Platform, Station
 from domain.station.repository import StationRepository
 from domain.vehicle.repository import VehicleRepository
 
@@ -73,8 +72,10 @@ class ServiceAppService:
         all_stations = await self._station_repo.find_all()
         all_blocks = await self._block_repo.find_all()
 
-        full_route, timetable = await self._build_route(
-            stops, start_time, connections, all_stations, all_blocks
+        stop_ids = [s.node_id for s in stops]
+        dwell_by_stop = {s.node_id: s.dwell_time for s in stops}
+        full_route, timetable = build_full_route(
+            stop_ids, dwell_by_stop, start_time, connections, all_stations, all_blocks
         )
         service.update_route(full_route, timetable, connections)
 
@@ -107,8 +108,10 @@ class ServiceAppService:
         all_stations = await self._station_repo.find_all()
         all_blocks = await self._block_repo.find_all()
 
-        full_route, timetable = await self._build_route(
-            stops, start_time, connections, all_stations, all_blocks
+        stop_ids = [s.node_id for s in stops]
+        dwell_by_stop = {s.node_id: s.dwell_time for s in stops}
+        full_route, timetable = build_full_route(
+            stop_ids, dwell_by_stop, start_time, connections, all_stations, all_blocks
         )
 
         temp_service = Service(
@@ -127,100 +130,5 @@ class ServiceAppService:
             battery_conflicts=battery_conflicts,
         )
 
-    async def _build_route(
-        self,
-        stops: list[RouteStop],
-        start_time: EpochSeconds,
-        connections: frozenset[NodeConnection],
-        stations: list[Station],
-        blocks: list[Block],
-    ) -> tuple[list[Node], list[TimetableEntry]]:
-
-        all_platforms = {p.id: p for s in stations for p in s.platforms}
-        yards = {s.id: s for s in stations if s.is_yard}
-        blocks_by_id = {b.id: b for b in blocks}
-
-        self._validate_stops_exist(stops, all_platforms, yards)
-
-        stop_ids = [s.node_id for s in stops]
-        dwell_by_stop = {s.node_id: s.dwell_time for s in stops}
-        full_path_ids = RouteFinder.build_full_path(
-            stop_ids, connections, {b.id for b in blocks}
-        )
-
-        full_route = self._resolve_nodes(
-            full_path_ids, blocks_by_id, all_platforms, yards
-        )
-
-        timetable = self._compute_timetable(
-            full_route, blocks_by_id, all_platforms, yards, dwell_by_stop, start_time
-        )
-
-        return full_route, timetable
-
     async def delete_service(self, id: int) -> None:
         await self._service_repo.delete(id)
-
-    @staticmethod
-    def _validate_stops_exist(
-        stops: list[RouteStop],
-        all_platforms: dict[UUID, Platform],
-        yards: dict[UUID, Station],
-    ) -> None:
-        valid_ids = set(all_platforms.keys()) | set(yards.keys())
-        for stop in stops:
-            if stop.node_id not in valid_ids:
-                raise DomainError(
-                    ErrorCode.VALIDATION, f"Stop {stop.node_id} not found"
-                )
-
-    @staticmethod
-    def _resolve_nodes(
-        path_ids: list[UUID],
-        blocks_by_id: dict[UUID, Block],
-        all_platforms: dict[UUID, Platform],
-        yards: dict[UUID, Station],
-    ) -> list[Node]:
-        nodes: list[Node] = []
-        for nid in path_ids:
-            if nid in blocks_by_id:
-                nodes.append(blocks_by_id[nid].to_node())
-            elif nid in all_platforms:
-                nodes.append(all_platforms[nid].to_node())
-            elif nid in yards:
-                nodes.append(yards[nid].to_node())
-            else:
-                raise DomainError(ErrorCode.VALIDATION, f"Unknown node {nid} in path")
-        return nodes
-
-    @staticmethod
-    def _compute_timetable(
-        full_path: list[Node],
-        blocks_by_id: dict[UUID, Block],
-        all_platforms: dict[UUID, Platform],
-        yards: dict[UUID, Station],
-        dwell_by_stop: dict[UUID, int],
-        start_time: EpochSeconds,
-    ) -> list[TimetableEntry]:
-        entries: list[TimetableEntry] = []
-        current_time = start_time
-
-        for order, node in enumerate(full_path):
-            if node.id in blocks_by_id:
-                entry = blocks_by_id[node.id].to_timetable_entry(order, current_time)
-            elif node.id in all_platforms:
-                dwell = dwell_by_stop.get(node.id, 0)
-                entry = all_platforms[node.id].to_timetable_entry(
-                    order, current_time, dwell
-                )
-            elif node.id in yards:
-                dwell = dwell_by_stop.get(node.id, 0)
-                entry = yards[node.id].to_timetable_entry(order, current_time, dwell)
-            else:
-                raise DomainError(
-                    ErrorCode.VALIDATION, f"Unknown node {node.id} in timetable"
-                )
-            entries.append(entry)
-            current_time = entry.departure
-
-        return entries

@@ -1,21 +1,73 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import dataclass
+from typing import Protocol
 from uuid import UUID
 
 from domain.block.model import Block
-from domain.domain_service.conflict.model import (
-    BlockOccupancy,
-    BlockTraversal,
-    ChargeStop,
-    GroupOccupancy,
-    NodeEntry,
-    ServiceEndpoints,
-    ServiceWindow,
-    VehicleSchedule,
-)
-from domain.network.model import NodeType
 from domain.service.model import Service
+from domain.shared.types import EpochSeconds
+
+
+class Timed(Protocol):
+    arrival: EpochSeconds
+    departure: EpochSeconds
+
+
+@dataclass(frozen=True)
+class ServiceWindow:
+    service_id: int
+    start: EpochSeconds
+    end: EpochSeconds
+
+
+@dataclass(frozen=True)
+class ServiceEndpoints:
+    service_id: int
+    first_node_id: UUID
+    last_node_id: UUID
+    start: EpochSeconds
+
+
+@dataclass(frozen=True)
+class VehicleSchedule:
+    windows: list[ServiceWindow]
+    endpoints: list[ServiceEndpoints]
+
+
+@dataclass(frozen=True)
+class BlockOccupancy:
+    service_id: int
+    arrival: EpochSeconds
+    departure: EpochSeconds
+
+
+@dataclass(frozen=True)
+class GroupOccupancy:
+    service_id: int
+    block_id: UUID
+    arrival: EpochSeconds
+    departure: EpochSeconds
+
+
+def find_time_overlaps[T: Timed](entries: list[T]) -> list[tuple[T, T]]:
+    """Find all pairs with overlapping time windows.
+
+    Sweep-line algorithm: sort by arrival, break inner loop
+    when next arrival >= current departure.
+    """
+    sorted_entries = sorted(entries, key=lambda x: x.arrival)
+    pairs: list[tuple[T, T]] = []
+
+    for i in range(len(sorted_entries)):
+        dep_i = sorted_entries[i].departure
+        for j in range(i + 1, len(sorted_entries)):
+            if sorted_entries[j].arrival >= dep_i:
+                break
+            pairs.append((sorted_entries[i], sorted_entries[j]))
+
+    return pairs
 
 
 def build_vehicle_schedule(
@@ -70,36 +122,4 @@ def build_occupancies(
             by_group[block.group].append(
                 GroupOccupancy(svc.id, block.id, entry.arrival, entry.departure),
             )
-    return (by_block, by_group)
-
-
-def build_battery_steps(
-    vehicle_id: UUID,
-    services: list[Service],
-) -> list[ChargeStop | BlockTraversal]:
-    node_entries: list[NodeEntry] = []
-
-    for service in services:
-        if service.vehicle_id != vehicle_id or not service.timetable:
-            continue
-
-        node_map = {n.id: n.type for n in service.route}
-        for t in service.timetable:
-            if node_map[t.node_id] != NodeType.PLATFORM:
-                node_entries.append(
-                    NodeEntry(t.arrival, node_map[t.node_id], service.id)
-                )
-
-    node_entries.sort(key=lambda e: e.time)
-
-    steps: list[ChargeStop | BlockTraversal] = []
-    for i, entry in enumerate(node_entries):
-        if entry.node_type == NodeType.YARD:
-            next_time = (
-                node_entries[i + 1].time if i + 1 < len(node_entries) else entry.time
-            )
-            steps.append(ChargeStop(next_time - entry.time, entry.service_id))
-        else:
-            steps.append(BlockTraversal(entry.service_id))
-
-    return steps
+    return by_block, by_group

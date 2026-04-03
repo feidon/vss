@@ -1,35 +1,19 @@
+from domain.domain_service.conflict.detector import detect_conflicts
 from domain.domain_service.conflict.model import (
     BatteryConflict,
+    BatteryConflictType,
     BlockConflict,
-    BlockOccupancy,
-    BlockTraversal,
-    ChargeStop,
-    GroupOccupancy,
     InterlockingConflict,
-    NodeEntry,
     ServiceConflicts,
-    ServiceEndpoints,
-    ServiceWindow,
-    Timed,
     VehicleConflict,
-    VehicleSchedule,
 )
-from domain.domain_service.conflict.service import detect_conflicts
 
 __all__ = [
-    "BlockConflict",
-    "BlockOccupancy",
-    "BlockTraversal",
-    "ChargeStop",
-    "GroupOccupancy",
-    "InterlockingConflict",
     "BatteryConflict",
-    "NodeEntry",
+    "BatteryConflictType",
+    "BlockConflict",
+    "InterlockingConflict",
     "ServiceConflicts",
-    "ServiceEndpoints",
-    "ServiceWindow",
-    "Timed",
     "VehicleConflict",
-    "VehicleSchedule",
     "detect_conflicts",
 ]
