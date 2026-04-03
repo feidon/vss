@@ -112,11 +112,11 @@ class ServiceAppService:
         )
 
         steps = build_battery_steps(vehicle_id, [temp_service])
-        low_battery, insufficient_charge = detect_battery_conflicts(vehicle, steps)
+        battery_conflicts = detect_battery_conflicts(vehicle, steps)
 
         return RouteValidationResult(
             route=full_route,
-            battery_conflicts=[*low_battery, *insufficient_charge],
+            battery_conflicts=battery_conflicts,
         )
 
     async def _build_route(

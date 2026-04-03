@@ -3,6 +3,7 @@ from uuid import uuid7
 
 from domain.block.model import Block
 from domain.domain_service.conflict import detect_conflicts
+from domain.domain_service.conflict.model import BatteryConflictType
 from domain.network.model import Node, NodeType
 from domain.service.model import Service, TimetableEntry
 from domain.vehicle.model import Vehicle
@@ -270,8 +271,7 @@ class TestBatteryConflicts:
         s = make_multi_block_service(v.id, num_blocks=5, arrival=0)
 
         result = validate(s, [], vehicles=[v])
-        assert result.low_battery_conflicts == []
-        assert result.insufficient_charge_conflicts == []
+        assert result.battery_conflicts == []
 
     def test_low_battery_conflict_detected(self):
         """75 blocks: 80 - 75 = 5% < 30% — should trigger LowBatteryConflict."""
@@ -279,8 +279,9 @@ class TestBatteryConflicts:
         s = make_multi_block_service(v.id, num_blocks=75, arrival=0)
 
         result = validate(s, [], vehicles=[v])
-        assert len(result.low_battery_conflicts) == 1
-        assert result.low_battery_conflicts[0].service_id == s.id
+        assert len(result.battery_conflicts) == 1
+        assert result.battery_conflicts[0].type == BatteryConflictType.LOWBATTERY
+        assert result.battery_conflicts[0].service_id == s.id
         assert result.has_conflicts
 
     def test_insufficient_charge_conflict_detected(self):
@@ -295,8 +296,9 @@ class TestBatteryConflicts:
         )
 
         result = validate(s2, [s1], vehicles=[v])
-        assert len(result.insufficient_charge_conflicts) == 1
-        assert result.insufficient_charge_conflicts[0].service_id == s2.id
+        assert len(result.battery_conflicts) == 1
+        assert result.battery_conflicts[0].type == BatteryConflictType.INSUFCHARGE
+        assert result.battery_conflicts[0].service_id == s2.id
         assert result.has_conflicts
 
     def test_charging_prevents_conflict(self):
@@ -311,8 +313,7 @@ class TestBatteryConflicts:
         s2 = make_multi_block_service(v.id, num_blocks=5, arrival=1100, block_time=10)
 
         result = validate(s2, [s1], vehicles=[v])
-        assert result.low_battery_conflicts == []
-        assert result.insufficient_charge_conflicts == []
+        assert result.battery_conflicts == []
 
     def test_no_charging_when_not_at_yard(self):
         """Vehicle doesn't return to Yard between services — battery drops to critical."""
@@ -324,7 +325,7 @@ class TestBatteryConflicts:
         s2 = make_multi_block_service(v.id, num_blocks=5, arrival=1100, block_time=10)
 
         result = validate(s2, [s1], vehicles=[v])
-        assert len(result.low_battery_conflicts) == 1
+        assert len(result.battery_conflicts) == 1
 
     def test_cumulative_drain_across_services(self):
         """Three services that cumulatively drain the battery below threshold."""
@@ -342,8 +343,10 @@ class TestBatteryConflicts:
         s3 = make_multi_block_service(v.id, num_blocks=5, arrival=1900, block_time=10)
 
         result = validate(s3, [s1, s2], vehicles=[v])
-        assert len(result.insufficient_charge_conflicts) == 1
-        assert result.insufficient_charge_conflicts[0].service_id == s2.id
+        assert len(result.battery_conflicts) == 1
+        assert result.battery_conflicts[0].service_id == s2.id
+        assert result.battery_conflicts[0].type == BatteryConflictType.INSUFCHARGE
+        assert result.has_conflicts
 
     def test_mid_service_yard_provides_charging(self):
         """A yard in the middle of a service charges the vehicle, preventing low battery."""
@@ -357,8 +360,7 @@ class TestBatteryConflicts:
         )
 
         result = validate(s, [], vehicles=[v])
-        assert result.low_battery_conflicts == []
-        assert result.insufficient_charge_conflicts == []
+        assert result.battery_conflicts == []
 
     def test_mid_service_yard_insufficient_charge(self):
         """Yard mid-service but dwell too short to reach 80% → can't depart."""
@@ -370,8 +372,10 @@ class TestBatteryConflicts:
         )
 
         result = validate(s, [], vehicles=[v])
-        assert len(result.insufficient_charge_conflicts) == 1
-        assert result.insufficient_charge_conflicts[0].service_id == s.id
+        assert len(result.battery_conflicts) == 1
+        assert result.battery_conflicts[0].service_id == s.id
+        assert result.battery_conflicts[0].type == BatteryConflictType.INSUFCHARGE
+        assert result.has_conflicts
 
     def test_battery_exactly_at_critical_threshold_no_conflict(self):
         """Battery at exactly 30% is NOT critical (< 30 required)."""
@@ -380,7 +384,7 @@ class TestBatteryConflicts:
         s = make_multi_block_service(v.id, num_blocks=50, arrival=0)
 
         result = validate(s, [], vehicles=[v])
-        assert result.low_battery_conflicts == []
+        assert result.battery_conflicts == []
 
     def test_battery_exactly_at_depart_threshold_no_conflict(self):
         """Battery at exactly 80% can depart (>= 80 required)."""
@@ -392,15 +396,14 @@ class TestBatteryConflicts:
         s2 = make_multi_block_service(v.id, num_blocks=5, arrival=1100, block_time=10)
 
         result = validate(s2, [s1], vehicles=[v])
-        assert result.insufficient_charge_conflicts == []
+        assert result.battery_conflicts == []
 
     def test_no_vehicles_skips_battery_check(self):
         """When no vehicles provided, battery checks are skipped entirely."""
         s = make_multi_block_service(uuid7(), num_blocks=75, arrival=0)
 
         result = validate(s, [])
-        assert result.low_battery_conflicts == []
-        assert result.insufficient_charge_conflicts == []
+        assert result.battery_conflicts == []
 
     def test_different_vehicle_entries_ignored(self):
         """Battery simulation only considers services assigned to the candidate's vehicle."""
@@ -411,8 +414,7 @@ class TestBatteryConflicts:
         light = make_multi_block_service(v1.id, num_blocks=5, arrival=0, block_time=10)
 
         result = validate(light, [heavy], vehicles=[v1, v2])
-        assert result.low_battery_conflicts == []
-        assert result.insufficient_charge_conflicts == []
+        assert result.battery_conflicts == []
 
     def test_yard_at_end_triggers_insufficient_charge_when_battery_low(self):
         """Trailing yard with no idle time → charge 0 → battery < 80% → insufficient charge."""
@@ -423,4 +425,5 @@ class TestBatteryConflicts:
         )
 
         result = validate(s, [], vehicles=[v])
-        assert len(result.insufficient_charge_conflicts) == 1
+        assert len(result.battery_conflicts) == 1
+        assert result.battery_conflicts[0].service_id == s.id

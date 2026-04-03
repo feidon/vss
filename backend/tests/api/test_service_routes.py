@@ -198,5 +198,4 @@ class TestServiceRouteUpdate:
             len(detail["vehicle_conflicts"]) > 0 or len(detail["block_conflicts"]) > 0
         )
         # Battery conflict fields present in response
-        assert "low_battery_conflicts" in detail
-        assert "insufficient_charge_conflicts" in detail
+        assert "battery_conflicts" in detail

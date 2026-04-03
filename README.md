@@ -359,7 +359,4 @@ vss/
 ## Todo
 
 - [ ] refactor `backend/application/service/service.py`, there are too many same query and hard to read
-- [ ] still no vehicle when create service, it might be the seeding problem
-- [ ] block traversal time editing still not intuitive enough, maybe just a edit button and show a dialog.
 - [ ] implement track map in editor
-- [ ] show group 0 as no group

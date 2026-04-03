@@ -9,8 +9,7 @@ from domain.domain_service.conflict.detection import (
     detect_time_overlap_conflicts,
 )
 from domain.domain_service.conflict.model import (
-    InsufficientChargeConflict,
-    LowBatteryConflict,
+    BatteryConflict,
     ServiceConflicts,
 )
 from domain.domain_service.conflict.preparation import (
@@ -35,8 +34,8 @@ def detect_conflicts(
     schedule = build_vehicle_schedule(candidate.vehicle_id, all_services)
     block_occupancies, group_occupancies = build_occupancies(all_services, blocks)
 
-    low_battery: list[LowBatteryConflict] = []
-    insufficient_charge: list[InsufficientChargeConflict] = []
+    battery_conflicts: list[BatteryConflict] = []
+
     if vehicles:
         vehicle_by_id = {v.id: v for v in vehicles}
         candidate_vehicle = vehicle_by_id.get(candidate.vehicle_id)
@@ -45,7 +44,7 @@ def detect_conflicts(
                 candidate_vehicle.id,
                 all_services,
             )
-            low_battery, insufficient_charge = detect_battery_conflicts(
+            battery_conflicts = detect_battery_conflicts(
                 candidate_vehicle,
                 battery_steps,
             )
@@ -60,6 +59,5 @@ def detect_conflicts(
         vehicle_conflicts=vehicle_conflicts,
         block_conflicts=detect_block_conflicts(block_occupancies),
         interlocking_conflicts=detect_interlocking_conflicts(group_occupancies),
-        low_battery_conflicts=low_battery,
-        insufficient_charge_conflicts=insufficient_charge,
+        battery_conflicts=battery_conflicts,
     )

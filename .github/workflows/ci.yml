@@ -60,25 +60,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    env:
-      DATABASE_URL: postgresql+asyncpg://vss:vss@localhost:5432/vss_test
     defaults:
       run:
         working-directory: backend
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: vss
-          POSTGRES_PASSWORD: vss
-          POSTGRES_DB: vss
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U vss"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
     steps:
       - uses: actions/checkout@v4
 
@@ -93,9 +77,6 @@ jobs:
 
       - name: Install dependencies
         run: uv sync
-
-      - name: Create test database
-        run: PGPASSWORD=vss psql -h localhost -U vss -c "CREATE DATABASE vss_test;"
 
       - name: Run all tests
         run: uv run pytest -m '' -v

@@ -22,15 +22,15 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
+import tests.pg_config as pg_config
 from tests.helpers.seed import seed_test_database
-from tests.pg_config import TEST_DATABASE_URL
 
 _TABLE_NAMES = ", ".join(t.name for t in metadata.sorted_tables)
 
 
 @pytest.fixture
 async def client(_pg_tables):
-    engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
+    engine = create_async_engine(pg_config.TEST_DATABASE_URL, poolclass=NullPool)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
     async with session_factory() as session:

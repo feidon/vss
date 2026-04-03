@@ -31,7 +31,8 @@
       "Bash(PGPASSWORD=vss psql:*)",
       "Bash(python3:*)",
       "Bash(xargs ls:*)",
-      "Bash(openspec --version)"
+      "Bash(openspec --version)",
+      "Bash(uv sync:*)"
     ]
   },
   "enabledMcpjsonServers": [

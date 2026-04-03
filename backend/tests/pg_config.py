@@ -1,8 +1,8 @@
-import os
+"""Connection URLs for postgres integration tests.
 
-TEST_DATABASE_URL = os.getenv(
-    "TEST_DATABASE_URL", "postgresql+asyncpg://vss:vss@localhost:5432/vss_test"
-)
-TEST_DATABASE_URL_SYNC = os.getenv(
-    "TEST_DATABASE_URL_SYNC", "postgresql+psycopg://vss:vss@localhost:5432/vss_test"
-)
+Populated at runtime by the testcontainers session fixture in conftest.py.
+"""
+
+# Set by conftest._pg_container fixture
+TEST_DATABASE_URL: str = ""
+TEST_DATABASE_URL_SYNC: str = ""

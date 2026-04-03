@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Protocol
 from uuid import UUID
 
@@ -64,8 +65,14 @@ class InterlockingConflict:
         )
 
 
+class BatteryConflictType(Enum):
+    LOWBATTERY = "low_battery"
+    INSUFCHARGE = "insufficient_charge"
+
+
 @dataclass(frozen=True)
-class LowBatteryConflict:
+class BatteryConflict:
+    type: BatteryConflictType
     service_id: int
 
 
@@ -79,10 +86,7 @@ class ServiceConflicts:
     vehicle_conflicts: list[VehicleConflict]
     block_conflicts: list[BlockConflict]
     interlocking_conflicts: list[InterlockingConflict]
-    low_battery_conflicts: list[LowBatteryConflict] = field(default_factory=list)
-    insufficient_charge_conflicts: list[InsufficientChargeConflict] = field(
-        default_factory=list
-    )
+    battery_conflicts: list[BatteryConflict] = field(default_factory=list)
 
     @property
     def has_conflicts(self) -> bool:
@@ -90,8 +94,7 @@ class ServiceConflicts:
             self.vehicle_conflicts
             or self.block_conflicts
             or self.interlocking_conflicts
-            or self.low_battery_conflicts
-            or self.insufficient_charge_conflicts
+            or self.battery_conflicts
         )
 
 

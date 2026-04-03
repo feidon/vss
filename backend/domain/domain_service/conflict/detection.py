@@ -4,14 +4,14 @@ from dataclasses import replace
 from uuid import UUID
 
 from domain.domain_service.conflict.model import (
+    BatteryConflict,
+    BatteryConflictType,
     BlockConflict,
     BlockOccupancy,
     BlockTraversal,
     ChargeStop,
     GroupOccupancy,
-    InsufficientChargeConflict,
     InterlockingConflict,
-    LowBatteryConflict,
     ServiceEndpoints,
     ServiceWindow,
     Timed,
@@ -108,12 +108,11 @@ def detect_interlocking_conflicts(
 def detect_battery_conflicts(
     vehicle: Vehicle,
     steps: list[ChargeStop | BlockTraversal],
-) -> tuple[list[LowBatteryConflict], list[InsufficientChargeConflict]]:
-    low_battery: list[LowBatteryConflict] = []
-    insufficient_charge: list[InsufficientChargeConflict] = []
+) -> list[BatteryConflict]:
+    battery_conflicts: list[BatteryConflict] = []
 
     if not steps:
-        return (low_battery, insufficient_charge)
+        return battery_conflicts
 
     sim = replace(vehicle)
 
@@ -122,14 +121,22 @@ def detect_battery_conflicts(
             case ChargeStop():
                 sim.charge(step.charge_seconds)
                 if not sim.can_depart():
-                    insufficient_charge.append(
-                        InsufficientChargeConflict(service_id=step.service_id)
+                    battery_conflicts.append(
+                        BatteryConflict(
+                            type=BatteryConflictType.INSUFCHARGE,
+                            service_id=step.service_id,
+                        )
                     )
                     break
             case BlockTraversal():
                 sim.traverse_block()
                 if sim.is_battery_critical():
-                    low_battery.append(LowBatteryConflict(service_id=step.service_id))
+                    battery_conflicts.append(
+                        BatteryConflict(
+                            type=BatteryConflictType.LOWBATTERY,
+                            service_id=step.service_id,
+                        )
+                    )
                     break
 
-    return (low_battery, insufficient_charge)
+    return battery_conflicts

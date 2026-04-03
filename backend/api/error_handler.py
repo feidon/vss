@@ -64,10 +64,8 @@ def _build_conflict_detail(e: ConflictError) -> dict:
             }
             for ic in c.interlocking_conflicts
         ],
-        "low_battery_conflicts": [
-            {"service_id": lbc.service_id} for lbc in c.low_battery_conflicts
-        ],
-        "insufficient_charge_conflicts": [
-            {"service_id": icc.service_id} for icc in c.insufficient_charge_conflicts
+        "battery_conflicts": [
+            {"type": lbc.type.name, "service_id": lbc.service_id}
+            for lbc in c.battery_conflicts
         ],
     }
