@@ -3,8 +3,10 @@ from __future__ import annotations
 from uuid import UUID
 
 from application.graph.dto import GraphData
+from application.service.dto import RouteStop
 from domain.network.model import NodeType
 from domain.service.model import Service
+from domain.vehicle.model import Vehicle
 from pydantic import BaseModel, Field
 
 from api.shared.schemas import (
@@ -25,6 +27,9 @@ class RouteStopInput(BaseModel):
     node_id: UUID
     dwell_time: int = Field(ge=0)
 
+    def to_route_stop(self) -> RouteStop:
+        return RouteStop(node_id=self.node_id, dwell_time=self.dwell_time)
+
 
 class UpdateRouteRequest(BaseModel):
     stops: list[RouteStopInput] = Field(min_length=1)
@@ -42,6 +47,16 @@ class ServiceResponse(BaseModel):
     id: int
     name: str
     vehicle_id: UUID
+    vehicle_name: str
+
+    @classmethod
+    def from_domain(cls, service: Service, vehicle: Vehicle) -> ServiceResponse:
+        return cls(
+            id=service.id,
+            name=service.name,
+            vehicle_id=service.vehicle_id,
+            vehicle_name=vehicle.name,
+        )
 
 
 # ── Graph sub-schemas (for service detail) ────────────────────

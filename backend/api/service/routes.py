@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 from application.graph.service import GraphAppService
-from application.service.dto import RouteStop
 from application.service.service import ServiceAppService
+from application.vehicle.service import VehicleAppService
 from fastapi import APIRouter, Depends
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
-from api.dependencies import get_graph_service, get_service_app_service
+from api.dependencies import (
+    get_graph_service,
+    get_service_app_service,
+    get_vehicle_service,
+)
 from api.service.schemas import (
     CreateServiceRequest,
     ServiceDetailResponse,
@@ -32,10 +36,13 @@ async def create_service(
 @router.get("", response_model=list[ServiceResponse])
 async def list_services(
     service_app_service: ServiceAppService = Depends(get_service_app_service),
+    vehicle_app_service: VehicleAppService = Depends(get_vehicle_service),
 ):
     services = await service_app_service.list_services()
+    vehicles = await vehicle_app_service.list_vehicles()
+    vehicles_map = {v.id: v for v in vehicles}
     return [
-        ServiceResponse(id=s.id, name=s.name, vehicle_id=s.vehicle_id) for s in services
+        ServiceResponse.from_domain(s, vehicles_map[s.vehicle_id]) for s in services
     ]
 
 
@@ -56,9 +63,7 @@ async def update_route(
     request: UpdateRouteRequest,
     service_app_service: ServiceAppService = Depends(get_service_app_service),
 ):
-    stops = [
-        RouteStop(node_id=s.node_id, dwell_time=s.dwell_time) for s in request.stops
-    ]
+    stops = [s.to_route_stop() for s in request.stops]
     service = await service_app_service.update_service_route(
         service_id, stops, request.start_time
     )

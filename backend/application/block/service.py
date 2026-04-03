@@ -19,4 +19,4 @@ class BlockAppService:
         if block is None:
             raise DomainError(ErrorCode.NOT_FOUND, f"Block {id} not found")
         block.update_traversal_time(traversal_time_seconds)
-        await self._block_repo.save(block)
+        await self._block_repo.update(block)

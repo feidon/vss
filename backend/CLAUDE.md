@@ -4,7 +4,11 @@
 
 - Python 3.14 + FastAPI
 - PostgreSQL 17 (Docker)
+- SQLAlchemy Core 2.0 + manual mapper (no ORM)
+- Alembic for schema migrations
+- asyncpg for async database access
 - Package manager: uv
+- Linting: Ruff (check + format), import-linter (architecture enforcement)
 
 ## Architecture
 
@@ -12,41 +16,47 @@ Hexagonal Architecture (Ports & Adapters) with DDD:
 
 ```
 backend/
-├── api/            # FastAPI routes, Pydantic schemas, DI container
-├── application/    # App services, DTOs, orchestration
-├── domain/         # Entities, value objects, repository interfaces, domain services
-├── infra/          # PostgreSQL repos, in-memory test doubles, seed data
+├── api/            # FastAPI routes, Pydantic schemas, DI container (inbound adapter)
+├── application/    # App services, DTOs, orchestration (use cases)
+├── domain/         # Entities, value objects, repository interfaces, domain services (core)
+├── infra/postgres/ # PostgreSQL repos, Alembic migrations, seed data (outbound adapter)
 └── tests/          # Mirrors source structure: domain/, application/, api/, infra/
+    └── fakes/      # In-memory repository implementations (test doubles)
 ```
 
 Dependency flow: `api → application → domain ← infra`
 
+Enforced at CI time via `import-linter` contracts in `pyproject.toml`.
+
 ## Key Domain Services
 
-- **ConflictDetectionService**: detects vehicle, block occupancy, interlocking, and battery conflicts
+- **ConflictDetectionService**: detects vehicle, block occupancy, interlocking, and battery conflicts (sweep-line + simulation)
 - **RouteFinder**: BFS pathfinding to insert intermediate blocks between platform stops
+
+Both are pure — no repository access, no I/O, no state.
 
 ## API Endpoints
 
-| Method | Path                            | Description              |
-|--------|---------------------------------|--------------------------|
-| GET    | `/graph`                        | Full track network graph |
-| GET    | `/blocks`                       | List all blocks          |
-| GET    | `/blocks/{id}`                  | Get block by ID          |
-| PATCH  | `/blocks/{id}`                  | Update traversal time    |
-| POST   | `/services`                     | Create service           |
-| GET    | `/services`                     | List all services        |
-| GET    | `/services/{id}`                | Get service by ID        |
-| PATCH  | `/services/{id}/route`          | Update service route     |
-| POST   | `/routes/validate`              | Validate stops queue     |
-| DELETE | `/services/{id}`                | Delete service           |
+All routes are under the `/api` prefix.
+
+| Method | Path                       | Description                |
+|--------|----------------------------|----------------------------|
+| GET    | `/api/blocks`              | List all blocks            |
+| PATCH  | `/api/blocks/{id}`         | Update traversal time      |
+| POST   | `/api/services`            | Create service             |
+| GET    | `/api/services`            | List all services          |
+| GET    | `/api/services/{id}`       | Get service detail + graph |
+| PATCH  | `/api/services/{id}/route` | Update service route       |
+| DELETE | `/api/services/{id}`       | Delete service             |
+| POST   | `/api/routes/validate`     | Validate route stops       |
+| GET    | `/api/vehicles`            | List all vehicles          |
 
 Route update returns 409 with conflict details when scheduling conflicts are detected.
 
 ### Validation Scope Split
 
-- **`POST /routes/validate` (during editing):** Route connectivity + single-service battery only. No cross-service conflict checks — the route isn't final during editing.
-- **`PATCH /services/{id}/route` (save):** Full cross-service conflict detection (vehicle, block, interlocking, battery) against all existing services.
+- **`POST /api/routes/validate` (during editing):** Route connectivity + single-service battery only. No cross-service conflict checks — the route isn't final during editing.
+- **`PATCH /api/services/{id}/route` (save):** Full cross-service conflict detection (vehicle, block, interlocking, battery) against all existing services.
 
 ## Running
 
@@ -64,11 +74,16 @@ uv run pytest -m postgres
 
 # All tests
 uv run pytest -m ''
+
+# Architecture lint
+uv run lint-imports
 ```
 
 ## Database
 
-PostgreSQL via Docker Compose. Connection: `postgresql://vss:vss@localhost:5432/vss`
+PostgreSQL via Docker Compose. Connection: `postgresql+asyncpg://vss:vss@localhost:5432/vss`
+
+Schema managed by Alembic (`infra/postgres/alembic/`). Migrations run automatically on container startup.
 
 Before running integration tests (`-m postgres`), the PostgreSQL container must be running and the test database must exist. Ask the user to start it if needed:
 
@@ -90,6 +105,7 @@ Rationale:
 - SQLAlchemy Core (`select()`, `insert()`, `update()`, `delete()` on `Table` objects) for all queries
 - No change tracking, no identity map, no lazy loading — all persistence is explicit
 - `save()` uses upsert (insert on conflict update all columns) — no need to diff changes
+- Service path/timetable stored as JSONB (aggregate storage — loaded/persisted as whole units)
 
 This mirrors the QueryDSL SQL + Flyway pattern: schema-first, codegen/table definitions separate from domain, explicit mapper at repository boundary.
 
@@ -104,13 +120,12 @@ In a monolith with single DB, prefer querying at use time (load both aggregates 
 ## Testing Patterns
 
 - **Domain tests**: pure unit tests, no I/O
-- **Application tests**: integration with in-memory repos, `@pytest.mark.asyncio`
+- **Application tests**: async integration with in-memory repos from `tests/fakes/`, `@pytest.mark.asyncio`
 - **API tests**: PostgreSQL integration tests via `httpx.AsyncClient`, marked `@pytest.mark.postgres`
 - **Infra tests**: repository contract verification against PostgreSQL, marked `@pytest.mark.postgres`
 - Helper factories: `make_block()`, `make_service_with_window()`, seed data utilities
 
-
 ## Notes
 
-- no "高併發" support
-- no "stop at block" support
+- No high-concurrency support
+- No "stop at block" support — vehicles only dwell at platforms and yard

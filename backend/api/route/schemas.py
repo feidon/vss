@@ -15,9 +15,7 @@ class ValidateRouteRequest(BaseModel):
     start_time: int
 
     def to_route_stop(self) -> list[RouteStop]:
-        return [
-            RouteStop(node_id=s.node_id, dwell_time=s.dwell_time) for s in self.stops
-        ]
+        return [s.to_route_stop() for s in self.stops]
 
 
 class BatteryConflictSchema(BaseModel):

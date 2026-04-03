@@ -8,7 +8,7 @@ A vehicle scheduling system for managing transit services on a fixed track netwo
 docker compose up
 ```
 
-Open **http://localhost:8000** once all services are ready.
+Open **http://localhost** once all services are ready.
 
 ### Prerequisites
 
@@ -16,12 +16,13 @@ Open **http://localhost:8000** once all services are ready.
 
 ### Services
 
-| Service    | Internal Port | Exposed Port | Description                                        |
-|------------|---------------|--------------|----------------------------------------------------|
-| `postgres` | 5432          | 5432         | PostgreSQL 17 database                             |
-| `backend`  | 8000          | 8000         | Python 3.14 + FastAPI, also serves the Angular SPA |
+| Service    | Internal Port | Exposed Port | Description                                   |
+|------------|---------------|--------------|-----------------------------------------------|
+| `postgres` | 5432          | 5432         | PostgreSQL 17 database                        |
+| `backend`  | 8000          | —            | Python 3.14 + FastAPI API server              |
+| `frontend` | 80            | 80           | Angular 21 SPA served by nginx                |
 
-The Angular frontend is built inside the backend Docker image and served by FastAPI as static files. API routes (`/blocks`, `/services`, `/graph`, `/routes`) are handled first; all other paths fall back to `index.html` for SPA routing. The database schema and seed data (stations, platforms, blocks, vehicles, connections) are created automatically on startup.
+Nginx serves the Angular SPA and proxies `/api/*` requests to the backend. The database schema and seed data (stations, platforms, blocks, vehicles, connections) are created automatically on startup via Alembic migrations.
 
 ### Local Development (without Docker)
 
@@ -39,7 +40,7 @@ uv run uvicorn main:app --reload
 ```bash
 cd frontend
 npm install
-ng serve    # http://localhost:4200, API calls go to http://localhost:8000
+ng serve    # http://localhost:4200, API calls go to http://localhost:8000/api
 ```
 
 **Tests:**
@@ -72,7 +73,7 @@ Dependencies point inward — `api/` imports `application/` and `domain/`; `appl
 | **`domain/`**    | Core business rules           | Entities, value objects, repository interfaces (ports), domain services |
 | **`application/`** | Use-case orchestration     | Coordinates domain objects and repos; enforces workflow (build route → detect conflicts → persist) |
 | **`api/`**       | Inbound adapter               | FastAPI routes, Pydantic schemas, dependency injection |
-| **`infra/`**     | Outbound adapters             | PostgreSQL repositories (production), in-memory repositories (test doubles) |
+| **`infra/`**     | Outbound adapter              | PostgreSQL repositories, Alembic migrations, seed data |
 
 This is enforced at CI time via [`import-linter`](https://github.com/seddonym/import-linter).
 
@@ -108,13 +109,13 @@ class BlockRepository(ABC):
     async def save(self, block: Block) -> None: ...
 ```
 
-`infra/` provides concrete adapters — one for PostgreSQL, one in-memory:
+Two concrete implementations exist:
 
 ```python
-# infra/postgres/block_repo.py        — talks to the database
+# infra/postgres/block_repo.py     — PostgreSQL adapter (production)
 class PostgresBlockRepository(BlockRepository): ...
 
-# infra/memory/block_repo.py          — dict-backed, no I/O
+# tests/fakes/block_repo.py        — dict-backed, no I/O (test double)
 class InMemoryBlockRepository(BlockRepository): ...
 ```
 
@@ -182,37 +183,43 @@ PostgreSQL with SQLAlchemy Core tables (no ORM):
 | `vehicles`         | UUID      | name                                   |
 | `services`         | int (auto)| name, vehicle_id (FK), path (JSONB), timetable (JSONB) |
 | `node_connections` | (from, to)| Directed edges of the track graph      |
+| `node_layouts`     | UUID      | x, y coordinates for visualization     |
+
+Schema managed by Alembic (`infra/postgres/alembic/`).
 
 ---
 
 ## API Design
 
-Base URL: `http://localhost:8000`
+All endpoints are under the `/api` prefix.
+
+- Local development: `http://localhost:8000/api`
+- Docker: `http://localhost/api` (nginx proxies to backend)
 
 ### Endpoints
 
 | Method | Path                         | Description                              |
 |--------|------------------------------|------------------------------------------|
-| GET    | `/graph`                     | Full track network: nodes, edges, stations, vehicles |
-| GET    | `/blocks`                    | List all blocks with traversal times     |
-| PATCH  | `/blocks/{id}`               | Update a block's traversal time          |
-| POST   | `/services`                  | Create a new service (empty route)       |
-| GET    | `/services`                  | List all services with full path & timetable |
-| GET    | `/services/{id}`             | Get a single service                     |
-| PATCH  | `/services/{id}/route`       | Update route (validates + detects conflicts) |
-| POST   | `/routes/validate`           | Validate stops list without persisting   |
-| DELETE | `/services/{id}`             | Delete a service                         |
+| GET    | `/api/blocks`                | List all blocks with traversal times     |
+| PATCH  | `/api/blocks/{id}`           | Update a block's traversal time          |
+| POST   | `/api/services`              | Create a new service (empty route)       |
+| GET    | `/api/services`              | List all services (summary)              |
+| GET    | `/api/services/{id}`         | Get service detail with route, timetable, and graph |
+| PATCH  | `/api/services/{id}/route`   | Update route (validates + detects conflicts) |
+| DELETE | `/api/services/{id}`         | Delete a service                         |
+| POST   | `/api/routes/validate`       | Validate stops list without persisting   |
+| GET    | `/api/vehicles`              | List all vehicles                        |
 
 ### Service Lifecycle
 
-1. **Create** — `POST /services` with name + vehicle_id. Returns a service with empty path/timetable.
-2. **Define route** — `PATCH /services/{id}/route` with stops (`node_id` — platform or yard UUIDs), dwell times, and start time. The backend:
+1. **Create** — `POST /api/services` with name + vehicle_id. Returns a service with empty path/timetable.
+2. **Define route** — `PATCH /api/services/{id}/route` with stops (`node_id` — platform or yard UUIDs), dwell times, and start time. The backend:
    - Validates all stops exist (platforms and yard)
    - Uses BFS to find blocks between consecutive stops
    - Computes arrival/departure times from block traversal times and dwell times
    - Runs full conflict detection against all other services
    - Returns **409** with detailed conflicts if any are found, otherwise persists and returns **200**
-3. **Delete** — `DELETE /services/{id}`
+3. **Delete** — `DELETE /api/services/{id}`
 
 ### Conflict Detection (409 Response)
 
@@ -246,7 +253,7 @@ Conflict response includes structured details (block IDs, overlap windows, reaso
 
 **Choice:** Conflict detection is split into two scopes:
 - **During editing** — route connectivity (can the path be built?) and single-service battery simulation only. No cross-service checks.
-- **On save** (`PATCH /services/{id}/route`) — full cross-service conflict detection: vehicle overlap, block occupancy, interlocking, and battery conflicts against all existing services.
+- **On save** (`PATCH /api/services/{id}/route`) — full cross-service conflict detection: vehicle overlap, block occupancy, interlocking, and battery conflicts against all existing services.
 
 **Why:** Checking all services on every stop addition is wasteful and confusing — a half-built route will almost always conflict with something. By scoping validation to what's useful at each phase, the user gets relevant feedback without noise.
 
@@ -335,17 +342,25 @@ Conflict response includes structured details (block IDs, overlap windows, reaso
 ```
 vss/
 ├── docker-compose.yml
+├── Dockerfile               # Backend: Python 3.14 + uv, runs Alembic + uvicorn
+├── Dockerfile.frontend      # Frontend: Node build → nginx alpine
+├── nginx.conf               # Proxies /api/* to backend, SPA fallback
 ├── requirement.md
 │
 ├── backend/
-│   ├── Dockerfile
-│   ├── main.py                  # FastAPI app, lifespan (table creation + seeding)
-│   ├── pyproject.toml           # Python 3.14, uv
+│   ├── main.py                  # FastAPI app, CORS, error handler, /api prefix
+│   ├── pyproject.toml           # Python 3.14, uv, import-linter contracts
+│   ├── alembic.ini              # Alembic migration configuration
 │   ├── api/                     # Routes, Pydantic schemas, dependency injection
 │   ├── application/             # App services, DTOs, orchestration
 │   ├── domain/                  # Entities, value objects, repo interfaces, domain services
-│   ├── infra/                   # PostgreSQL repos (production), in-memory repos (test doubles)
-│   └── tests/                   # Unit + integration tests
+│   ├── infra/postgres/          # PostgreSQL repos, Alembic migrations, seed data
+│   └── tests/
+│       ├── domain/              # Pure unit tests
+│       ├── application/         # Integration with in-memory repos
+│       ├── api/                 # PostgreSQL integration (httpx.AsyncClient)
+│       ├── infra/               # Repository contract verification
+│       └── fakes/               # In-memory repository implementations
 │
 └── frontend/
     ├── angular.json

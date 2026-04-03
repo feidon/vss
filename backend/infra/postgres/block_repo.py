@@ -4,8 +4,7 @@ from uuid import UUID
 
 from domain.block.model import Block
 from domain.block.repository import BlockRepository
-from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import CursorResult, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from infra.postgres.tables import blocks_table
@@ -34,15 +33,17 @@ class PostgresBlockRepository(BlockRepository):
         )
         return [self._to_entity(row) for row in result.mappings()]
 
-    async def save(self, block: Block) -> None:
+    async def update(self, block: Block) -> None:
         values = self._to_table(block)
         update_values = {k: v for k, v in values.items() if k != "id"}
         stmt = (
-            insert(blocks_table)
-            .values(**values)
-            .on_conflict_do_update(index_elements=["id"], set_=update_values)
+            update(blocks_table)
+            .where(blocks_table.c.id == block.id)
+            .values(**update_values)
         )
-        await self._session.execute(stmt)
+        result: CursorResult = await self._session.execute(stmt)  # type: ignore[assignment]
+        if result.rowcount == 0:
+            raise ValueError(f"update affected 0 rows: block {block.id} does not exist")
         await self._session.commit()
 
     @staticmethod

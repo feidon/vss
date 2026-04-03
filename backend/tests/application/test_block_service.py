@@ -21,7 +21,7 @@ class TestBlockAppService:
         defaults = dict(id=uuid7(), name="B1", group=1, traversal_time_seconds=30)
         defaults.update(kwargs)
         block = Block(**defaults)
-        await repo.save(block)
+        repo.seed(block)
         return block
 
     async def test_list_blocks(self, service, repo):
@@ -46,3 +46,20 @@ class TestBlockAppService:
     async def test_update_block_not_found(self, service):
         with pytest.raises(DomainError, match="not found"):
             await service.update_block(uuid7(), traversal_time_seconds=60)
+
+
+class TestInMemoryBlockRepository:
+    async def test_update_nonexistent_block_raises(self):
+        repo = InMemoryBlockRepository()
+        block = Block(id=uuid7(), name="B1", group=1, traversal_time_seconds=30)
+        with pytest.raises(ValueError, match="update affected 0 rows"):
+            await repo.update(block)
+
+    async def test_update_existing_block(self):
+        repo = InMemoryBlockRepository()
+        block = Block(id=uuid7(), name="B1", group=1, traversal_time_seconds=30)
+        repo.seed(block)
+        block.update_traversal_time(60)
+        await repo.update(block)
+        found = await repo.find_by_id(block.id)
+        assert found.traversal_time_seconds == 60

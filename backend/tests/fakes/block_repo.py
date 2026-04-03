@@ -19,5 +19,10 @@ class InMemoryBlockRepository(BlockRepository):
     async def find_by_ids(self, ids: set[UUID]) -> list[Block]:
         return [self._store[id] for id in ids if id in self._store]
 
-    async def save(self, block: Block) -> None:
+    async def update(self, block: Block) -> None:
+        if block.id not in self._store:
+            raise ValueError(f"update affected 0 rows: block {block.id} does not exist")
+        self._store[block.id] = block
+
+    def seed(self, block: Block) -> None:
         self._store[block.id] = block

@@ -2,42 +2,63 @@ schema: spec-driven
 
 context: |
   ## Project
-  Vehicle Scheduling System (VSS) — interview assignment for managing railway vehicle
-  services on a fixed track network with stations, platforms, blocks, and interlocking constraints.
+  Vehicle Scheduling System (VSS) backend — manages railway vehicle services on a fixed
+  track network with stations, platforms, blocks, and interlocking constraints.
 
   ## Tech Stack
-  - Backend: Python 3.14 + FastAPI
-  - Frontend: Angular (latest stable) — TBD
-  - Database: PostgreSQL 17 (Docker)
+  - Python 3.14 + FastAPI 0.135
+  - PostgreSQL 17 (Docker)
+  - SQLAlchemy Core 2.0 + manual mapper (no ORM)
+  - Alembic for schema migrations
+  - asyncpg for async database access
   - Package manager: uv
-  - Containerization: Docker + Docker Compose
+  - Linting: Ruff, import-linter (enforces architecture)
+  - Testing: pytest + pytest-asyncio, testcontainers[postgres]
 
   ## Architecture
   Hexagonal Architecture (Ports & Adapters) with DDD.
-  Layers: api/ → application/ → domain/ ← infra/
-  - api/: FastAPI routes, Pydantic schemas, DI container
-  - application/: App services, DTOs, orchestration
-  - domain/: Entities, value objects, repository interfaces (ports), domain services
-  - infra/: Repository implementations, seed data
+  Dependency flow: api/ → application/ → domain/ ← infra/
+  - api/: FastAPI routes, Pydantic schemas, DI container (inbound adapter)
+  - application/: App services, DTOs, orchestration (use cases)
+  - domain/: Entities, value objects, repository interfaces (ports), domain services (core)
+  - infra/postgres/: PostgreSQL repository implementations, seed data (outbound adapter)
   - tests/: Mirrors source structure (domain/, application/, api/, infra/)
+  - tests/fakes/: In-memory repository implementations (test doubles)
 
   ## Domain Model
-  - Block: track segment with traversal time and optional interlocking group (1-3)
-  - Station: has platforms (2 each); Yard (Y) is special
+  - Block: track segment with traversal_time_seconds and optional interlocking group (1-3)
+  - Station: has platforms (2 each); Yard (Y) is special depot station
   - Platform: P1A, P1B, P2A, P2B, P3A, P3B
-  - Service: scheduled vehicle run with path (nodes) and timetable (arrival/departure)
-  - Vehicle: V1, V2, V3 — has battery with charge/consume/canDepart methods
+  - Service: scheduled vehicle run with path (nodes) and timetable (arrival/departure), stored as JSONB
+  - Vehicle: V1, V2, V3 — battery mgmt: charge(), traverse_block(), can_depart(), is_battery_critical()
   - Node (value object): point in the network (BLOCK, PLATFORM, or YARD)
   - NodeConnection (value object): directed edge in the track graph
-  - TimetableEntry (value object): order + node_id + arrival/departure times
+  - TimetableEntry (value object): order + node_id + arrival/departure times (Unix epoch seconds)
+
+  ## Key Domain Services
+  - ConflictDetectionService: sweep-line + simulation for vehicle, block, interlocking, battery conflicts
+  - RouteFinder: BFS pathfinding to insert intermediate blocks between platform stops
+
+  ## API Endpoints (all under /api prefix)
+  - GET /api/blocks, PATCH /api/blocks/{id}
+  - POST /api/services, GET /api/services, GET /api/services/{id} (includes graph), PATCH /api/services/{id}/route, DELETE /api/services/{id}
+  - POST /api/routes/validate
+  - GET /api/vehicles
+  - Route update returns 409 with structured conflict details
+
+  ## Persistence Strategy
+  - SQLAlchemy Core + manual _to_entity() / _to_table() mappers in repositories
+  - Domain entities are pure Python dataclasses with zero SQLAlchemy imports
+  - save() uses upsert (insert on conflict update all columns)
+  - Service path/timetable stored as JSONB (aggregate storage)
 
   ## Conventions
   - Conventional commits: feat, fix, refactor, docs, test, chore, perf, ci
-  - PEP 8 naming (snake_case)
+  - PEP 8 naming (snake_case), Ruff for formatting (line-length 88)
   - TDD: write tests first, then implement
   - Domain entities may use mutation (e.g., Vehicle.charge()) — this is acceptable
-  - Pure domain services: no repository dependencies in domain services like ConflictDetector
-  - Tests: domain = pure unit, application = integration with in-memory repos, api = TestClient
+  - Pure domain services: no repository dependencies, no I/O
+  - Tests: domain = pure unit, application = async with in-memory repos, api/infra = @pytest.mark.postgres
   - Helper factories: make_block(), make_service_with_window(), seed data utilities
 
   ## Track Network
@@ -56,12 +77,13 @@ rules:
     - Document decisions with rationale and alternatives considered
     - Call out risks and trade-offs explicitly
     - Respect hexagonal architecture boundaries (dependency flow api → application → domain ← infra)
+    - Domain entities must remain free of persistence concerns (no SQLAlchemy imports)
   spec:
     - Include acceptance criteria as testable assertions
     - Specify which architectural layer each change belongs to
-    - Reference existing test patterns (domain unit, application integration, API TestClient)
+    - Reference existing test patterns (domain unit, application integration, API/infra postgres)
   tasks:
     - Break tasks into chunks of max 2 hours
-    - Group by architectural layer (domain → application → api)
+    - Group by architectural layer (domain → application → api/infra)
     - Include test tasks alongside implementation tasks (TDD)
     - Mark domain tasks before application/api tasks (inside-out implementation)

@@ -32,7 +32,11 @@
       "Bash(python3:*)",
       "Bash(xargs ls:*)",
       "Bash(openspec --version)",
-      "Bash(uv sync:*)"
+      "Bash(uv sync:*)",
+      "Bash(mkdir -p /home/feidon/Documents/vss/openspec/changes/archive)",
+      "Bash(mv /home/feidon/Documents/vss/openspec/changes/pure-update-block-repo /home/feidon/Documents/vss/openspec/changes/archive/2026-04-03-pure-update-block-repo)",
+      "Bash(mv /home/feidon/Documents/vss/openspec/changes/archive/2026-04-03-pure-update-block-repo /home/feidon/Documents/vss/backend/openspec/changes/archive/)",
+      "Bash(rm -r /home/feidon/Documents/vss/openspec)"
     ]
   },
   "enabledMcpjsonServers": [

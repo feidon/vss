@@ -9,7 +9,7 @@ from domain.domain_service.conflict.detection import detect_battery_conflicts
 from domain.domain_service.conflict.preparation import build_battery_steps
 from domain.domain_service.route_finder import RouteFinder
 from domain.error import DomainError, ErrorCode
-from domain.network.model import Node
+from domain.network.model import Node, NodeConnection
 from domain.network.repository import ConnectionRepository
 from domain.service.model import Service, TimetableEntry
 from domain.service.repository import ServiceRepository
@@ -71,13 +71,16 @@ class ServiceAppService:
         self, id: int, stops: list[RouteStop], start_time: EpochSeconds
     ) -> Service:
         service = await self.get_service(id)
-
-        full_route, timetable = await self._build_route(stops, start_time)
         connections = await self._connection_repo.find_all()
+        all_stations = await self._station_repo.find_all()
+        all_blocks = await self._block_repo.find_all()
+
+        full_route, timetable = await self._build_route(
+            stops, start_time, connections, all_stations, all_blocks
+        )
         service.update_route(full_route, timetable, connections)
 
         all_services = await self._service_repo.find_all()
-        all_blocks = await self._block_repo.find_all()
         all_vehicles = await self._vehicle_repo.find_all()
         conflicts = detect_conflicts(
             service,
@@ -85,6 +88,7 @@ class ServiceAppService:
             all_blocks,
             all_vehicles,
         )
+
         if conflicts.has_conflicts:
             raise ConflictError(conflicts)
 
@@ -101,7 +105,13 @@ class ServiceAppService:
         if vehicle is None:
             raise DomainError(ErrorCode.VALIDATION, f"Vehicle {vehicle_id} not found")
 
-        full_route, timetable = await self._build_route(stops, start_time)
+        connections = await self._connection_repo.find_all()
+        all_stations = await self._station_repo.find_all()
+        all_blocks = await self._block_repo.find_all()
+
+        full_route, timetable = await self._build_route(
+            stops, start_time, connections, all_stations, all_blocks
+        )
 
         temp_service = Service(
             id=0,
@@ -120,27 +130,30 @@ class ServiceAppService:
         )
 
     async def _build_route(
-        self, stops: list[RouteStop], start_time: EpochSeconds
+        self,
+        stops: list[RouteStop],
+        start_time: EpochSeconds,
+        connections: frozenset[NodeConnection],
+        stations: list[Station],
+        blocks: list[Block],
     ) -> tuple[list[Node], list[TimetableEntry]]:
-        stations = await self._station_repo.find_all()
-        connections = await self._connection_repo.find_all()
-        all_blocks = await self._block_repo.find_all()
 
         all_platforms = {p.id: p for s in stations for p in s.platforms}
         yards = {s.id: s for s in stations if s.is_yard}
-        blocks_by_id = {b.id: b for b in all_blocks}
+        blocks_by_id = {b.id: b for b in blocks}
 
         self._validate_stops_exist(stops, all_platforms, yards)
 
         stop_ids = [s.node_id for s in stops]
         dwell_by_stop = {s.node_id: s.dwell_time for s in stops}
         full_path_ids = RouteFinder.build_full_path(
-            stop_ids, connections, {b.id for b in all_blocks}
+            stop_ids, connections, {b.id for b in blocks}
         )
 
         full_route = self._resolve_nodes(
             full_path_ids, blocks_by_id, all_platforms, yards
         )
+
         timetable = self._compute_timetable(
             full_route, blocks_by_id, all_platforms, yards, dwell_by_stop, start_time
         )

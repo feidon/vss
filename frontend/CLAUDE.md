@@ -5,8 +5,10 @@
 - Angular 21 (standalone components, signals)
 - TypeScript 5.9 (strict mode)
 - Tailwind CSS 4 (via PostCSS)
-- Vitest (unit tests)
+- RxJS 7.8 (async streams)
+- Vitest 4.0 + jsdom (unit tests)
 - d3.js (interactive track map)
+- ESLint + angular-eslint (linting)
 - Prettier (100 char, single quotes)
 
 ## Architecture
@@ -15,38 +17,51 @@ Feature-based structure with standalone components:
 
 ```
 src/app/
-├── core/           # Singleton services (API clients, interceptors, guards)
-├── shared/         # Shared components, pipes, directives, API models/types
+├── core/services/  # Singleton API client services (HttpClient)
+├── shared/
+│   ├── models/     # TypeScript interfaces (Block, Service, Node, Graph, Conflict)
+│   └── pipes/      # EpochTimePipe (Unix timestamp → HH:MM:SS)
 ├── features/
-│   ├── schedule-editor/    # Create/edit/delete services
-│   ├── schedule-viewer/    # Read-only schedule display
-│   ├── block-config/       # Block traversal time configuration
+│   ├── schedule-editor/    # Create/edit/delete services with route building
+│   ├── schedule-viewer/    # Read-only schedule display with vehicle filter
+│   ├── block-config/       # Block traversal time inline editing
 │   └── track-map/          # d3.js interactive track visualization (bonus)
-└── app.routes.ts
+└── app.routes.ts           # Lazy-loaded feature routes
 ```
 
 - Standalone components (no NgModules)
-- Angular signals for reactive state
+- Angular signals for reactive state (`signal()`, `computed()`)
+- `input()` / `output()` for component communication
+- Services use `inject(HttpClient)` with typed API responses
 - Lazy-loaded feature routes
-- Services handle API calls; components handle presentation
+
+## Routes
+
+| Path      | Component               | Description                |
+|-----------|-------------------------|----------------------------|
+| `/editor` | ScheduleEditorComponent | Create/edit/delete services (default) |
+| `/viewer` | ScheduleViewerComponent | Read-only schedule display |
+| `/blocks` | BlockConfigComponent    | Block traversal time config |
+| `/map`    | TrackMapComponent       | d3.js track visualization  |
 
 ## Pages
 
 ### Schedule Editor (core)
 - Create, edit, and delete services
 - Define service path: select platform stops, intermediate blocks are auto-filled via backend route finder
-- Define timetable: set arrival/departure times per node
+- Set dwell times per stop and start time
 - Assign vehicle (V1, V2, V3) to service
-- PATCH `/services/{id}/route` for updates — handle 409 conflict responses and display conflict details to user
+- PATCH `/api/services/{id}/route` for updates — handle 409 conflict responses and display conflict details to user
 
 ### Schedule Viewer (core)
 - Read-only view of all scheduled services
-- Display timetable per service with arrival/departure times
+- Display timetable per service with arrival/departure times (EpochTimePipe)
 - Filter/group by vehicle
 
 ### Block Configuration (core)
-- List all blocks with current traversal times
-- Edit traversal time per block via PATCH `/blocks/{id}`
+- List all blocks with current traversal times, grouped by interlocking group
+- Inline editing with validation (positive integers >= 1)
+- Keyboard support: Enter to save, Escape to cancel
 
 ### Interactive Track Map (bonus)
 - d3.js visualization of the track network
@@ -80,12 +95,12 @@ Base URL: configured via environment files (`src/environments/`).
 ```
 Blocks additionally include: `group`, `traversal_time_seconds`
 
-**Service list** (GET `/services`):
+**Service list** (GET `/api/services`):
 ```json
 { "id": 101, "name": "S101", "vehicle_id": "uuid" }
 ```
 
-**Service detail** (GET `/services/{id}`):
+**Service detail** (GET `/api/services/{id}`):
 ```json
 { "id": 101, "name": "S101", "vehicle_id": "uuid", "route": [Node], "timetable": [TimetableEntry], "graph": GraphResponse }
 ```
@@ -95,7 +110,7 @@ Blocks additionally include: `group`, `traversal_time_seconds`
 { "order": 0, "node_id": "uuid", "arrival": 1700000000, "departure": 1700000030 }
 ```
 
-**Route Update Request** (PATCH `/services/{id}/route`):
+**Route Update Request** (PATCH `/api/services/{id}/route`):
 ```json
 { "stops": [{ "node_id": "uuid", "dwell_time": 30 }], "start_time": 1700000000 }
 ```
@@ -117,24 +132,25 @@ Blocks additionally include: `group`, `traversal_time_seconds`
 ## Running
 
 ```bash
-# Local development
-export DATABASE_URL=postgresql+asyncpg://vss:vss@localhost:5432/vss
 npm install
 ng serve              # Frontend on http://localhost:4200
 
-# Docker (production-like)
-docker compose up     # App on http://localhost:80
+# Docker (full stack)
+docker compose up     # App on http://localhost
 ```
 
 ## Testing
 
 ```bash
-ng test          # Unit tests (Vitest)
+ng test          # Unit tests (Vitest, no-watch in CI)
+ng lint          # ESLint
+npx prettier --check "src/**/*.{ts,html,css}"  # Prettier check
 ```
 
 ## Conventions
 
-- Strict TypeScript — no `any`, no implicit returns
+- Strict TypeScript — no `any`, no implicit returns, `noImplicitOverride`
 - Tailwind utility classes for styling
 - Immutable state updates
+- Component selector prefix: `app-`
 - Conventional commits: feat, fix, refactor, docs, test, chore

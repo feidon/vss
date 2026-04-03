@@ -4,50 +4,68 @@ context: |
   ## Project
   Vehicle Scheduling System (VSS) Frontend — Angular SPA for managing railway vehicle
   services on a fixed track network with stations, platforms, blocks, and interlocking constraints.
-  Interview assignment with 2-week deadline.
 
   ## Tech Stack
   - Angular 21 (standalone components, signals)
   - TypeScript 5.9 (strict mode)
   - Tailwind CSS 4 (via PostCSS)
-  - Vitest (unit tests)
+  - RxJS 7.8 (async streams)
+  - Vitest 4.0 + jsdom (unit tests)
   - d3.js (interactive track map — bonus)
   - Package manager: npm
+  - Linting: ESLint + angular-eslint + typescript-eslint
   - Formatter: Prettier (100 char width, single quotes)
 
   ## Architecture
   Feature-based structure with standalone components.
   ```
   src/app/
-  ├── core/           # Singleton services, interceptors, guards
-  ├── shared/         # Shared components, pipes, directives, models
+  ├── core/services/  # Singleton API client services
+  ├── shared/
+  │   ├── models/     # TypeScript interfaces (Block, Service, Node, Graph, Conflict)
+  │   └── pipes/      # EpochTimePipe (Unix timestamp → HH:MM:SS)
   ├── features/
-  │   ├── schedule-editor/    # Create/edit/delete services (CRUD)
-  │   ├── schedule-viewer/    # Read-only schedule display
-  │   ├── block-config/       # Block traversal time configuration
+  │   ├── schedule-editor/    # Create/edit/delete services with route building
+  │   ├── schedule-viewer/    # Read-only schedule display with vehicle filter
+  │   ├── block-config/       # Block traversal time inline editing
   │   └── track-map/          # d3.js interactive track visualization (bonus)
-  └── app.routes.ts
+  └── app.routes.ts           # Lazy-loaded feature routes
   ```
   - Standalone components (no NgModules)
-  - Angular signals for reactive state
-  - Services use HttpClient with typed API responses
+  - Angular signals for reactive state (signal(), computed())
+  - input()/output() for component communication
+  - Services use inject(HttpClient) with typed API responses
   - Feature components lazy-loaded via router
+
+  ## Routes
+  - /editor → ScheduleEditorComponent (default)
+  - /viewer → ScheduleViewerComponent
+  - /blocks → BlockConfigComponent
+  - /map → TrackMapComponent
 
   ## Domain Model (API Types)
   - Block: { id: UUID, name: string, group: number, traversal_time_seconds: number }
-  - Service: { id: number, name: string, vehicle_id: UUID, path: Node[], timetable: TimetableEntry[] }
-  - Node: discriminated union { type: "block" | "platform" | "yard", id: UUID, name: string }
+  - Service list: { id: number, name: string, vehicle_id: UUID }
+  - Service detail: { id, name, vehicle_id, route: Node[], timetable: TimetableEntry[], graph: GraphResponse }
+  - Node: discriminated union { type: "block" | "platform" | "yard", id: UUID, name: string, x, y }
   - TimetableEntry: { order: number, node_id: UUID, arrival: EpochSeconds, departure: EpochSeconds }
   - Vehicle: { id: UUID, name: string }
   - Station: { id: UUID, name: string, is_yard: boolean, platform_ids: UUID[] }
   - GraphResponse: { nodes: Node[], connections: Connection[], stations: Station[], vehicles: Vehicle[] }
 
   ## API Integration
-  Backend base URL: http://localhost:8000
-  - Route update (PATCH /services/{id}/route) returns 409 with conflict details:
-    vehicle_conflicts, block_conflicts, interlocking_conflicts,
-    low_battery_conflicts, insufficient_charge_conflicts
-  - Display conflict details to user on 409 responses
+  Base URL configured via environment files (src/environments/):
+  - Dev (ng serve): http://localhost:8000/api
+  - Production (Docker): /api (relative, proxied by nginx)
+
+  Key endpoints:
+  - GET /api/vehicles, GET /api/blocks, PATCH /api/blocks/{id}
+  - POST /api/services, GET /api/services, GET /api/services/{id}
+  - PATCH /api/services/{id}/route (returns 409 with conflict details on conflict)
+  - DELETE /api/services/{id}, POST /api/routes/validate
+
+  409 Conflict response fields: vehicle_conflicts, block_conflicts,
+  interlocking_conflicts, low_battery_conflicts, insufficient_charge_conflicts
 
   ## Track Network
   14 blocks (B1-B14), 4 stations (Y, S1, S2, S3), 6 platforms (P1A/B, P2A/B, P3A/B).
@@ -58,11 +76,12 @@ context: |
 
   ## Conventions
   - Conventional commits: feat, fix, refactor, docs, test, chore, perf, ci
-  - Strict TypeScript (no any, no implicit returns)
+  - Strict TypeScript (no any, no implicit returns, noImplicitOverride)
   - Tailwind utility classes for styling (no component CSS unless necessary)
   - Immutable state updates (create new objects, don't mutate)
   - Services handle API calls; components handle presentation
-  - Reactive patterns: signals for synchronous state, observables for async streams
+  - Reactive patterns: signals for synchronous state, observables for async HTTP
+  - Component selector prefix: app-
 
 rules:
   proposal:
@@ -77,7 +96,7 @@ rules:
   spec:
     - Include acceptance criteria as testable assertions
     - Specify which feature module each change belongs to
-    - Reference existing test patterns (component tests, service tests)
+    - Reference existing test patterns (Vitest + TestBed, HttpTestingController)
     - Include accessibility requirements where applicable
   tasks:
     - Break tasks into chunks of max 2 hours
