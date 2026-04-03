@@ -6,11 +6,12 @@ from domain.block.model import Block
 from domain.network.model import NodeConnection
 from domain.station.model import Platform, Station
 from domain.vehicle.model import Vehicle
-from infra.memory.block_repo import InMemoryBlockRepository
-from infra.memory.connection_repo import InMemoryConnectionRepository
-from infra.memory.node_layout_repo import InMemoryNodeLayoutRepository
-from infra.memory.station_repo import InMemoryStationRepository
-from infra.memory.vehicle_repo import InMemoryVehicleRepository
+
+from tests.fakes.block_repo import InMemoryBlockRepository
+from tests.fakes.connection_repo import InMemoryConnectionRepository
+from tests.fakes.node_layout_repo import InMemoryNodeLayoutRepository
+from tests.fakes.station_repo import InMemoryStationRepository
+from tests.fakes.vehicle_repo import InMemoryVehicleRepository
 
 
 class TestGraphAppService:

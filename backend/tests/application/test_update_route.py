@@ -7,11 +7,6 @@ from application.service.service import ServiceAppService
 from domain.error import DomainError
 from domain.network.model import NodeType
 from domain.vehicle.model import Vehicle
-from infra.memory.block_repo import InMemoryBlockRepository
-from infra.memory.connection_repo import InMemoryConnectionRepository
-from infra.memory.service_repo import InMemoryServiceRepository
-from infra.memory.station_repo import InMemoryStationRepository
-from infra.memory.vehicle_repo import InMemoryVehicleRepository
 from infra.seed import (
     BLOCK_ID_BY_NAME,
     PLATFORM_ID_BY_NAME,
@@ -19,6 +14,12 @@ from infra.seed import (
     create_connections,
     create_stations,
 )
+
+from tests.fakes.block_repo import InMemoryBlockRepository
+from tests.fakes.connection_repo import InMemoryConnectionRepository
+from tests.fakes.service_repo import InMemoryServiceRepository
+from tests.fakes.station_repo import InMemoryStationRepository
+from tests.fakes.vehicle_repo import InMemoryVehicleRepository
 
 
 def _make_app():

@@ -4,7 +4,8 @@ import pytest
 from application.block.service import BlockAppService
 from domain.block.model import Block
 from domain.error import DomainError
-from infra.memory.block_repo import InMemoryBlockRepository
+
+from tests.fakes.block_repo import InMemoryBlockRepository
 
 
 class TestBlockAppService:
