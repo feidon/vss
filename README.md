@@ -376,5 +376,27 @@ vss/
 
 ## Todo
 
-- [ ] refactor `backend/application/service/service.py`, there are too many same query and hard to read
-- [ ] implement track map in editor
+- reorganization
+  - [ ] only two tabs -> two main page: viewer, setting(?, or config, naming is a problem) 
+  - [ ] viewer has a create service button
+  - [ ] when click the create service button, show a dialog(?, I don't know the name, maybe popup), set name, vehicle, start time
+  - [ ] after create, jump to sub page of viewer: editor
+  - [ ] editor is a track map, user can click the platform/yard he wants and put it into queue
+
+- viewer page
+  - [ ] service should show the start time — derive from `timetable[0].arrival`, add to list response
+  - [ ] starting and ending station and platform — add `origin_name`, `destination_name` to list response
+  - [ ] when click on the row(anywhere on the row) the service can expand it to show a simple path Y → B1 → P1A
+  - [ ] has edit and delete button
+
+- editor page
+  - [ ] back to list is not noticeable enough
+  - [ ] should be able to choose yard when selecting platform
+  - [ ] when enter the exist service, didn't read the initial queue and start time — frontend can derive: filter route for `type != "block"` to get stops, `departure - arrival` for dwell_time, `timetable[0].arrival` for start_time. No backend change needed.
+  - [ ] didn't show the conflict message(reminder)
+  - [ ] implement track map in editor
+
+- blocks page
+  - [ ] the ungroup row show "-" in the group column
+  - [ ] the row height show follow the input field that showing at editing traversal time. prevent the row resizing.
+  - [ ] after click to edit the traversal time, it shows an input field. at this time, when click outside the input field (anywhere), show close the edit mode and save
