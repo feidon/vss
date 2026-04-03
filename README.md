@@ -61,8 +61,11 @@ uv run lint-imports        # verify architectural layer dependencies
 The backend follows **Domain-Driven Design** with **Hexagonal Architecture** (Ports & Adapters):
 
 ```
-api/  →  application/  →  domain/  ←  infra/
+  api/ ──→ application/ ──→ domain/ ←── infra/
+  (inbound)  (use cases)     (core)    (outbound)
 ```
+
+Dependencies point inward — `api/` imports `application/` and `domain/`; `application/` imports `domain/`; `infra/` imports only `domain/` (implements its ports). Nothing inside depends on the outside.
 
 | Layer            | Role                          | Contents                                              |
 |------------------|-------------------------------|-------------------------------------------------------|
@@ -71,7 +74,7 @@ api/  →  application/  →  domain/  ←  infra/
 | **`api/`**       | Inbound adapter               | FastAPI routes, Pydantic schemas, dependency injection |
 | **`infra/`**     | Outbound adapters             | PostgreSQL repositories (production), in-memory repositories (test doubles) |
 
-Dependencies point inward — `infra` implements domain interfaces, `api` calls application services, but **nothing depends on `infra` or `api`** from inside the domain. This is enforced at CI time via [`import-linter`](https://github.com/seddonym/import-linter).
+This is enforced at CI time via [`import-linter`](https://github.com/seddonym/import-linter).
 
 ### Rich Domain Model
 
