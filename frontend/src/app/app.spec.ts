@@ -23,7 +23,7 @@ describe('App', () => {
     const links = compiled.querySelectorAll('nav a');
     const texts = Array.from(links).map((a) => a.textContent?.trim());
 
-    expect(texts).toEqual(['Editor', 'Viewer', 'Blocks', 'Map']);
+    expect(texts).toEqual(['Schedule', 'Config']);
   });
 
   it('should render VSS brand', async () => {

@@ -1,4 +1,4 @@
-## ADDED Requirements
+## MODIFIED Requirements
 
 ### Requirement: Navigation bar
 The app shell SHALL display a navigation bar with links to: Schedule (`/schedule`) and Config (`/config`). The active route link SHALL be visually distinguished. Links to `/editor`, `/viewer`, `/blocks`, and `/map` are removed.
@@ -40,3 +40,9 @@ The app component SHALL contain a `<router-outlet>` that renders the active feat
 #### Scenario: Route content rendering
 - **WHEN** user clicks the "Config" nav link
 - **THEN** the `ConfigComponent` renders in the router outlet area
+
+## REMOVED Requirements
+
+### Requirement: Placeholder feature components
+**Reason**: All feature components are now real implementations; placeholders are no longer needed.
+**Migration**: Remove placeholder components; each route renders its actual feature component.

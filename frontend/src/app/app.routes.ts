@@ -1,24 +1,26 @@
 import { Routes } from '@angular/router';
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'editor', pathMatch: 'full' },
+  { path: '', redirectTo: 'schedule', pathMatch: 'full' },
   {
-    path: 'editor',
+    path: 'schedule',
     loadComponent: () =>
-      import('./features/schedule-editor/schedule-editor').then((m) => m.ScheduleEditorComponent),
+      import('./features/schedule/schedule-page').then((m) => m.SchedulePageComponent),
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./features/schedule/schedule-list').then((m) => m.ScheduleListComponent),
+      },
+      {
+        path: ':id/edit',
+        loadComponent: () =>
+          import('./features/schedule/schedule-editor').then((m) => m.ScheduleEditorComponent),
+      },
+    ],
   },
   {
-    path: 'viewer',
-    loadComponent: () =>
-      import('./features/schedule-viewer/schedule-viewer').then((m) => m.ScheduleViewerComponent),
-  },
-  {
-    path: 'blocks',
-    loadComponent: () =>
-      import('./features/block-config/block-config').then((m) => m.BlockConfigComponent),
-  },
-  {
-    path: 'map',
-    loadComponent: () => import('./features/track-map/track-map').then((m) => m.TrackMapComponent),
+    path: 'config',
+    loadComponent: () => import('./features/config/config').then((m) => m.ConfigComponent),
   },
 ];

@@ -26,7 +26,8 @@
       "Bash(.venv/bin/python -m pytest tests/api/test_block_routes.py tests/api/test_vehicle_routes.py -x -q -m postgres)",
       "mcp__filesystem__list_directory",
       "Read(//home/feidon/Documents/vss/**)",
-      "Bash(docker compose:*)"
+      "Bash(docker compose:*)",
+      "Bash(npm install:*)"
     ]
   },
   "enabledMcpjsonServers": [

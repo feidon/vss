@@ -1,4 +1,4 @@
-## ADDED Requirements
+## MODIFIED Requirements
 
 ### Requirement: Display all services in a table
 The system SHALL display a table of all services showing: name, vehicle name, start time, origin, destination, and action buttons (Edit, Delete). The list SHALL be the main schedule page at `/schedule`.

@@ -22,7 +22,17 @@ describe('ServiceService', () => {
   });
 
   it('should fetch all services (summary only)', () => {
-    const mockServices: ServiceResponse[] = [{ id: 101, name: 'S101', vehicle_id: 'v1' }];
+    const mockServices: ServiceResponse[] = [
+      {
+        id: 101,
+        name: 'S101',
+        vehicle_id: 'v1',
+        vehicle_name: 'V1',
+        start_time: null,
+        origin: null,
+        destination: null,
+      },
+    ];
 
     service.getServices().subscribe((result) => {
       expect(result).toEqual(mockServices);
