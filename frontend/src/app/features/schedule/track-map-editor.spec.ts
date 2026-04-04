@@ -16,7 +16,7 @@ const mockGraph: GraphResponse = {
     { id: 'b2', name: 'B2', from_id: 'j1', to_id: 'p2' },
   ],
   stations: [
-    { id: 's0', name: 'Y', is_yard: true, platform_ids: [] },
+    { id: 's0', name: 'Y', is_yard: true, platform_ids: ['y1'] },
     { id: 's1', name: 'S1', is_yard: false, platform_ids: ['p1', 'p2'] },
   ],
   vehicles: [{ id: 'v1', name: 'V1' }],
@@ -190,6 +190,85 @@ describe('TrackMapEditorComponent', () => {
     // Labels should be far enough apart to avoid text bounding box overlap
     const dist = Math.sqrt((b8x - b10x) ** 2 + (b8y - b10y) ** 2);
     expect(dist).toBeGreaterThan(15);
+  });
+
+  it('should render station indicator rectangles for each station with platforms', () => {
+    fixture.componentRef.setInput('graph', mockGraph);
+    fixture.detectChanges();
+
+    const svg = fixture.nativeElement.querySelector('svg');
+    const stationGroups = svg.querySelectorAll('g.station');
+    expect(stationGroups.length).toBe(2); // Y (1 platform) + S1 (2 platforms)
+
+    for (const group of Array.from(stationGroups as NodeListOf<SVGGElement>)) {
+      expect(group.querySelector('rect')).toBeTruthy();
+      expect(group.querySelector('text')).toBeTruthy();
+    }
+  });
+
+  it('should display station names as centered labels', () => {
+    fixture.componentRef.setInput('graph', mockGraph);
+    fixture.detectChanges();
+
+    const svg = fixture.nativeElement.querySelector('svg');
+    const stationTexts = svg.querySelectorAll('g.station text');
+    const labels = Array.from(stationTexts as NodeListOf<SVGTextElement>).map((t) => t.textContent);
+    expect(labels).toContain('Y');
+    expect(labels).toContain('S1');
+  });
+
+  it('should render station rectangles before edges in SVG order', () => {
+    fixture.componentRef.setInput('graph', mockGraph);
+    fixture.detectChanges();
+
+    const svg = fixture.nativeElement.querySelector('svg');
+    const allGroups = svg.querySelectorAll('g');
+    const groupClasses = Array.from(allGroups as NodeListOf<SVGGElement>).map((g) =>
+      g.getAttribute('class'),
+    );
+
+    const firstStationIdx = groupClasses.indexOf('station');
+    const firstEdgeIdx = groupClasses.indexOf('edge');
+    expect(firstStationIdx).toBeLessThan(firstEdgeIdx);
+  });
+
+  it('should enforce minimum size for single-platform station rectangle', () => {
+    fixture.componentRef.setInput('graph', mockGraph);
+    fixture.detectChanges();
+
+    const svg = fixture.nativeElement.querySelector('svg');
+    const stationGroups = svg.querySelectorAll('g.station');
+    // Y station has 1 platform — bounding box collapses, minimum size enforced
+    const yardGroup = Array.from(stationGroups as NodeListOf<SVGGElement>).find(
+      (g) => g.querySelector('text')?.textContent === 'Y',
+    );
+    expect(yardGroup).toBeTruthy();
+    const rect = yardGroup!.querySelector('rect')!;
+    expect(Number(rect.getAttribute('width'))).toBeGreaterThanOrEqual(60);
+    expect(Number(rect.getAttribute('height'))).toBeGreaterThanOrEqual(60);
+  });
+
+  it('should set pointer-events none on station groups', () => {
+    fixture.componentRef.setInput('graph', mockGraph);
+    fixture.detectChanges();
+
+    const svg = fixture.nativeElement.querySelector('svg');
+    const stationGroups = svg.querySelectorAll('g.station');
+    for (const group of Array.from(stationGroups as NodeListOf<SVGGElement>)) {
+      expect(group.style.pointerEvents).toBe('none');
+    }
+  });
+
+  it('should style station rectangles with light fill and rounded corners', () => {
+    fixture.componentRef.setInput('graph', mockGraph);
+    fixture.detectChanges();
+
+    const svg = fixture.nativeElement.querySelector('svg');
+    const rect = svg.querySelector('g.station rect');
+    expect(rect).toBeTruthy();
+    expect(rect.getAttribute('fill')).toBe('#e8f0fe');
+    expect(rect.getAttribute('stroke')).toBe('#94a3b8');
+    expect(rect.getAttribute('rx')).toBe('6');
   });
 
   it('should show queue numbers for queued nodes', () => {

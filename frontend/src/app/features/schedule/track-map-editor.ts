@@ -1,6 +1,6 @@
 import { Component, ElementRef, computed, effect, input, output, viewChild } from '@angular/core';
 import * as d3 from 'd3';
-import { GraphResponse, Node, Edge, Junction } from '../../shared/models';
+import { GraphResponse, Station, Node, Edge, Junction } from '../../shared/models';
 
 interface Position {
   readonly x: number;
@@ -112,6 +112,63 @@ export class TrackMapEditorComponent {
       .append('path')
       .attr('d', 'M 0 0 L 10 5 L 0 10 Z')
       .attr('fill', '#64748b');
+
+    // Draw station indicator rectangles (behind everything else)
+    const stationPadding = 30;
+    const minStationSize = 60;
+    const nodeMap = new Map(graph.nodes.map((n) => [n.id, n]));
+
+    const stationsWithBounds = graph.stations
+      .map((station: Station) => {
+        const platforms = station.platform_ids
+          .map((pid) => nodeMap.get(pid))
+          .filter((n): n is Node => n !== undefined);
+        if (platforms.length === 0) return null;
+
+        const sxs = platforms.map((p) => xScale(p.x));
+        const sys = platforms.map((p) => yScale(p.y));
+        const rawX = Math.min(...sxs) - stationPadding;
+        const rawY = Math.min(...sys) - stationPadding;
+        const rawW = Math.max(...sxs) - Math.min(...sxs) + stationPadding * 2;
+        const rawH = Math.max(...sys) - Math.min(...sys) + stationPadding * 2;
+        const cx = rawX + rawW / 2;
+        const cy = rawY + rawH / 2;
+        const w = Math.max(rawW, minStationSize);
+        const h = Math.max(rawH, minStationSize);
+        return { station, x: cx - w / 2, y: cy - h / 2, w, h };
+      })
+      .filter((s): s is NonNullable<typeof s> => s !== null);
+
+    const stationGroups = svg
+      .selectAll('g.station')
+      .data(stationsWithBounds)
+      .enter()
+      .append('g')
+      .attr('class', 'station')
+      .style('pointer-events', 'none');
+
+    stationGroups
+      .append('rect')
+      .attr('x', (d) => d.x)
+      .attr('y', (d) => d.y)
+      .attr('width', (d) => d.w)
+      .attr('height', (d) => d.h)
+      .attr('rx', 6)
+      .attr('ry', 6)
+      .attr('fill', '#e8f0fe')
+      .attr('stroke', '#94a3b8')
+      .attr('stroke-width', 1);
+
+    stationGroups
+      .append('text')
+      .attr('x', (d) => d.x + d.w / 2)
+      .attr('y', (d) => d.y + d.h / 2)
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'central')
+      .attr('font-size', '12px')
+      .attr('font-weight', '600')
+      .attr('fill', '#475569')
+      .text((d) => d.station.name);
 
     // Build node ID set for radius lookup (nodes=12, junctions=4)
     const nodeIdSet = new Set(graph.nodes.map((n) => n.id));
