@@ -92,6 +92,9 @@ export class ConflictAlertComponent {
     for (const node of this.graph().nodes) {
       map.set(node.id, node.name);
     }
+    for (const edge of this.graph().edges) {
+      map.set(edge.id, edge.name);
+    }
     return map;
   });
 

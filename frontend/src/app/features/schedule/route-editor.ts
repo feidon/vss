@@ -1,4 +1,4 @@
-import { Component, effect, input, OnInit, output, signal } from '@angular/core';
+import { Component, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ServiceDetailResponse, GraphResponse, TimetableEntry } from '../../shared/models';
 import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
@@ -102,7 +102,7 @@ interface StopEntry {
     }
   `,
 })
-export class RouteEditorComponent implements OnInit {
+export class RouteEditorComponent {
   readonly service = input.required<ServiceDetailResponse>();
   readonly graph = input.required<GraphResponse>();
   readonly submitted = output<{
@@ -117,13 +117,12 @@ export class RouteEditorComponent implements OnInit {
 
   constructor() {
     effect(() => {
+      this.deriveInitialState(this.service());
+    });
+    effect(() => {
       const ids = this.stops().map((s) => s.nodeId);
       this.stopsChanged.emit(ids);
     });
-  }
-
-  ngOnInit(): void {
-    this.deriveInitialState(this.service());
   }
 
   addStopFromMap(nodeId: string, nodeName: string): void {
@@ -131,7 +130,11 @@ export class RouteEditorComponent implements OnInit {
   }
 
   nodeName(nodeId: string): string {
-    return this.graph().nodes.find((n) => n.id === nodeId)?.name ?? nodeId;
+    return (
+      this.graph().nodes.find((n) => n.id === nodeId)?.name ??
+      this.graph().edges.find((e) => e.id === nodeId)?.name ??
+      nodeId
+    );
   }
 
   removeStop(index: number): void {

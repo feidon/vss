@@ -18,18 +18,6 @@ const mockGraph: GraphResponse = {
   vehicles: [{ id: 'v1', name: 'V1' }],
 };
 
-function graphWithBlockNodes(): GraphResponse {
-  return {
-    ...mockGraph,
-    nodes: [
-      ...mockGraph.nodes,
-      { type: 'platform', id: 'b3', name: 'B3', x: 1, y: 0 },
-      { type: 'platform', id: 'b7', name: 'B7', x: 1, y: 1 },
-      { type: 'platform', id: 'b8', name: 'B8', x: 1, y: 2 },
-    ],
-  };
-}
-
 @Component({
   imports: [ConflictAlertComponent],
   template: `<app-conflict-alert
@@ -46,7 +34,7 @@ class TestHostComponent {
     interlocking_conflicts: [],
     battery_conflicts: [],
   });
-  graph = signal<GraphResponse>(graphWithBlockNodes());
+  graph = signal<GraphResponse>(mockGraph);
   dismissed = false;
 }
 

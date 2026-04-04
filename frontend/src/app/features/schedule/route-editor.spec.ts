@@ -93,6 +93,47 @@ describe('RouteEditorComponent', () => {
     expect(fixture.componentInstance.startTimeLocal()).toBe('');
   });
 
+  it('should reset stops when service input changes', async () => {
+    fixture.componentRef.setInput('service', mockServiceWithRoute);
+    fixture.componentRef.setInput('graph', mockGraph);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // Add a manual stop
+    fixture.componentInstance.addStopFromMap('y1', 'Y');
+    expect(fixture.componentInstance.stops().length).toBe(3);
+
+    // Simulate service input change (e.g., page refresh fetches fresh data)
+    fixture.componentRef.setInput('service', { ...mockServiceWithRoute });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // Stops should be reset to only the API data
+    const stops = fixture.componentInstance.stops();
+    expect(stops.length).toBe(2);
+    expect(stops[0].nodeId).toBe('p1');
+    expect(stops[1].nodeId).toBe('p2');
+  });
+
+  it('should resolve block node names in timetable via graph edges', async () => {
+    const serviceWithBlockInTimetable: ServiceDetailResponse = {
+      ...mockServiceWithRoute,
+      timetable: [
+        { order: 0, node_id: 'p1', arrival: 1700000000, departure: 1700000060 },
+        { order: 1, node_id: 'b1', arrival: 1700000060, departure: 1700000090 },
+        { order: 2, node_id: 'p2', arrival: 1700000090, departure: 1700000135 },
+      ],
+    };
+    fixture.componentRef.setInput('service', serviceWithBlockInTimetable);
+    fixture.componentRef.setInput('graph', mockGraph);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance.nodeName('b1')).toBe('B1');
+    expect(fixture.componentInstance.nodeName('p1')).toBe('P1A');
+    expect(fixture.componentInstance.nodeName('unknown')).toBe('unknown');
+  });
+
   it('should render stop rows in the table', async () => {
     fixture.componentRef.setInput('service', mockServiceWithRoute);
     fixture.componentRef.setInput('graph', mockGraph);
