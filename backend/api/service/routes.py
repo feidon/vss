@@ -49,7 +49,7 @@ async def list_services(
     node_names: dict[UUID, str] = {}
     for block in graph.blocks:
         node_names[block.id] = block.name
-    for platform in graph.all_platforms:
+    for platform in graph.platforms:
         node_names[platform.id] = platform.name
     for yard in graph.yards:
         node_names[yard.id] = yard.name

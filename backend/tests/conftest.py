@@ -10,7 +10,7 @@ from uuid import UUID
 
 import pytest
 from infra.postgres.tables import metadata, vehicles_table
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -37,10 +37,15 @@ def _pg_container():
 
 @pytest.fixture(scope="session")
 def _pg_tables(_pg_container):
-    """Create all tables once per test session."""
-    sync_engine = create_engine(pg_config.TEST_DATABASE_URL_SYNC)
-    metadata.create_all(sync_engine)
-    sync_engine.dispose()
+    """Run Alembic migrations to create tables and seed reference data."""
+    import os
+
+    from alembic import command
+    from alembic.config import Config
+
+    os.environ["DATABASE_URL"] = pg_config.TEST_DATABASE_URL_SYNC
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
     yield
 
 

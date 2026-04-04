@@ -3,15 +3,15 @@ from application.graph.service import GraphAppService
 from application.service.service import ServiceAppService
 from application.vehicle.service import VehicleAppService
 from domain.block.repository import BlockRepository
-from domain.network.node_layout_repository import NodeLayoutRepository
 from domain.network.repository import ConnectionRepository
+from domain.read_model.layout import LayoutRepository
 from domain.service.repository import ServiceRepository
 from domain.station.repository import StationRepository
 from domain.vehicle.repository import VehicleRepository
 from fastapi import Depends
 from infra.postgres.block_repo import PostgresBlockRepository
 from infra.postgres.connection_repo import PostgresConnectionRepository
-from infra.postgres.node_layout_repo import PostgresNodeLayoutRepository
+from infra.postgres.layout_repo import PostgresLayoutRepository
 from infra.postgres.service_repo import PostgresServiceRepository
 from infra.postgres.session import get_session
 from infra.postgres.station_repo import PostgresStationRepository
@@ -43,10 +43,10 @@ def get_vehicle_repo(session: AsyncSession = Depends(get_session)) -> VehicleRep
     return PostgresVehicleRepository(session)
 
 
-def get_node_layout_repo(
+def get_layout_repo(
     session: AsyncSession = Depends(get_session),
-) -> NodeLayoutRepository:
-    return PostgresNodeLayoutRepository(session)
+) -> LayoutRepository:
+    return PostgresLayoutRepository(session)
 
 
 def get_block_service(
@@ -78,8 +78,8 @@ def get_graph_service(
     block_repo: BlockRepository = Depends(get_block_repo),
     connection_repo: ConnectionRepository = Depends(get_connection_repo),
     vehicle_repo: VehicleRepository = Depends(get_vehicle_repo),
-    node_layout_repo: NodeLayoutRepository = Depends(get_node_layout_repo),
+    layout_repo: LayoutRepository = Depends(get_layout_repo),
 ) -> GraphAppService:
     return GraphAppService(
-        station_repo, block_repo, connection_repo, vehicle_repo, node_layout_repo
+        station_repo, block_repo, connection_repo, vehicle_repo, layout_repo
     )

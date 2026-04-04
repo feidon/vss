@@ -107,10 +107,10 @@ class TestSeedVehicles:
 
 
 class TestSeedNodeLayouts:
-    def test_creates_21_entries(self):
-        """1 yard + 6 platforms + 14 blocks = 21 nodes."""
+    def test_creates_11_entries(self):
+        """1 yard + 6 platforms + 4 junctions = 11 entries."""
         layouts = create_node_layouts()
-        assert len(layouts) == 21
+        assert len(layouts) == 11
 
     def test_all_coordinates_are_non_negative_floats(self):
         layouts = create_node_layouts()

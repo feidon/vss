@@ -6,16 +6,6 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
-class BlockNodeSchema(BaseModel):
-    type: Literal["block"] = "block"
-    id: UUID
-    name: str
-    group: int
-    traversal_time_seconds: int
-    x: float = 0.0
-    y: float = 0.0
-
-
 class PlatformNodeSchema(BaseModel):
     type: Literal["platform"] = "platform"
     id: UUID
@@ -33,9 +23,22 @@ class YardNodeSchema(BaseModel):
 
 
 NodeSchema = Annotated[
-    BlockNodeSchema | PlatformNodeSchema | YardNodeSchema,
+    PlatformNodeSchema | YardNodeSchema,
     Field(discriminator="type"),
 ]
+
+
+class JunctionSchema(BaseModel):
+    id: UUID
+    x: float
+    y: float
+
+
+class EdgeSchema(BaseModel):
+    id: UUID
+    name: str
+    from_id: UUID
+    to_id: UUID
 
 
 class TimetableEntrySchema(BaseModel):

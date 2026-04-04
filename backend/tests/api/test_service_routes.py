@@ -144,17 +144,13 @@ class TestServiceRouteUpdate:
         get_resp = await client.get(f"services/{sid}")
         data = get_resp.json()
 
-        # Route: P1A -> B3 -> B5 -> P2A
+        # Route shows only stops (platforms/yards), not intermediate blocks
         route = data["route"]
-        assert len(route) == 4
+        assert len(route) == 2
         assert route[0]["type"] == "platform"
         assert route[0]["name"] == "P1A"
-        assert route[1]["type"] == "block"
-        assert route[1]["name"] == "B3"
-        assert route[2]["type"] == "block"
-        assert route[2]["name"] == "B5"
-        assert route[3]["type"] == "platform"
-        assert route[3]["name"] == "P2A"
+        assert route[1]["type"] == "platform"
+        assert route[1]["name"] == "P2A"
 
         # Timetable
         tt = data["timetable"]

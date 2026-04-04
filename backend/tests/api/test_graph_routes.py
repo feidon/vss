@@ -21,7 +21,8 @@ class TestServiceDetailGraph:
         assert "graph" in data
         graph = data["graph"]
         assert "nodes" in graph
-        assert "connections" in graph
+        assert "edges" in graph
+        assert "junctions" in graph
         assert "stations" in graph
         assert "vehicles" in graph
 
@@ -39,26 +40,35 @@ class TestServiceDetailGraph:
         names = {p["name"] for p in platform_nodes}
         assert names == {"P1A", "P1B", "P2A", "P2B", "P3A", "P3B"}
 
-    async def test_graph_has_all_block_nodes(self, client):
+    async def test_graph_node_count(self, client):
         sid = await _create_service(client)
         graph = (await client.get(f"services/{sid}")).json()["graph"]
-        block_nodes = [n for n in graph["nodes"] if n["type"] == "block"]
-        names = {b["name"] for b in block_nodes}
-        assert names == {f"B{i}" for i in range(1, 15)}
+        # 1 yard + 6 platforms = 7 nodes (blocks are now edges)
+        assert len(graph["nodes"]) == 7
 
-    async def test_block_nodes_have_traversal_time(self, client):
+    async def test_graph_has_edges_for_all_blocks(self, client):
         sid = await _create_service(client)
         graph = (await client.get(f"services/{sid}")).json()["graph"]
-        for block in graph["nodes"]:
-            if block["type"] == "block":
-                assert "traversal_time_seconds" in block
-                assert block["traversal_time_seconds"] > 0
+        edge_names = {e["name"] for e in graph["edges"]}
+        assert edge_names == {f"B{i}" for i in range(1, 15)}
 
-    async def test_block_nodes_have_group(self, client):
+    async def test_edges_have_from_and_to(self, client):
         sid = await _create_service(client)
         graph = (await client.get(f"services/{sid}")).json()["graph"]
-        b1 = next(n for n in graph["nodes"] if n.get("name") == "B1")
-        assert b1["group"] == 1
+        for edge in graph["edges"]:
+            assert "from_id" in edge
+            assert "to_id" in edge
+            assert "id" in edge
+            assert "name" in edge
+
+    async def test_graph_has_four_junctions(self, client):
+        sid = await _create_service(client)
+        graph = (await client.get(f"services/{sid}")).json()["graph"]
+        assert len(graph["junctions"]) == 4
+        for junction in graph["junctions"]:
+            assert "id" in junction
+            assert "x" in junction
+            assert "y" in junction
 
     async def test_platform_station_lookup_via_stations(self, client):
         sid = await _create_service(client)
@@ -66,14 +76,6 @@ class TestServiceDetailGraph:
         p1a = next(n for n in graph["nodes"] if n.get("name") == "P1A")
         s1 = next(s for s in graph["stations"] if s["name"] == "S1")
         assert p1a["id"] in s1["platform_ids"]
-
-    async def test_graph_has_connections(self, client):
-        sid = await _create_service(client)
-        graph = (await client.get(f"services/{sid}")).json()["graph"]
-        assert len(graph["connections"]) > 0
-        conn = graph["connections"][0]
-        assert "from_id" in conn
-        assert "to_id" in conn
 
     async def test_graph_has_stations(self, client):
         sid = await _create_service(client)
@@ -86,9 +88,3 @@ class TestServiceDetailGraph:
         graph = (await client.get(f"services/{sid}")).json()["graph"]
         vehicle_names = {v["name"] for v in graph["vehicles"]}
         assert vehicle_names == {"V1", "V2", "V3"}
-
-    async def test_graph_node_count(self, client):
-        sid = await _create_service(client)
-        graph = (await client.get(f"services/{sid}")).json()["graph"]
-        # 1 yard + 6 platforms + 14 blocks = 21 nodes
-        assert len(graph["nodes"]) == 21

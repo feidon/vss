@@ -6,11 +6,13 @@ from application.graph.dto import GraphData
 from application.service.dto import RouteStop
 from domain.network.model import NodeType
 from domain.service.model import Service
+from domain.station.model import Platform
 from domain.vehicle.model import Vehicle
 from pydantic import BaseModel, Field
 
 from api.shared.schemas import (
-    BlockNodeSchema,
+    EdgeSchema,
+    JunctionSchema,
     NodeSchema,
     PlatformNodeSchema,
     TimetableEntrySchema,
@@ -84,11 +86,6 @@ class ServiceResponse(BaseModel):
 # ── Graph sub-schemas (for service detail) ────────────────────
 
 
-class ConnectionSchema(BaseModel):
-    from_id: UUID
-    to_id: UUID
-
-
 class VehicleSchema(BaseModel):
     id: UUID
     name: str
@@ -103,44 +100,82 @@ class StationSchema(BaseModel):
 
 class GraphSchema(BaseModel):
     nodes: list[NodeSchema]
-    connections: list[ConnectionSchema]
+    edges: list[EdgeSchema]
+    junctions: list[JunctionSchema]
     stations: list[StationSchema]
     vehicles: list[VehicleSchema]
 
     @classmethod
     def from_graph_data(cls, data: GraphData) -> GraphSchema:
-        nodes: list[BlockNodeSchema | PlatformNodeSchema | YardNodeSchema] = []
-        layouts = data.layouts
+        nodes: list[PlatformNodeSchema | YardNodeSchema] = []
+        positions = data.layout.positions
 
         for yard in data.yards:
-            x, y = layouts.get(yard.id, (0.0, 0.0))
+            x, y = positions.get(yard.id, (0.0, 0.0))
             nodes.append(YardNodeSchema(id=yard.id, name=yard.name, x=x, y=y))
 
-        for platform in data.all_platforms:
-            x, y = layouts.get(platform.id, (0.0, 0.0))
+        for platform in data.platforms:
+            x, y = positions.get(platform.id, (0.0, 0.0))
             nodes.append(
                 PlatformNodeSchema(id=platform.id, name=platform.name, x=x, y=y)
             )
 
+        # Build block_junction index: block_id -> junction_id
+        block_junction: dict[UUID, UUID] = {}
+        for (from_b, to_b), jid in data.layout.junction_blocks.items():
+            block_junction[from_b] = jid
+            block_junction[to_b] = jid
+
+        # Build adjacency: for each block, find its non-block neighbors
+        block_ids = {b.id for b in data.blocks}
+        adjacency: dict[UUID, set[UUID]] = {b.id: set() for b in data.blocks}
+        for conn in data.connections:
+            if conn.from_id in block_ids and conn.to_id not in block_ids:
+                adjacency[conn.from_id].add(conn.to_id)
+            if conn.to_id in block_ids and conn.from_id not in block_ids:
+                adjacency[conn.to_id].add(conn.from_id)
+
+        # Compute edges
+        edges: list[EdgeSchema] = []
         for block in data.blocks:
-            x, y = layouts.get(block.id, (0.0, 0.0))
-            nodes.append(
-                BlockNodeSchema(
-                    id=block.id,
-                    name=block.name,
-                    group=block.group,
-                    traversal_time_seconds=block.traversal_time_seconds,
-                    x=x,
-                    y=y,
+            non_block_neighbors = adjacency.get(block.id, set())
+            junction_id = block_junction.get(block.id)
+
+            if junction_id is not None and len(non_block_neighbors) == 1:
+                # Block connects a platform/yard to a junction
+                neighbor = next(iter(non_block_neighbors))
+                edges.append(
+                    EdgeSchema(
+                        id=block.id,
+                        name=block.name,
+                        from_id=neighbor,
+                        to_id=junction_id,
+                    )
                 )
-            )
+            elif junction_id is None and len(non_block_neighbors) == 2:
+                # Bidirectional block (B1, B2): connects two platforms/yards directly
+                neighbors = list(non_block_neighbors)
+                edges.append(
+                    EdgeSchema(
+                        id=block.id,
+                        name=block.name,
+                        from_id=neighbors[0],
+                        to_id=neighbors[1],
+                    )
+                )
+
+        # Build junctions list
+        junction_ids = set(block_junction.values())
+        junctions = [
+            JunctionSchema(id=jid, x=positions[jid][0], y=positions[jid][1])
+            for jid in junction_ids
+            if jid in positions
+        ]
 
         return cls(
             nodes=nodes,
-            connections=[
-                ConnectionSchema(from_id=c.from_id, to_id=c.to_id)
-                for c in data.connections
-            ],
+            edges=edges,
+            junctions=junctions,
             stations=[
                 StationSchema(
                     id=s.id,
@@ -171,32 +206,9 @@ class ServiceDetailResponse(BaseModel):
         service: Service,
         graph_data: GraphData,
     ) -> ServiceDetailResponse:
-        blocks = {b.id: b for b in graph_data.blocks}
-        platforms = {p.id: p for p in graph_data.all_platforms}
-        yards = {y.id: y.name for y in graph_data.yards}
-
-        route_nodes: list[BlockNodeSchema | PlatformNodeSchema | YardNodeSchema] = []
-        for node in service.route:
-            if node.type == NodeType.BLOCK and node.id in blocks:
-                b = blocks[node.id]
-                route_nodes.append(
-                    BlockNodeSchema(
-                        id=b.id,
-                        name=b.name,
-                        group=b.group,
-                        traversal_time_seconds=b.traversal_time_seconds,
-                    )
-                )
-            elif node.type == NodeType.PLATFORM and node.id in platforms:
-                p = platforms[node.id]
-                route_nodes.append(PlatformNodeSchema(id=p.id, name=p.name))
-            elif node.type == NodeType.YARD:
-                route_nodes.append(
-                    YardNodeSchema(
-                        id=node.id,
-                        name=yards.get(node.id, "Y"),
-                    )
-                )
+        platform_dict = {p.id: p for p in graph_data.platforms}
+        yard_name_dict = {y.id: y.name for y in graph_data.yards}
+        route_nodes = cls._get_route_nodes(service, platform_dict, yard_name_dict)
 
         return cls(
             id=service.id,
@@ -214,3 +226,25 @@ class ServiceDetailResponse(BaseModel):
             ],
             graph=GraphSchema.from_graph_data(graph_data),
         )
+
+    @classmethod
+    def _get_route_nodes(
+        cls,
+        service: Service,
+        platform_dict: dict[UUID, Platform],
+        yard_name_dict: dict[UUID, str],
+    ) -> list[PlatformNodeSchema | YardNodeSchema]:
+        route_nodes: list[PlatformNodeSchema | YardNodeSchema] = []
+        for node in service.route:
+            if node.type == NodeType.PLATFORM and node.id in platform_dict:
+                p = platform_dict[node.id]
+                route_nodes.append(PlatformNodeSchema(id=p.id, name=p.name))
+            elif node.type == NodeType.YARD:
+                route_nodes.append(
+                    YardNodeSchema(
+                        id=node.id,
+                        name=yard_name_dict.get(node.id, "Y"),
+                    )
+                )
+
+        return route_nodes

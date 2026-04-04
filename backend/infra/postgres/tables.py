@@ -69,3 +69,11 @@ node_layouts_table = Table(
     Column("x", Float, nullable=False),
     Column("y", Float, nullable=False),
 )
+
+junction_blocks_table = Table(
+    "junction_blocks",
+    metadata,
+    Column("from_block_id", Uuid, primary_key=True),
+    Column("to_block_id", Uuid, primary_key=True),
+    Column("junction_id", Uuid, ForeignKey("node_layouts.node_id"), nullable=False),
+)

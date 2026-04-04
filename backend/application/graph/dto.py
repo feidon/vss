@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from uuid import UUID
 
 from domain.block.model import Block
 from domain.network.model import NodeConnection
+from domain.read_model.layout import LayoutData
 from domain.station.model import Platform, Station
 from domain.vehicle.model import Vehicle
 
@@ -15,14 +16,14 @@ class GraphData:
     blocks: list[Block]
     connections: frozenset[NodeConnection]
     vehicles: list[Vehicle]
-    layouts: dict[UUID, tuple[float, float]] = field(default_factory=dict)
+    layout: LayoutData
 
     @property
-    def platform_to_station(self) -> dict[UUID, Station]:
+    def platform_to_station_dict(self) -> dict[UUID, Station]:
         return {p.id: s for s in self.stations for p in s.platforms}
 
     @property
-    def all_platforms(self) -> list[Platform]:
+    def platforms(self) -> list[Platform]:
         return [p for s in self.stations for p in s.platforms]
 
     @property

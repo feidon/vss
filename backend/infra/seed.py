@@ -69,6 +69,13 @@ _BLOCK_GROUPS: dict[str, int] = {
     "B10": 3,
 }
 
+JUNCTION_ID_BY_NAME = {
+    "J1": uuid7(),  # B3/B4 merge into B5
+    "J2": uuid7(),  # B6 diverges into B7/B8
+    "J3": uuid7(),  # B9/B10 merge into B11
+    "J4": uuid7(),  # B12 diverges into B13/B14
+}
+
 _DEFAULT_TRAVERSAL_TIME = 30  # seconds
 
 # ── Domain objects ──────────────────────────────────────────
@@ -183,28 +190,34 @@ def create_vehicles() -> list[Vehicle]:
 
 
 def create_node_layouts() -> dict[UUID, tuple[float, float]]:
-    b = BLOCK_ID_BY_NAME
     p = PLATFORM_ID_BY_NAME
+    j = JUNCTION_ID_BY_NAME
     return {
         p["P3A"]: (50.0, 40.0),
         p["P3B"]: (50.0, 160.0),
-        b["B7"]: (160.0, 40.0),
-        b["B8"]: (200.0, 80.0),
-        b["B9"]: (160.0, 160.0),
-        b["B10"]: (200.0, 120.0),
-        b["B6"]: (300.0, 40.0),
-        b["B11"]: (300.0, 160.0),
         p["P2A"]: (400.0, 40.0),
         p["P2B"]: (400.0, 160.0),
-        b["B5"]: (510.0, 40.0),
-        b["B4"]: (550.0, 80.0),
-        b["B12"]: (510.0, 160.0),
-        b["B14"]: (550.0, 120.0),
-        b["B3"]: (650.0, 40.0),
-        b["B13"]: (650.0, 160.0),
         p["P1A"]: (750.0, 40.0),
         p["P1B"]: (750.0, 160.0),
-        b["B1"]: (850.0, 60.0),
-        b["B2"]: (850.0, 140.0),
         YARD_ID: (950.0, 100.0),
+        j["J1"]: (580.0, 60.0),
+        j["J2"]: (230.0, 80.0),
+        j["J3"]: (230.0, 120.0),
+        j["J4"]: (580.0, 140.0),
     }
+
+
+def create_junction_blocks() -> list[tuple[UUID, UUID, UUID]]:
+    """Return (from_block_id, to_block_id, junction_id) tuples."""
+    b = BLOCK_ID_BY_NAME
+    j = JUNCTION_ID_BY_NAME
+    return [
+        (b["B3"], b["B5"], j["J1"]),
+        (b["B4"], b["B5"], j["J1"]),
+        (b["B6"], b["B7"], j["J2"]),
+        (b["B6"], b["B8"], j["J2"]),
+        (b["B9"], b["B11"], j["J3"]),
+        (b["B10"], b["B11"], j["J3"]),
+        (b["B12"], b["B13"], j["J4"]),
+        (b["B12"], b["B14"], j["J4"]),
+    ]

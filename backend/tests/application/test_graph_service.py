@@ -9,7 +9,7 @@ from domain.vehicle.model import Vehicle
 
 from tests.fakes.block_repo import InMemoryBlockRepository
 from tests.fakes.connection_repo import InMemoryConnectionRepository
-from tests.fakes.node_layout_repo import InMemoryNodeLayoutRepository
+from tests.fakes.layout_repo import InMemoryLayoutRepository
 from tests.fakes.station_repo import InMemoryStationRepository
 from tests.fakes.vehicle_repo import InMemoryVehicleRepository
 
@@ -54,19 +54,19 @@ class TestGraphAppService:
         return repo
 
     @pytest.fixture
-    def node_layout_repo(self):
-        return InMemoryNodeLayoutRepository()
+    def layout_repo(self):
+        return InMemoryLayoutRepository()
 
     @pytest.fixture
     def service(
-        self, station_repo, block_repo, connection_repo, vehicle_repo, node_layout_repo
+        self, station_repo, block_repo, connection_repo, vehicle_repo, layout_repo
     ):
         return GraphAppService(
             station_repo=station_repo,
             block_repo=block_repo,
             connection_repo=connection_repo,
             vehicle_repo=vehicle_repo,
-            node_layout_repo=node_layout_repo,
+            layout_repo=layout_repo,
         )
 
     async def test_get_graph_assembles_all_data(
@@ -84,7 +84,7 @@ class TestGraphAppService:
             block_repo=InMemoryBlockRepository(),
             connection_repo=InMemoryConnectionRepository(),
             vehicle_repo=InMemoryVehicleRepository(),
-            node_layout_repo=InMemoryNodeLayoutRepository(),
+            layout_repo=InMemoryLayoutRepository(),
         )
         graph = await svc.get_graph()
         assert graph.stations == []
@@ -96,7 +96,7 @@ class TestGraphAppService:
         graph = await service.get_graph()
         station = graph.stations[0]
         platform = station.platforms[0]
-        assert graph.platform_to_station[platform.id] == station
+        assert graph.platform_to_station_dict[platform.id] == station
 
     async def test_yard_property(self):
         repo = InMemoryStationRepository()
@@ -110,7 +110,7 @@ class TestGraphAppService:
             block_repo=InMemoryBlockRepository(),
             connection_repo=InMemoryConnectionRepository(),
             vehicle_repo=InMemoryVehicleRepository(),
-            node_layout_repo=InMemoryNodeLayoutRepository(),
+            layout_repo=InMemoryLayoutRepository(),
         )
         graph = await svc.get_graph()
         assert graph.yards == [yard]
