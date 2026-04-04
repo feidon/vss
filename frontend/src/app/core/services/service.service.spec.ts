@@ -29,8 +29,8 @@ describe('ServiceService', () => {
         vehicle_id: 'v1',
         vehicle_name: 'V1',
         start_time: null,
-        origin: null,
-        destination: null,
+        origin_name: null,
+        destination_name: null,
       },
     ];
 

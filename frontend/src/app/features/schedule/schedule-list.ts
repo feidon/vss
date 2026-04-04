@@ -42,8 +42,8 @@ import { CreateServiceDialogComponent, CreateServiceDialogResult } from './creat
               <td class="px-3 py-2">
                 {{ service.start_time ? (service.start_time | epochTime) : '—' }}
               </td>
-              <td class="px-3 py-2">{{ service.origin ?? '—' }}</td>
-              <td class="px-3 py-2">{{ service.destination ?? '—' }}</td>
+              <td class="px-3 py-2">{{ service.origin_name ?? '—' }}</td>
+              <td class="px-3 py-2">{{ service.destination_name ?? '—' }}</td>
               <td class="flex gap-2 px-3 py-2">
                 <button
                   class="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"

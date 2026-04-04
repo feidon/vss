@@ -14,8 +14,8 @@ export interface ServiceResponse {
   readonly vehicle_id: string;
   readonly vehicle_name: string;
   readonly start_time: number | null;
-  readonly origin: string | null;
-  readonly destination: string | null;
+  readonly origin_name: string | null;
+  readonly destination_name: string | null;
 }
 
 export interface ServiceDetailResponse {

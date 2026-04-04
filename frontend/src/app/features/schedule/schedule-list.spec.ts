@@ -26,8 +26,8 @@ const mockServices: ServiceResponse[] = [
     vehicle_id: 'v1',
     vehicle_name: 'V1',
     start_time: 1700000000,
-    origin: 'P1A',
-    destination: 'P2A',
+    origin_name: 'P1A',
+    destination_name: 'P2A',
   },
   {
     id: 102,
@@ -35,8 +35,8 @@ const mockServices: ServiceResponse[] = [
     vehicle_id: 'v2',
     vehicle_name: 'V2',
     start_time: null,
-    origin: null,
-    destination: null,
+    origin_name: null,
+    destination_name: null,
   },
 ];
 
@@ -74,6 +74,8 @@ describe('ScheduleListComponent', () => {
     expect(rows[0].textContent).toContain('S101');
     expect(rows[0].textContent).toContain('V1');
     expect(rows[0].textContent).toContain('P1A');
+    expect(rows[0].textContent).toContain('P2A');
+    expect(rows[1].textContent).toContain('—');
   });
 
   it('should show empty state when no services exist', async () => {
