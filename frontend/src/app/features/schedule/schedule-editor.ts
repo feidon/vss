@@ -84,7 +84,9 @@ export class ScheduleEditorComponent implements OnInit {
       },
       error: (err) => {
         if (err.status === 409) {
-          this.conflicts.set(err.error.detail as ConflictResponse);
+          const body = err.error;
+          const detail = body?.detail ?? body;
+          this.conflicts.set(detail as ConflictResponse);
         }
       },
     });

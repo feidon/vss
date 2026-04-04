@@ -1,4 +1,4 @@
-import { Component, computed, effect, input, output, signal } from '@angular/core';
+import { Component, computed, effect, input, OnInit, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ServiceDetailResponse, GraphResponse, Station, TimetableEntry } from '../../shared/models';
 
@@ -123,7 +123,7 @@ interface StopEntry {
     }
   `,
 })
-export class RouteEditorComponent {
+export class RouteEditorComponent implements OnInit {
   readonly service = input.required<ServiceDetailResponse>();
   readonly graph = input.required<GraphResponse>();
   readonly submitted = output<{
@@ -139,21 +139,15 @@ export class RouteEditorComponent {
 
   readonly stations = computed<readonly Station[]>(() => this.graph().stations);
 
-  private initialized = false;
-
   constructor() {
-    effect(() => {
-      const svc = this.service();
-      const graph = this.graph();
-      if (this.initialized || !svc || !graph) return;
-      this.initialized = true;
-      this.deriveInitialState(svc);
-    });
-
     effect(() => {
       const ids = this.stops().map((s) => s.nodeId);
       this.stopsChanged.emit(ids);
     });
+  }
+
+  ngOnInit(): void {
+    this.deriveInitialState(this.service());
   }
 
   addStopFromMap(nodeId: string, nodeName: string): void {
