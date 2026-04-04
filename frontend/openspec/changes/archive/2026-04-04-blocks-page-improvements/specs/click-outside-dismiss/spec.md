@@ -1,3 +1,5 @@
+## MODIFIED Requirements
+
 ### Requirement: Click outside edit input saves and closes editing
 When the user is editing a block's traversal time and clicks anywhere outside the input field, the system SHALL validate and save the value. If validation fails, the system SHALL keep the edit input open and display the validation error.
 

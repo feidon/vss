@@ -34,8 +34,8 @@ interface BlockGroup {
           @for (block of g.blocks; track block.id) {
             <tr class="border-b hover:bg-gray-50">
               <td class="px-3 py-2 font-medium">{{ block.name }}</td>
-              <td class="px-3 py-2">{{ block.group }}</td>
-              <td class="px-3 py-2">
+              <td class="px-3 py-2">{{ block.group === 0 ? '-' : block.group }}</td>
+              <td class="h-9 px-3 py-2">
                 @if (editingBlockId() === block.id) {
                   <input
                     type="number"
@@ -43,7 +43,7 @@ interface BlockGroup {
                     [value]="editValue()"
                     (input)="onEditInput($event)"
                     (keydown)="onKeydown($event, block)"
-                    (blur)="onBlur()"
+                    (blur)="onBlur(block)"
                   />
                   @if (validationError()) {
                     <span class="ml-2 text-xs text-red-500">{{ validationError() }}</span>
@@ -126,8 +126,8 @@ export class BlockConfigComponent implements OnInit {
     }
   }
 
-  onBlur(): void {
-    this.cancelEdit();
+  onBlur(block: BlockResponse): void {
+    this.save(block);
   }
 
   private save(block: BlockResponse): void {
