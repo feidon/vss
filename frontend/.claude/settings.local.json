@@ -27,7 +27,14 @@
       "mcp__filesystem__list_directory",
       "Read(//home/feidon/Documents/vss/**)",
       "Bash(docker compose:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "mcp__filesystem__read_multiple_files",
+      "Bash(curl -s http://localhost/api/services)",
+      "Bash(curl -s http://localhost/api/services/4)",
+      "Bash(python3 -c ':*)",
+      "Bash(curl -s -X PATCH http://localhost/api/services/4/route -H 'Content-Type: application/json' -d '{:*)",
+      "Bash(curl -s -X POST http://localhost/api/services -H 'Content-Type: application/json' -d '{\"name\": \"s2\", \"vehicle_id\": \"019d53e6-60bd-72ef-ad05-3fa8ac65730c\"}')",
+      "Bash(curl:*)"
     ]
   },
   "enabledMcpjsonServers": [
