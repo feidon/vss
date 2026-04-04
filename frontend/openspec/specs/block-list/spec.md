@@ -1,13 +1,13 @@
 ### Requirement: Display all blocks with traversal times
-The system SHALL display all blocks in a table showing block name, interlocking group, and traversal time in seconds. Blocks SHALL be grouped by interlocking group with group headers, and sorted by name within each group. Groups SHALL be sorted by group number (ungrouped/group 0 first, then ascending).
+The system SHALL display all blocks in a table showing block name, interlocking group, and traversal time in seconds. Blocks SHALL be grouped by interlocking group with group headers, and sorted in natural numeric order by name within each group. Groups SHALL be sorted by group number (ungrouped/group 0 first, then ascending).
 
 #### Scenario: Blocks load successfully
 - **WHEN** the user navigates to the block configuration page
 - **THEN** the system fetches all blocks from GET `/blocks` and displays them in a grouped table
 
-#### Scenario: Blocks are sorted within groups
-- **WHEN** blocks are displayed within a group
-- **THEN** blocks SHALL be sorted alphabetically by name (e.g., B1 before B2, B3 before B4)
+#### Scenario: Blocks are sorted within groups using natural numeric order
+- **WHEN** blocks are displayed within a group (e.g., Group 2 contains B3, B4, B13, B14)
+- **THEN** blocks SHALL be sorted in natural numeric order by name (B3, B4, B13, B14 — not B13, B14, B3, B4)
 
 #### Scenario: Groups are sorted
 - **WHEN** the block table is rendered

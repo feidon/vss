@@ -120,7 +120,9 @@ export class BlockConfigComponent implements OnInit {
       .sort(([a], [b]) => a - b)
       .map(([group, blocks]) => ({
         group,
-        blocks: [...blocks].sort((a, b) => a.name.localeCompare(b.name)),
+        blocks: [...blocks].sort((a, b) =>
+          a.name.localeCompare(b.name, undefined, { numeric: true }),
+        ),
       }));
   });
 

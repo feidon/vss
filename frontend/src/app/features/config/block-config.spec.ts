@@ -116,6 +116,40 @@ describe('BlockConfigComponent', () => {
     expect(names).toEqual(['B3', 'B4', 'B7', 'B9']);
   });
 
+  it('should sort Group 2 blocks in natural numeric order (B3, B4, B13, B14)', () => {
+    const blocks: BlockResponse[] = [
+      { id: 'b14', name: 'B14', group: 2, traversal_time_seconds: 20 },
+      { id: 'b3', name: 'B3', group: 2, traversal_time_seconds: 15 },
+      { id: 'b13', name: 'B13', group: 2, traversal_time_seconds: 25 },
+      { id: 'b4', name: 'B4', group: 2, traversal_time_seconds: 30 },
+    ];
+    const fixture = createAndLoad(blocks);
+    const rows = fixture.nativeElement.querySelectorAll(
+      'tr.border-b.hover\\:bg-gray-50',
+    ) as NodeListOf<HTMLTableRowElement>;
+    const names = Array.from(rows).map(
+      (row) => (row.querySelectorAll('td')[0] as HTMLTableCellElement).textContent?.trim() ?? '',
+    );
+    expect(names).toEqual(['B3', 'B4', 'B13', 'B14']);
+  });
+
+  it('should sort Group 3 blocks in natural numeric order (B7, B8, B9, B10)', () => {
+    const blocks: BlockResponse[] = [
+      { id: 'b10', name: 'B10', group: 3, traversal_time_seconds: 20 },
+      { id: 'b8', name: 'B8', group: 3, traversal_time_seconds: 15 },
+      { id: 'b7', name: 'B7', group: 3, traversal_time_seconds: 25 },
+      { id: 'b9', name: 'B9', group: 3, traversal_time_seconds: 30 },
+    ];
+    const fixture = createAndLoad(blocks);
+    const rows = fixture.nativeElement.querySelectorAll(
+      'tr.border-b.hover\\:bg-gray-50',
+    ) as NodeListOf<HTMLTableRowElement>;
+    const names = Array.from(rows).map(
+      (row) => (row.querySelectorAll('td')[0] as HTMLTableCellElement).textContent?.trim() ?? '',
+    );
+    expect(names).toEqual(['B7', 'B8', 'B9', 'B10']);
+  });
+
   it('should focus input when editing starts', async () => {
     const fixture = createAndLoad([GROUPED_BLOCK]);
     const component = fixture.componentInstance;
