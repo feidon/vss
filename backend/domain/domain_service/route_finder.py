@@ -48,7 +48,7 @@ class RouteFinder:
                     visited.add(neighbor)
                     queue.append((neighbor, path + [neighbor]))
 
-        raise DomainError(ErrorCode.NO_ROUTE, f"No route from {from_id} to {to_id}")
+        raise DomainError(ErrorCode.NO_ROUTE, "No route in your selected stops")
 
     @classmethod
     def build_full_path(
