@@ -1,4 +1,4 @@
-export type { BlockNode, PlatformNode, YardNode, Node } from './node';
+export type { PlatformNode, YardNode, Node } from './node';
 export type { BlockResponse, UpdateBlockRequest, BlockIdResponse } from './block';
 export type {
   TimetableEntry,
@@ -9,7 +9,7 @@ export type {
   CreateServiceRequest,
   ServiceIdResponse,
 } from './service';
-export type { Connection, Station, Vehicle, GraphResponse } from './graph';
+export type { Edge, Junction, Station, Vehicle, GraphResponse } from './graph';
 export type {
   VehicleConflict,
   BlockConflict,

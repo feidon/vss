@@ -12,11 +12,10 @@ const mockDetail: ServiceDetailResponse = {
   vehicle_id: 'v1',
   route: [
     { type: 'yard', id: 'y1', name: 'Y', x: 0, y: 0 },
-    { type: 'block', id: 'b1', name: 'B1', x: 1, y: 0, group: 0, traversal_time_seconds: 30 },
     { type: 'platform', id: 'p1a', name: 'P1A', x: 2, y: 0 },
   ],
   timetable: [],
-  graph: { nodes: [], connections: [], stations: [], vehicles: [] },
+  graph: { nodes: [], junctions: [], edges: [], stations: [], vehicles: [] },
 };
 
 const mockServices: ServiceResponse[] = [
@@ -144,7 +143,7 @@ describe('ScheduleListComponent', () => {
 
     const expandedRow = fixture.nativeElement.querySelector('tr.bg-gray-50');
     expect(expandedRow).toBeTruthy();
-    expect(expandedRow.textContent).toContain('Y → B1 → P1A');
+    expect(expandedRow.textContent).toContain('Y → P1A');
   });
 
   it('should collapse an expanded row on re-click', () => {
@@ -195,7 +194,7 @@ describe('ScheduleListComponent', () => {
 
     httpTesting.expectNone(`${API_BASE_URL}/services/101`);
     const expandedRow = fixture.nativeElement.querySelector('tr.bg-gray-50');
-    expect(expandedRow.textContent).toContain('Y → B1 → P1A');
+    expect(expandedRow.textContent).toContain('Y → P1A');
   });
 
   it('should not toggle expansion when Edit or Delete button is clicked', () => {

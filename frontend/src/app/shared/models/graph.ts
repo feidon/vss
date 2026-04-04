@@ -1,8 +1,16 @@
 import { Node } from './node';
 
-export interface Connection {
+export interface Edge {
+  readonly id: string;
+  readonly name: string;
   readonly from_id: string;
   readonly to_id: string;
+}
+
+export interface Junction {
+  readonly id: string;
+  readonly x: number;
+  readonly y: number;
 }
 
 export interface Station {
@@ -19,7 +27,8 @@ export interface Vehicle {
 
 export interface GraphResponse {
   readonly nodes: readonly Node[];
-  readonly connections: readonly Connection[];
+  readonly junctions: readonly Junction[];
+  readonly edges: readonly Edge[];
   readonly stations: readonly Station[];
   readonly vehicles: readonly Vehicle[];
 }

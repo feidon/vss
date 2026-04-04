@@ -1,6 +1,11 @@
 import { Component, ElementRef, computed, effect, input, output, viewChild } from '@angular/core';
 import * as d3 from 'd3';
-import { GraphResponse, Node, Connection } from '../../shared/models';
+import { GraphResponse, Node, Edge, Junction } from '../../shared/models';
+
+interface Position {
+  readonly x: number;
+  readonly y: number;
+}
 
 export interface MapStopEvent {
   readonly nodeId: string;
@@ -54,9 +59,19 @@ export class TrackMapEditorComponent {
     const tooltipEl = this.tooltipRef().nativeElement;
     const interactive = this.interactive();
 
+    // Build unified position map from nodes + junctions
+    const posMap = new Map<string, Position>();
+    for (const node of graph.nodes) {
+      posMap.set(node.id, node);
+    }
+    for (const jct of graph.junctions) {
+      posMap.set(jct.id, jct);
+    }
+
+    const allPositions = [...posMap.values()];
     const margin = 40;
-    const xs = graph.nodes.map((n) => n.x);
-    const ys = graph.nodes.map((n) => n.y);
+    const xs = allPositions.map((p) => p.x);
+    const ys = allPositions.map((p) => p.y);
     const minX = Math.min(...xs);
     const maxX = Math.max(...xs);
     const minY = Math.min(...ys);
@@ -79,64 +94,63 @@ export class TrackMapEditorComponent {
     svg.selectAll('*').remove();
     svg.attr('width', svgWidth).attr('height', svgHeight).attr('class', 'select-none');
 
-    const nodeMap = new Map<string, Node>();
-    for (const node of graph.nodes) {
-      nodeMap.set(node.id, node);
-    }
-
     const queuedSet = new Set(queuedIds);
     const queuedOrder = new Map<string, number>();
     queuedIds.forEach((id, i) => queuedOrder.set(id, i + 1));
 
-    // Draw connections
-    svg
-      .selectAll('line.connection')
-      .data(graph.connections)
+    // Draw edges (blocks) as labeled lines
+    const edgeGroups = svg
+      .selectAll('g.edge')
+      .data(graph.edges)
       .enter()
+      .append('g')
+      .attr('class', 'edge');
+
+    edgeGroups
       .append('line')
-      .attr('class', 'connection')
-      .attr('x1', (d: Connection) => xScale(nodeMap.get(d.from_id)?.x ?? 0))
-      .attr('y1', (d: Connection) => yScale(nodeMap.get(d.from_id)?.y ?? 0))
-      .attr('x2', (d: Connection) => xScale(nodeMap.get(d.to_id)?.x ?? 0))
-      .attr('y2', (d: Connection) => yScale(nodeMap.get(d.to_id)?.y ?? 0))
+      .attr('x1', (d: Edge) => xScale(posMap.get(d.from_id)?.x ?? 0))
+      .attr('y1', (d: Edge) => yScale(posMap.get(d.from_id)?.y ?? 0))
+      .attr('x2', (d: Edge) => xScale(posMap.get(d.to_id)?.x ?? 0))
+      .attr('y2', (d: Edge) => yScale(posMap.get(d.to_id)?.y ?? 0))
       .attr('stroke', '#94a3b8')
       .attr('stroke-width', 2);
 
-    // Draw block nodes (non-interactive)
-    const blockNodes = graph.nodes.filter((n) => n.type === 'block');
+    // Block labels at edge midpoints
+    edgeGroups
+      .append('text')
+      .attr('x', (d: Edge) => {
+        const x1 = posMap.get(d.from_id)?.x ?? 0;
+        const x2 = posMap.get(d.to_id)?.x ?? 0;
+        return xScale((x1 + x2) / 2);
+      })
+      .attr('y', (d: Edge) => {
+        const y1 = posMap.get(d.from_id)?.y ?? 0;
+        const y2 = posMap.get(d.to_id)?.y ?? 0;
+        return yScale((y1 + y2) / 2) - 8;
+      })
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '9px')
+      .attr('fill', '#94a3b8')
+      .text((d: Edge) => d.name);
+
+    // Draw junction dots (small non-interactive)
     svg
-      .selectAll('circle.block')
-      .data(blockNodes)
+      .selectAll('circle.junction')
+      .data(graph.junctions)
       .enter()
       .append('circle')
-      .attr('class', 'block')
-      .attr('cx', (d: Node) => xScale(d.x))
-      .attr('cy', (d: Node) => yScale(d.y))
-      .attr('r', 6)
+      .attr('class', 'junction')
+      .attr('cx', (d: Junction) => xScale(d.x))
+      .attr('cy', (d: Junction) => yScale(d.y))
+      .attr('r', 4)
       .attr('fill', '#cbd5e1')
       .attr('stroke', '#94a3b8')
       .attr('stroke-width', 1);
 
-    // Draw block labels
-    svg
-      .selectAll('text.block-label')
-      .data(blockNodes)
-      .enter()
-      .append('text')
-      .attr('class', 'block-label')
-      .attr('x', (d: Node) => xScale(d.x))
-      .attr('y', (d: Node) => yScale(d.y) - 10)
-      .attr('text-anchor', 'middle')
-      .attr('font-size', '9px')
-      .attr('fill', '#94a3b8')
-      .text((d: Node) => d.name);
-
     // Draw clickable nodes (platforms + yards)
-    const clickableData = graph.nodes.filter((n) => n.type === 'platform' || n.type === 'yard');
-
     const nodeGroups = svg
       .selectAll('g.clickable')
-      .data(clickableData)
+      .data(graph.nodes)
       .enter()
       .append('g')
       .attr('class', 'clickable')

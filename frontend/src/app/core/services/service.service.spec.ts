@@ -52,7 +52,8 @@ describe('ServiceService', () => {
       timetable: [{ order: 0, node_id: 'p1', arrival: 1700000000, departure: 1700000030 }],
       graph: {
         nodes: [],
-        connections: [],
+        junctions: [],
+        edges: [],
         stations: [],
         vehicles: [],
       },

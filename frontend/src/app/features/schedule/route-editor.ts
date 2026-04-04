@@ -162,7 +162,7 @@ export class RouteEditorComponent implements OnInit {
       timetableMap.set(entry.node_id, entry);
     }
 
-    const stopNodes = svc.route.filter((n) => n.type !== 'block');
+    const stopNodes = svc.route;
     const initialStops: StopEntry[] = stopNodes.map((node) => {
       const entry = timetableMap.get(node.id);
       const dwellTime = entry ? entry.departure - entry.arrival : 30;

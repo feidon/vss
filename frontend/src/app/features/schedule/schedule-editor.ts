@@ -25,6 +25,20 @@ import { TrackMapEditorComponent, MapStopEvent } from './track-map-editor';
         <app-conflict-alert [conflicts]="conflicts()!" (dismiss)="conflicts.set(null)" />
       }
 
+      @if (errorMessage()) {
+        <div
+          class="mb-4 flex items-center justify-between rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800"
+        >
+          <span>{{ errorMessage() }}</span>
+          <button
+            class="ml-4 font-medium text-red-600 hover:text-red-800"
+            (click)="errorMessage.set(null)"
+          >
+            Dismiss
+          </button>
+        </div>
+      }
+
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div>
           <app-track-map-editor
@@ -57,6 +71,7 @@ export class ScheduleEditorComponent implements OnInit {
 
   readonly service = signal<ServiceDetailResponse | null>(null);
   readonly conflicts = signal<ConflictResponse | null>(null);
+  readonly errorMessage = signal<string | null>(null);
   readonly queuedNodeIds = signal<readonly string[]>([]);
 
   ngOnInit(): void {
@@ -78,6 +93,7 @@ export class ScheduleEditorComponent implements OnInit {
   }): void {
     const id = this.service()!.id;
     this.conflicts.set(null);
+    this.errorMessage.set(null);
     this.serviceService.updateRoute(id, request).subscribe({
       next: () => {
         this.serviceService.getService(id).subscribe((s) => this.service.set(s));
@@ -87,6 +103,8 @@ export class ScheduleEditorComponent implements OnInit {
           const body = err.error;
           const detail = body?.detail ?? body;
           this.conflicts.set(detail as ConflictResponse);
+        } else {
+          this.errorMessage.set('Failed to update route. Please try again.');
         }
       },
     });
