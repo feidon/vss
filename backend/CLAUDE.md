@@ -126,6 +126,32 @@ In a monolith with single DB, prefer querying at use time (load both aggregates 
 - **Infra tests**: repository contract verification against PostgreSQL, marked `@pytest.mark.postgres`
 - Helper factories: `make_block()`, `make_service_with_window()`, seed data utilities
 
+## Track Network
+
+14 blocks (B1-B14), 4 stations (Y, S1, S2, S3), 6 platforms.
+Directed adjacency (`->` = unidirectional, `<-` = bidirectional):
+
+```
+Y  <- B1  -> P1A
+Y  <- B2  -> P1B
+P1A -> B3  -> B5  -> P2A
+P1B -> B4  -> B5  -> P2A
+P2A -> B6  -> B7  -> P3A
+P2A -> B6  -> B8  -> P3B
+P3A -> B10 -> B11 -> P2B
+P3B -> B9  -> B11 -> P2B
+P2B -> B12 -> B14 -> P1B
+P2B -> B12 -> B13 -> P1A
+```
+
+B1/B2 are bidirectional (vehicles depart from and return to Yard).
+All other blocks are strictly unidirectional.
+
+Three interlocking groups enforce mutual exclusion:
+- Group 1: B1, B2
+- Group 2: B3, B4, B13, B14
+- Group 3: B7, B8, B9, B10
+
 ## Notes
 
 - No high-concurrency support

@@ -120,62 +120,13 @@ class GraphSchema(BaseModel):
                 PlatformNodeSchema(id=platform.id, name=platform.name, x=x, y=y)
             )
 
-        # Build block_junction index: block_id -> junction_id
-        block_junction: dict[UUID, UUID] = {}
-        for (from_b, to_b), jid in data.layout.junction_blocks.items():
-            block_junction[from_b] = jid
-            block_junction[to_b] = jid
-
-        # Build adjacency: for each block, find its non-block neighbors
-        block_ids = {b.id for b in data.blocks}
-        adjacency: dict[UUID, set[UUID]] = {b.id: set() for b in data.blocks}
-        for conn in data.connections:
-            if conn.from_id in block_ids and conn.to_id not in block_ids:
-                adjacency[conn.from_id].add(conn.to_id)
-            if conn.to_id in block_ids and conn.from_id not in block_ids:
-                adjacency[conn.to_id].add(conn.from_id)
-
-        # Compute edges
-        edges: list[EdgeSchema] = []
-        for block in data.blocks:
-            non_block_neighbors = adjacency.get(block.id, set())
-            junction_id = block_junction.get(block.id)
-
-            if junction_id is not None and len(non_block_neighbors) == 1:
-                # Block connects a platform/yard to a junction
-                neighbor = next(iter(non_block_neighbors))
-                edges.append(
-                    EdgeSchema(
-                        id=block.id,
-                        name=block.name,
-                        from_id=neighbor,
-                        to_id=junction_id,
-                    )
-                )
-            elif junction_id is None and len(non_block_neighbors) == 2:
-                # Bidirectional block (B1, B2): connects two platforms/yards directly
-                neighbors = list(non_block_neighbors)
-                edges.append(
-                    EdgeSchema(
-                        id=block.id,
-                        name=block.name,
-                        from_id=neighbors[0],
-                        to_id=neighbors[1],
-                    )
-                )
-
-        # Build junctions list
-        junction_ids = set(block_junction.values())
-        junctions = [
-            JunctionSchema(id=jid, x=positions[jid][0], y=positions[jid][1])
-            for jid in junction_ids
-            if jid in positions
-        ]
-
         return cls(
             nodes=nodes,
-            edges=edges,
-            junctions=junctions,
+            edges=[
+                EdgeSchema(id=e.id, name=e.name, from_id=e.from_id, to_id=e.to_id)
+                for e in data.edges
+            ],
+            junctions=[JunctionSchema(id=j.id, x=j.x, y=j.y) for j in data.junctions],
             stations=[
                 StationSchema(
                     id=s.id,

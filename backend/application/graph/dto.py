@@ -11,12 +11,29 @@ from domain.vehicle.model import Vehicle
 
 
 @dataclass(frozen=True)
+class Edge:
+    id: UUID
+    name: str
+    from_id: UUID
+    to_id: UUID
+
+
+@dataclass(frozen=True)
+class Junction:
+    id: UUID
+    x: float
+    y: float
+
+
+@dataclass(frozen=True)
 class GraphData:
     stations: list[Station]
     blocks: list[Block]
     connections: frozenset[NodeConnection]
     vehicles: list[Vehicle]
     layout: LayoutData
+    edges: list[Edge]
+    junctions: list[Junction]
 
     @property
     def platform_to_station_dict(self) -> dict[UUID, Station]:
