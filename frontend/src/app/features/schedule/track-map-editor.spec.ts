@@ -71,6 +71,29 @@ describe('TrackMapEditorComponent', () => {
     expect(labels).toContain('B2');
   });
 
+  it('should define arrowhead marker in SVG defs', () => {
+    fixture.componentRef.setInput('graph', mockGraph);
+    fixture.detectChanges();
+
+    const svg = fixture.nativeElement.querySelector('svg');
+    const marker = svg.querySelector('defs marker');
+    expect(marker).toBeTruthy();
+    expect(marker.getAttribute('orient')).toBe('auto');
+    expect(marker.getAttribute('id')).toBe('arrowhead');
+  });
+
+  it('should apply marker-end to all edge lines', () => {
+    fixture.componentRef.setInput('graph', mockGraph);
+    fixture.detectChanges();
+
+    const svg = fixture.nativeElement.querySelector('svg');
+    const lines = svg.querySelectorAll('g.edge line');
+    expect(lines.length).toBe(3);
+    for (const line of Array.from(lines as NodeListOf<SVGLineElement>)) {
+      expect(line.getAttribute('marker-end')).toBe('url(#arrowhead)');
+    }
+  });
+
   it('should emit stopAdded when platform clicked', () => {
     const spy = vi.fn();
     fixture.componentRef.setInput('graph', mockGraph);
@@ -92,6 +115,47 @@ describe('TrackMapEditorComponent', () => {
     const clickableGroups = fixture.nativeElement.querySelectorAll('g.clickable');
     expect(clickableGroups.length).toBeGreaterThan(0);
     expect(clickableGroups[0].style.cursor).toBe('default');
+  });
+
+  it('should position crossing edge labels at distinct positions', () => {
+    const crossingGraph: GraphResponse = {
+      nodes: [
+        { type: 'platform', id: 'p3a', name: 'P3A', x: 50, y: 40 },
+        { type: 'platform', id: 'p3b', name: 'P3B', x: 50, y: 160 },
+      ],
+      junctions: [
+        { id: 'j2', x: 225, y: 40 },
+        { id: 'j3', x: 225, y: 160 },
+      ],
+      edges: [
+        { id: 'b8', name: 'B8', from_id: 'j2', to_id: 'p3b' },
+        { id: 'b10', name: 'B10', from_id: 'p3a', to_id: 'j3' },
+      ],
+      stations: [{ id: 's3', name: 'S3', is_yard: false, platform_ids: ['p3a', 'p3b'] }],
+      vehicles: [],
+    };
+    fixture.componentRef.setInput('graph', crossingGraph);
+    fixture.detectChanges();
+
+    const svg = fixture.nativeElement.querySelector('svg');
+    const labels = svg.querySelectorAll('g.edge text');
+    expect(labels.length).toBe(2);
+
+    const b8Label = Array.from(labels as NodeListOf<SVGTextElement>).find(
+      (t) => t.textContent === 'B8',
+    )!;
+    const b10Label = Array.from(labels as NodeListOf<SVGTextElement>).find(
+      (t) => t.textContent === 'B10',
+    )!;
+
+    const b8x = Number(b8Label.getAttribute('x'));
+    const b8y = Number(b8Label.getAttribute('y'));
+    const b10x = Number(b10Label.getAttribute('x'));
+    const b10y = Number(b10Label.getAttribute('y'));
+
+    // Labels should not be at the same position
+    const dist = Math.sqrt((b8x - b10x) ** 2 + (b8y - b10y) ** 2);
+    expect(dist).toBeGreaterThan(5);
   });
 
   it('should show queue numbers for queued nodes', () => {

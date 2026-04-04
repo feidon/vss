@@ -98,7 +98,22 @@ export class TrackMapEditorComponent {
     const queuedOrder = new Map<string, number>();
     queuedIds.forEach((id, i) => queuedOrder.set(id, i + 1));
 
-    // Draw edges (blocks) as labeled lines
+    // Define arrowhead marker
+    svg
+      .append('defs')
+      .append('marker')
+      .attr('id', 'arrowhead')
+      .attr('viewBox', '0 0 10 10')
+      .attr('refX', 8)
+      .attr('refY', 5)
+      .attr('markerWidth', 6)
+      .attr('markerHeight', 6)
+      .attr('orient', 'auto')
+      .append('path')
+      .attr('d', 'M 0 0 L 10 5 L 0 10 Z')
+      .attr('fill', '#94a3b8');
+
+    // Draw edges (blocks) as labeled lines with direction arrows
     const edgeGroups = svg
       .selectAll('g.edge')
       .data(graph.edges)
@@ -113,21 +128,28 @@ export class TrackMapEditorComponent {
       .attr('x2', (d: Edge) => xScale(posMap.get(d.to_id)?.x ?? 0))
       .attr('y2', (d: Edge) => yScale(posMap.get(d.to_id)?.y ?? 0))
       .attr('stroke', '#94a3b8')
-      .attr('stroke-width', 2);
+      .attr('stroke-width', 2)
+      .attr('marker-end', 'url(#arrowhead)');
 
-    // Block labels at edge midpoints
+    // Block labels offset perpendicular to edge direction (computed in screen space)
+    const labelOffset = 10;
+    const edgeLabelPos = (d: Edge) => {
+      const sx1 = xScale(posMap.get(d.from_id)?.x ?? 0);
+      const sy1 = yScale(posMap.get(d.from_id)?.y ?? 0);
+      const sx2 = xScale(posMap.get(d.to_id)?.x ?? 0);
+      const sy2 = yScale(posMap.get(d.to_id)?.y ?? 0);
+      const dx = sx2 - sx1;
+      const dy = sy2 - sy1;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      return {
+        x: (sx1 + sx2) / 2 + (-dy / len) * labelOffset,
+        y: (sy1 + sy2) / 2 + (dx / len) * labelOffset,
+      };
+    };
     edgeGroups
       .append('text')
-      .attr('x', (d: Edge) => {
-        const x1 = posMap.get(d.from_id)?.x ?? 0;
-        const x2 = posMap.get(d.to_id)?.x ?? 0;
-        return xScale((x1 + x2) / 2);
-      })
-      .attr('y', (d: Edge) => {
-        const y1 = posMap.get(d.from_id)?.y ?? 0;
-        const y2 = posMap.get(d.to_id)?.y ?? 0;
-        return yScale((y1 + y2) / 2) - 8;
-      })
+      .attr('x', (d: Edge) => edgeLabelPos(d).x)
+      .attr('y', (d: Edge) => edgeLabelPos(d).y)
       .attr('text-anchor', 'middle')
       .attr('font-size', '9px')
       .attr('fill', '#94a3b8')
