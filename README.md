@@ -203,7 +203,7 @@ All endpoints are under the `/api` prefix.
 | GET    | `/api/blocks`                | List all blocks with traversal times     |
 | PATCH  | `/api/blocks/{id}`           | Update a block's traversal time          |
 | POST   | `/api/services`              | Create a new service (empty route)       |
-| GET    | `/api/services`              | List all services (summary)              |
+| GET    | `/api/services`              | List services (summary: start_time, origin, destination) |
 | GET    | `/api/services/{id}`         | Get service detail with route, timetable, and graph |
 | PATCH  | `/api/services/{id}/route`   | Update route (validates + detects conflicts) |
 | DELETE | `/api/services/{id}`         | Delete a service                         |
@@ -385,8 +385,8 @@ vss/
   - [ ] editor is a track map, user can click the platform/yard he wants and put it into queue
 
 - viewer page
-  - [ ] service should show the start time — derive from `timetable[0].arrival`, add to list response
-  - [ ] starting and ending station and platform — add `origin_name`, `destination_name` to list response
+  - [x] service should show the start time — derive from `timetable[0].arrival`, add to list response
+  - [x] starting and ending station and platform — add `origin_name`, `destination_name` to list response
   - [ ] when click on the row(anywhere on the row) the service can expand it to show a simple path Y → B1 → P1A
   - [ ] has edit and delete button
 

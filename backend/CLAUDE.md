@@ -44,7 +44,7 @@ All routes are under the `/api` prefix.
 | GET    | `/api/blocks`              | List all blocks            |
 | PATCH  | `/api/blocks/{id}`         | Update traversal time      |
 | POST   | `/api/services`            | Create service             |
-| GET    | `/api/services`            | List all services          |
+| GET    | `/api/services`            | List services (with start_time, origin, destination) |
 | GET    | `/api/services/{id}`       | Get service detail + graph |
 | PATCH  | `/api/services/{id}/route` | Update service route       |
 | DELETE | `/api/services/{id}`       | Delete service             |
