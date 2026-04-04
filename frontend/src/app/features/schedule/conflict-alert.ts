@@ -1,8 +1,10 @@
-import { Component, input, output } from '@angular/core';
-import { ConflictResponse } from '../../shared/models';
+import { Component, computed, input, output } from '@angular/core';
+import { ConflictResponse, GraphResponse } from '../../shared/models';
+import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
 
 @Component({
   selector: 'app-conflict-alert',
+  imports: [EpochTimePipe],
   template: `
     <div class="relative mb-4 rounded border border-red-300 bg-red-50 p-4 text-sm">
       <button
@@ -18,7 +20,10 @@ import { ConflictResponse } from '../../shared/models';
           <h5 class="font-medium text-red-700">Vehicle Conflicts</h5>
           <ul class="ml-4 list-disc">
             @for (c of conflicts().vehicle_conflicts; track $index) {
-              <li>Services {{ c.service_a_id }} &amp; {{ c.service_b_id }}: {{ c.reason }}</li>
+              <li>
+                {{ vehicleName(c.vehicle_id) }} — S{{ c.service_a_id }} &amp; S{{ c.service_b_id }}:
+                {{ c.reason }}
+              </li>
             }
           </ul>
         </div>
@@ -30,9 +35,10 @@ import { ConflictResponse } from '../../shared/models';
           <ul class="ml-4 list-disc">
             @for (c of conflicts().block_conflicts; track $index) {
               <li>
-                Block {{ c.block_id }} — Services {{ c.service_a_id }} &amp;
-                {{ c.service_b_id }} ({{ formatTime(c.overlap_start) }} –
-                {{ formatTime(c.overlap_end) }})
+                {{ nodeName(c.block_id) }} — S{{ c.service_a_id }} &amp; S{{ c.service_b_id }} ({{
+                  c.overlap_start | epochTime
+                }}
+                – {{ c.overlap_end | epochTime }})
               </li>
             }
           </ul>
@@ -45,9 +51,11 @@ import { ConflictResponse } from '../../shared/models';
           <ul class="ml-4 list-disc">
             @for (c of conflicts().interlocking_conflicts; track $index) {
               <li>
-                Group {{ c.group }} — Blocks {{ c.block_a_id }} &amp; {{ c.block_b_id }}, Services
-                {{ c.service_a_id }} &amp; {{ c.service_b_id }} ({{ formatTime(c.overlap_start) }} –
-                {{ formatTime(c.overlap_end) }})
+                Group {{ c.group }} — {{ nodeName(c.block_a_id) }} &amp;
+                {{ nodeName(c.block_b_id) }}, S{{ c.service_a_id }} &amp; S{{ c.service_b_id }} ({{
+                  c.overlap_start | epochTime
+                }}
+                – {{ c.overlap_end | epochTime }})
               </li>
             }
           </ul>
@@ -59,14 +67,14 @@ import { ConflictResponse } from '../../shared/models';
           <div class="mb-2">
             <h5 class="font-medium text-red-700">Low Battery</h5>
             <ul class="ml-4 list-disc">
-              <li>Service {{ c.service_id }} has insufficient battery to complete the route</li>
+              <li>S{{ c.service_id }} has insufficient battery to complete the route</li>
             </ul>
           </div>
         } @else if (c.type === 'insufficient_charge') {
           <div class="mb-2">
             <h5 class="font-medium text-red-700">Insufficient Charge</h5>
             <ul class="ml-4 list-disc">
-              <li>Service {{ c.service_id }} — insufficient charging time between services</li>
+              <li>S{{ c.service_id }} — insufficient charging time between services</li>
             </ul>
           </div>
         }
@@ -76,9 +84,30 @@ import { ConflictResponse } from '../../shared/models';
 })
 export class ConflictAlertComponent {
   readonly conflicts = input.required<ConflictResponse>();
+  readonly graph = input.required<GraphResponse>();
   readonly dismiss = output<void>();
 
-  formatTime(epoch: number): string {
-    return new Date(epoch * 1000).toLocaleTimeString();
+  private readonly nodeNameMap = computed(() => {
+    const map = new Map<string, string>();
+    for (const node of this.graph().nodes) {
+      map.set(node.id, node.name);
+    }
+    return map;
+  });
+
+  private readonly vehicleNameMap = computed(() => {
+    const map = new Map<string, string>();
+    for (const v of this.graph().vehicles) {
+      map.set(v.id, v.name);
+    }
+    return map;
+  });
+
+  nodeName(id: string): string {
+    return this.nodeNameMap().get(id) ?? id;
+  }
+
+  vehicleName(id: string): string {
+    return this.vehicleNameMap().get(id) ?? id;
   }
 }

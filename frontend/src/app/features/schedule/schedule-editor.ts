@@ -22,7 +22,11 @@ import { TrackMapEditorComponent, MapStopEvent } from './track-map-editor';
       </div>
 
       @if (conflicts()) {
-        <app-conflict-alert [conflicts]="conflicts()!" (dismiss)="conflicts.set(null)" />
+        <app-conflict-alert
+          [conflicts]="conflicts()!"
+          [graph]="service()!.graph"
+          (dismiss)="conflicts.set(null)"
+        />
       }
 
       @if (errorMessage()) {
