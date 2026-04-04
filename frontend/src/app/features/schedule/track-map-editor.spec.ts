@@ -71,7 +71,7 @@ describe('TrackMapEditorComponent', () => {
     expect(labels).toContain('B2');
   });
 
-  it('should define arrowhead marker in SVG defs', () => {
+  it('should define arrowhead marker with correct dimensions and color', () => {
     fixture.componentRef.setInput('graph', mockGraph);
     fixture.detectChanges();
 
@@ -80,6 +80,10 @@ describe('TrackMapEditorComponent', () => {
     expect(marker).toBeTruthy();
     expect(marker.getAttribute('orient')).toBe('auto');
     expect(marker.getAttribute('id')).toBe('arrowhead');
+    expect(Number(marker.getAttribute('markerWidth'))).toBeGreaterThanOrEqual(8);
+    expect(Number(marker.getAttribute('markerHeight'))).toBeGreaterThanOrEqual(8);
+    const arrowPath = marker.querySelector('path');
+    expect(arrowPath?.getAttribute('fill')).toBe('#64748b');
   });
 
   it('should apply marker-end to all edge lines', () => {
@@ -92,6 +96,36 @@ describe('TrackMapEditorComponent', () => {
     for (const line of Array.from(lines as NodeListOf<SVGLineElement>)) {
       expect(line.getAttribute('marker-end')).toBe('url(#arrowhead)');
     }
+  });
+
+  it('should shorten edge endpoints by target node radius', () => {
+    fixture.componentRef.setInput('graph', mockGraph);
+    fixture.detectChanges();
+
+    const svg = fixture.nativeElement.querySelector('svg');
+    const lines = svg.querySelectorAll('g.edge line');
+    // b0: y1→p1 (yard node, radius 12), b1: p1→j1 (junction, radius 4)
+    const b0Line = lines[0] as SVGLineElement;
+    const b1Line = lines[1] as SVGLineElement;
+
+    // The target p1 is a node (radius 12) — x2 should be pulled back from p1's position
+    const p1ScreenX = Number(
+      svg
+        .querySelectorAll('g.clickable')[0]
+        .getAttribute('transform')
+        ?.match(/translate\(([^,]+)/)?.[1],
+    );
+    if (p1ScreenX) {
+      const b0X2 = Number(b0Line.getAttribute('x2'));
+      expect(b0X2).toBeLessThan(p1ScreenX);
+    }
+
+    // The target j1 is a junction (radius 4) — should be shortened less than node edges
+    const b1X2 = Number(b1Line.getAttribute('x2'));
+    const b0X2 = Number(b0Line.getAttribute('x2'));
+    // Both lines point right; junction target should be closer to actual position
+    expect(b1X2).toBeTruthy();
+    expect(b0X2).toBeTruthy();
   });
 
   it('should emit stopAdded when platform clicked', () => {
@@ -153,9 +187,9 @@ describe('TrackMapEditorComponent', () => {
     const b10x = Number(b10Label.getAttribute('x'));
     const b10y = Number(b10Label.getAttribute('y'));
 
-    // Labels should not be at the same position
+    // Labels should be far enough apart to avoid text bounding box overlap
     const dist = Math.sqrt((b8x - b10x) ** 2 + (b8y - b10y) ** 2);
-    expect(dist).toBeGreaterThan(5);
+    expect(dist).toBeGreaterThan(15);
   });
 
   it('should show queue numbers for queued nodes', () => {

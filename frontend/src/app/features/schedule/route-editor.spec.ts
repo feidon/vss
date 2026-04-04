@@ -36,6 +36,25 @@ const mockServiceWithRoute: ServiceDetailResponse = {
   graph: mockGraph,
 };
 
+const mockServiceWithBlocks: ServiceDetailResponse = {
+  id: 103,
+  name: 'S103',
+  vehicle_id: 'v1',
+  route: [
+    { type: 'platform', id: 'p1', name: 'P1A', x: 0, y: 0 },
+    { type: 'block', id: 'b1', name: 'B1', x: 0.5, y: 0 },
+    { type: 'block', id: 'b2', name: 'B2', x: 1.5, y: 0 },
+    { type: 'platform', id: 'p2', name: 'P2A', x: 2, y: 0 },
+  ],
+  timetable: [
+    { order: 0, node_id: 'p1', arrival: 1700000000, departure: 1700000060 },
+    { order: 1, node_id: 'b1', arrival: 1700000060, departure: 1700000060 },
+    { order: 2, node_id: 'b2', arrival: 1700000060, departure: 1700000060 },
+    { order: 3, node_id: 'p2', arrival: 1700000090, departure: 1700000135 },
+  ],
+  graph: mockGraph,
+};
+
 const mockServiceEmpty: ServiceDetailResponse = {
   id: 102,
   name: 'S102',
@@ -132,6 +151,35 @@ describe('RouteEditorComponent', () => {
     expect(fixture.componentInstance.nodeName('b1')).toBe('B1');
     expect(fixture.componentInstance.nodeName('p1')).toBe('P1A');
     expect(fixture.componentInstance.nodeName('unknown')).toBe('unknown');
+  });
+
+  it('should exclude block nodes from stops queue', async () => {
+    fixture.componentRef.setInput('service', mockServiceWithBlocks);
+    fixture.componentRef.setInput('graph', mockGraph);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const stops = fixture.componentInstance.stops();
+    expect(stops.length).toBe(2);
+    expect(stops[0].nodeId).toBe('p1');
+    expect(stops[0].nodeName).toBe('P1A');
+    expect(stops[1].nodeId).toBe('p2');
+    expect(stops[1].nodeName).toBe('P2A');
+    expect(stops.every((s) => s.nodeId !== 'b1' && s.nodeId !== 'b2')).toBe(true);
+  });
+
+  it('should only emit non-block node IDs via stopsChanged', async () => {
+    const emitted: string[][] = [];
+    fixture.componentRef.setInput('service', mockServiceWithBlocks);
+    fixture.componentRef.setInput('graph', mockGraph);
+    fixture.componentInstance.stopsChanged.subscribe((ids) => emitted.push([...ids]));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const lastEmit = emitted[emitted.length - 1];
+    expect(lastEmit).toEqual(['p1', 'p2']);
+    expect(lastEmit.includes('b1')).toBe(false);
+    expect(lastEmit.includes('b2')).toBe(false);
   });
 
   it('should render stop rows in the table', async () => {

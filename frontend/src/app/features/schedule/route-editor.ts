@@ -131,7 +131,7 @@ export class RouteEditorComponent {
 
   nodeName(nodeId: string): string {
     return (
-      this.graph().nodes.find((n) => n.id === nodeId)?.name ??
+      this.service().route.find((n) => n.id === nodeId)?.name ??
       this.graph().edges.find((e) => e.id === nodeId)?.name ??
       nodeId
     );
@@ -162,7 +162,7 @@ export class RouteEditorComponent {
       timetableMap.set(entry.node_id, entry);
     }
 
-    const stopNodes = svc.route;
+    const stopNodes = svc.route.filter((n) => n.type !== 'block');
     const initialStops: StopEntry[] = stopNodes.map((node) => {
       const entry = timetableMap.get(node.id);
       const dwellTime = entry ? entry.departure - entry.arrival : 30;

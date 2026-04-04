@@ -104,14 +104,31 @@ export class TrackMapEditorComponent {
       .append('marker')
       .attr('id', 'arrowhead')
       .attr('viewBox', '0 0 10 10')
-      .attr('refX', 8)
+      .attr('refX', 10)
       .attr('refY', 5)
-      .attr('markerWidth', 6)
-      .attr('markerHeight', 6)
+      .attr('markerWidth', 8)
+      .attr('markerHeight', 8)
       .attr('orient', 'auto')
       .append('path')
       .attr('d', 'M 0 0 L 10 5 L 0 10 Z')
-      .attr('fill', '#94a3b8');
+      .attr('fill', '#64748b');
+
+    // Build node ID set for radius lookup (nodes=12, junctions=4)
+    const nodeIdSet = new Set(graph.nodes.map((n) => n.id));
+    const targetRadius = (id: string) => (nodeIdSet.has(id) ? 12 : 4);
+
+    // Compute shortened endpoint that stops at target node boundary
+    const shortenedEnd = (d: Edge) => {
+      const sx1 = xScale(posMap.get(d.from_id)?.x ?? 0);
+      const sy1 = yScale(posMap.get(d.from_id)?.y ?? 0);
+      const sx2 = xScale(posMap.get(d.to_id)?.x ?? 0);
+      const sy2 = yScale(posMap.get(d.to_id)?.y ?? 0);
+      const dx = sx2 - sx1;
+      const dy = sy2 - sy1;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const r = targetRadius(d.to_id);
+      return { x: sx2 - (dx / len) * r, y: sy2 - (dy / len) * r };
+    };
 
     // Draw edges (blocks) as labeled lines with direction arrows
     const edgeGroups = svg
@@ -125,14 +142,24 @@ export class TrackMapEditorComponent {
       .append('line')
       .attr('x1', (d: Edge) => xScale(posMap.get(d.from_id)?.x ?? 0))
       .attr('y1', (d: Edge) => yScale(posMap.get(d.from_id)?.y ?? 0))
-      .attr('x2', (d: Edge) => xScale(posMap.get(d.to_id)?.x ?? 0))
-      .attr('y2', (d: Edge) => yScale(posMap.get(d.to_id)?.y ?? 0))
+      .attr('x2', (d: Edge) => shortenedEnd(d).x)
+      .attr('y2', (d: Edge) => shortenedEnd(d).y)
       .attr('stroke', '#94a3b8')
       .attr('stroke-width', 2)
       .attr('marker-end', 'url(#arrowhead)');
 
     // Block labels offset perpendicular to edge direction (computed in screen space)
-    const labelOffset = 10;
+    // Group edges by shared endpoint pair for index-based staggering
+    const baseOffset = 14;
+    const edgePairIndex = new Map<string, number>();
+    const edgePairCount = new Map<string, number>();
+    for (const edge of graph.edges) {
+      const key = [edge.from_id, edge.to_id].sort().join('|');
+      const count = edgePairCount.get(key) ?? 0;
+      edgePairIndex.set(edge.id, count);
+      edgePairCount.set(key, count + 1);
+    }
+
     const edgeLabelPos = (d: Edge) => {
       const sx1 = xScale(posMap.get(d.from_id)?.x ?? 0);
       const sy1 = yScale(posMap.get(d.from_id)?.y ?? 0);
@@ -141,9 +168,11 @@ export class TrackMapEditorComponent {
       const dx = sx2 - sx1;
       const dy = sy2 - sy1;
       const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const idx = edgePairIndex.get(d.id) ?? 0;
+      const offset = baseOffset + idx * 14;
       return {
-        x: (sx1 + sx2) / 2 + (-dy / len) * labelOffset,
-        y: (sy1 + sy2) / 2 + (dx / len) * labelOffset,
+        x: (sx1 + sx2) / 2 + (-dy / len) * offset,
+        y: (sy1 + sy2) / 2 + (dx / len) * offset,
       };
     };
     edgeGroups

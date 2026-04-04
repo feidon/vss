@@ -14,4 +14,12 @@ export interface YardNode {
   readonly y: number;
 }
 
-export type Node = PlatformNode | YardNode;
+export interface BlockNode {
+  readonly type: 'block';
+  readonly id: string;
+  readonly name: string;
+  readonly x: number;
+  readonly y: number;
+}
+
+export type Node = PlatformNode | YardNode | BlockNode;

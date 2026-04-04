@@ -1,4 +1,4 @@
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Edge arrowhead marker definition
 The track map editor SHALL define an SVG `<marker>` element in `<defs>` that renders a triangular arrowhead. The marker SHALL use a darker color (`#64748b` slate-500) than the edge stroke for visual contrast and SHALL auto-orient to match line direction. The marker SHALL have `markerWidth` and `markerHeight` of at least 8 to be clearly visible.

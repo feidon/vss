@@ -1,4 +1,4 @@
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Edge labels offset perpendicular to edge direction
 Each edge label SHALL be positioned at the edge midpoint, offset perpendicular to the edge line direction. The base offset SHALL be at least 14 pixels. Edges that share the same pair of endpoints (regardless of direction) SHALL receive an additional index-based offset multiplier to prevent label overlap.
