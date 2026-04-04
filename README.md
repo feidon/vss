@@ -314,15 +314,16 @@ Conflict response includes structured details (block IDs, overlap windows, reaso
 7. **Services are independent runs** — No concept of "chaining" services into a vehicle's daily schedule. Conflict detection handles overlaps between independent services.
 8. **Route always starts and ends with a platform or yard** — User-specified stops are validated to be platforms or yards (`_validate_stops`), and blocks are only inserted between consecutive stops by BFS. Therefore the computed route can never begin or end with a block.
 9. **Block traversal time changes do not affect existing services** — Updating a block's `traversal_time_seconds` only modifies the block record. Existing service timetables are snapshots computed at route-save time and are not retroactively recomputed. A service only picks up updated traversal times when its route is explicitly re-saved via `PATCH /api/services/{id}/route`.
+10. **No track map modification support** — The system provides no UI or API for modifying the track network topology (adding/removing blocks, platforms, stations, or connections). The only way to change the track map is by directly modifying the database, which may break existing services whose routes and timetables reference the affected nodes.
 
 ### Scope Boundaries
 
-10. **Single-user system** — No authentication, authorization, or concurrent editing support.
-11. **No concurrent editing or service versioning** — Last write wins. No optimistic locking, no version field, no conflict resolution for simultaneous edits.
-12. **No high-concurrency support** — No connection pooling tuning, no rate limiting, no caching layer.
-13. **Small number of services** — Conflict detection loads all services into memory on every route save. Suitable for dozens or hundreds of services, not thousands.
+11. **Single-user system** — No authentication, authorization, or concurrent editing support.
+12. **No concurrent editing or service versioning** — Last write wins. No optimistic locking, no version field, no conflict resolution for simultaneous edits.
+13. **No high-concurrency support** — No connection pooling tuning, no rate limiting, no caching layer.
+14. **Small number of services** — Conflict detection loads all services into memory on every route save. Suitable for dozens or hundreds of services, not thousands.
 
-14. **No distributed deployment preparations** — The system is designed as a single-node monolith with no provisions for horizontal scaling or distributed operation. Specifically:
+15. **No distributed deployment preparations** — The system is designed as a single-node monolith with no provisions for horizontal scaling or distributed operation. Specifically:
     - **No message queue or event bus** — All communication is synchronous in-process function calls. No Kafka, RabbitMQ, or similar infrastructure for decoupling services.
     - **No distributed caching** — No Redis or Memcached layer. All state lives in PostgreSQL or in-process memory.
     - **No service discovery or load balancing** — Single backend instance serves all requests. No reverse proxy configuration, health check endpoints for orchestrators, or graceful shutdown handling.
@@ -335,7 +336,7 @@ Conflict response includes structured details (block IDs, overlap windows, reaso
 
 ### Technical Choices
 
-15. **Time in Unix epoch seconds** — All timetable times use integer Unix timestamps. The frontend converts to/from local datetime for display. Avoids timezone complexity.
+16. **Time in Unix epoch seconds** — All timetable times use integer Unix timestamps. The frontend converts to/from local datetime for display. Avoids timezone complexity.
 
 ---
 
@@ -375,30 +376,3 @@ vss/
             ├── block-config/    # Block traversal time editing
             └── track-map/       # d3.js interactive visualization (bonus)
 ```
-
-## Todo
-
-- reorganization
-  - [ ] only two tabs -> two main page: viewer, setting(?, or config, naming is a problem) 
-  - [ ] viewer has a create service button
-  - [ ] when click the create service button, show a dialog(?, I don't know the name, maybe popup), set name, vehicle, start time
-  - [ ] after create, jump to sub page of viewer: editor
-  - [ ] editor is a track map, user can click the platform/yard he wants and put it into queue
-
-- viewer page
-  - [x] service should show the start time — derive from `timetable[0].arrival`, add to list response
-  - [x] starting and ending station and platform — add `origin_name`, `destination_name` to list response
-  - [ ] when click on the row(anywhere on the row) the service can expand it to show a simple path Y → B1 → P1A
-  - [ ] has edit and delete button
-
-- editor page
-  - [ ] back to list is not noticeable enough
-  - [ ] should be able to choose yard when selecting platform
-  - [ ] when enter the exist service, didn't read the initial queue and start time — frontend can derive: filter route for `type != "block"` to get stops, `departure - arrival` for dwell_time, `timetable[0].arrival` for start_time. No backend change needed.
-  - [ ] didn't show the conflict message(reminder)
-  - [ ] implement track map in editor
-
-- blocks page
-  - [ ] the ungroup row show "-" in the group column
-  - [ ] the row height show follow the input field that showing at editing traversal time. prevent the row resizing.
-  - [ ] after click to edit the traversal time, it shows an input field. at this time, when click outside the input field (anywhere), show close the edit mode and save

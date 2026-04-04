@@ -37,7 +37,13 @@
       "Bash(curl:*)",
       "Bash(npx vitest:*)",
       "Bash(.venv/bin/pytest tests/api/test_graph_routes.py -v)",
-      "Bash(.venv/bin/pytest:*)"
+      "Bash(.venv/bin/pytest:*)",
+      "Bash(cp /home/feidon/Documents/vss/openspec/changes/editor-trackmap-blocks-as-edges-and-conflict-display/.openspec.yaml /home/feidon/Documents/vss/frontend/openspec/changes/blocks-as-edges/)",
+      "Bash(cp /home/feidon/Documents/vss/openspec/changes/editor-trackmap-blocks-as-edges-and-conflict-display/proposal.md /home/feidon/Documents/vss/frontend/openspec/changes/blocks-as-edges/)",
+      "Bash(cp /home/feidon/Documents/vss/openspec/changes/editor-trackmap-blocks-as-edges-and-conflict-display/design.md /home/feidon/Documents/vss/frontend/openspec/changes/blocks-as-edges/)",
+      "Bash(cp /home/feidon/Documents/vss/openspec/changes/editor-trackmap-blocks-as-edges-and-conflict-display/tasks.md /home/feidon/Documents/vss/frontend/openspec/changes/blocks-as-edges/)",
+      "Bash(cp -r /home/feidon/Documents/vss/openspec/changes/editor-trackmap-blocks-as-edges-and-conflict-display/specs /home/feidon/Documents/vss/frontend/openspec/changes/blocks-as-edges/)",
+      "Bash(docker exec:*)"
     ]
   },
   "enabledMcpjsonServers": [
