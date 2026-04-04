@@ -11,6 +11,11 @@ export interface MapStopEvent {
   selector: 'app-track-map-editor',
   template: `
     <div class="relative overflow-auto rounded border bg-gray-50">
+      @if (showHint()) {
+        <p class="px-3 py-2 text-sm text-gray-500">
+          Click a platform or yard on the map to add a stop
+        </p>
+      }
       <svg #mapSvg></svg>
       <div
         #tooltip
@@ -27,6 +32,8 @@ export class TrackMapEditorComponent {
 
   private readonly svgRef = viewChild.required<ElementRef<SVGSVGElement>>('mapSvg');
   private readonly tooltipRef = viewChild.required<ElementRef<HTMLDivElement>>('tooltip');
+
+  readonly showHint = computed(() => this.interactive() && this.queuedNodeIds().length === 0);
 
   readonly clickableNodes = computed(() =>
     this.graph().nodes.filter((n) => n.type === 'platform' || n.type === 'yard'),

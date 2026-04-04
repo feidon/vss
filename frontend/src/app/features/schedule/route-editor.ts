@@ -1,6 +1,6 @@
-import { Component, computed, effect, input, OnInit, output, signal } from '@angular/core';
+import { Component, effect, input, OnInit, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ServiceDetailResponse, GraphResponse, Station, TimetableEntry } from '../../shared/models';
+import { ServiceDetailResponse, GraphResponse, TimetableEntry } from '../../shared/models';
 
 interface StopEntry {
   readonly nodeId: string;
@@ -12,32 +12,9 @@ interface StopEntry {
   selector: 'app-route-editor',
   imports: [FormsModule],
   template: `
-    <!-- Stop picker -->
+    <!-- Stop list -->
     <div class="mb-4">
       <h4 class="mb-2 text-sm font-medium text-gray-600">Stops</h4>
-      <div class="mb-2 flex items-center gap-2">
-        <select class="rounded border px-2 py-1 text-sm" [(ngModel)]="selectedNodeId">
-          <option value="">Add a stop...</option>
-          @for (station of stations(); track station.id) {
-            @if (station.is_yard) {
-              <option [value]="yardNodeId(station)">{{ station.name }} (Yard)</option>
-            } @else {
-              <optgroup [label]="station.name">
-                @for (pid of station.platform_ids; track pid) {
-                  <option [value]="pid">{{ nodeName(pid) }}</option>
-                }
-              </optgroup>
-            }
-          }
-        </select>
-        <button
-          class="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
-          [disabled]="!selectedNodeId()"
-          (click)="addStop()"
-        >
-          Add
-        </button>
-      </div>
 
       @if (stops().length > 0) {
         <table class="w-full text-left text-sm">
@@ -134,10 +111,7 @@ export class RouteEditorComponent implements OnInit {
   readonly stopsChanged = output<readonly string[]>();
 
   readonly stops = signal<readonly StopEntry[]>([]);
-  readonly selectedNodeId = signal('');
   readonly startTimeLocal = signal('');
-
-  readonly stations = computed<readonly Station[]>(() => this.graph().stations);
 
   constructor() {
     effect(() => {
@@ -154,21 +128,8 @@ export class RouteEditorComponent implements OnInit {
     this.stops.update((s) => [...s, { nodeId, nodeName, dwellTime: 30 }]);
   }
 
-  yardNodeId(station: Station): string {
-    const yardNode = this.graph().nodes.find((n) => n.type === 'yard' && n.name === station.name);
-    return yardNode?.id ?? '';
-  }
-
   nodeName(nodeId: string): string {
     return this.graph().nodes.find((n) => n.id === nodeId)?.name ?? nodeId;
-  }
-
-  addStop(): void {
-    const nid = this.selectedNodeId();
-    if (!nid) return;
-    const name = this.nodeName(nid);
-    this.stops.update((s) => [...s, { nodeId: nid, nodeName: name, dwellTime: 30 }]);
-    this.selectedNodeId.set('');
   }
 
   removeStop(index: number): void {
