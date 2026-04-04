@@ -116,6 +116,24 @@ describe('BlockConfigComponent', () => {
     expect(names).toEqual(['B3', 'B4', 'B7', 'B9']);
   });
 
+  it('should focus input when editing starts', async () => {
+    const fixture = createAndLoad([GROUPED_BLOCK]);
+    const component = fixture.componentInstance;
+
+    component.startEdit(GROUPED_BLOCK);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const input = fixture.nativeElement.querySelector('input[type="number"]') as HTMLInputElement;
+    expect(input).toBeTruthy();
+    expect(document.activeElement).toBe(input);
+
+    // Clean up: save to avoid dangling PATCH
+    component.onBlur(GROUPED_BLOCK);
+    fixture.detectChanges();
+    httpTesting.expectOne((r) => r.url.endsWith(`/blocks/${GROUPED_BLOCK.id}`)).flush({});
+  });
+
   it('should cancel without saving on Escape', () => {
     const fixture = createAndLoad([GROUPED_BLOCK]);
     const component = fixture.componentInstance;

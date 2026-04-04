@@ -1,6 +1,6 @@
 import pytest
 from infra.seed import VEHICLE_ID_BY_NAME
-from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_404_NOT_FOUND
+from starlette.status import HTTP_200_OK, HTTP_201_CREATED
 
 pytestmark = pytest.mark.postgres
 
@@ -10,12 +10,6 @@ async def _create_service(client):
     resp = await client.post("services", json={"name": "S1", "vehicle_id": vid})
     assert resp.status_code == HTTP_201_CREATED
     return resp.json()["id"]
-
-
-class TestGraphEndpointRemoved:
-    async def test_graph_endpoint_returns_404(self, client):
-        resp = await client.get("graph")
-        assert resp.status_code == HTTP_404_NOT_FOUND
 
 
 class TestServiceDetailGraph:

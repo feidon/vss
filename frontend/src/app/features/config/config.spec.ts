@@ -23,22 +23,8 @@ describe('ConfigComponent', () => {
     const fixture = TestBed.createComponent(ConfigComponent);
     fixture.detectChanges();
 
-    // BlockConfigComponent requests blocks
     httpTesting.expectOne((req) => req.url.endsWith('/blocks'));
-    // TrackMapOverviewComponent requests graph
-    httpTesting.expectOne((req) => req.url.endsWith('/graph'));
 
     expect(fixture.nativeElement.querySelector('app-block-config')).toBeTruthy();
-  });
-
-  it('should render track map section', () => {
-    const fixture = TestBed.createComponent(ConfigComponent);
-    fixture.detectChanges();
-
-    httpTesting.expectOne((req) => req.url.endsWith('/blocks'));
-    httpTesting.expectOne((req) => req.url.endsWith('/graph'));
-
-    expect(fixture.nativeElement.textContent).toContain('Track Map');
-    expect(fixture.nativeElement.querySelector('app-track-map-overview')).toBeTruthy();
   });
 });

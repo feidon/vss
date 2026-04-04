@@ -1,4 +1,14 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  Injector,
+  OnInit,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { BlockService } from '../../core/services/block.service';
 import { BlockResponse } from '../../shared/models';
 
@@ -39,6 +49,7 @@ interface BlockGroup {
                 <div class="flex items-center gap-2">
                   @if (editingBlockId() === block.id) {
                     <input
+                      #editInput
                       type="number"
                       class="h-7 w-20 rounded border px-2 text-sm"
                       [value]="editValue()"
@@ -88,6 +99,9 @@ interface BlockGroup {
 })
 export class BlockConfigComponent implements OnInit {
   private readonly blockService = inject(BlockService);
+  private readonly injector = inject(Injector);
+
+  private readonly editInput = viewChild<ElementRef<HTMLInputElement>>('editInput');
 
   readonly blocks = signal<readonly BlockResponse[]>([]);
   readonly error = signal<string | null>(null);
@@ -112,7 +126,10 @@ export class BlockConfigComponent implements OnInit {
 
   ngOnInit(): void {
     this.blockService.getBlocks().subscribe({
-      next: (blocks) => this.blocks.set(blocks),
+      next: (blocks) => {
+        blocks.sort((a, b) => a.id.localeCompare(b.id));
+        this.blocks.set(blocks);
+      },
       error: () => this.error.set('Failed to load blocks.'),
     });
   }
@@ -130,6 +147,12 @@ export class BlockConfigComponent implements OnInit {
     this.editingBlockId.set(block.id);
     this.editValue.set(block.traversal_time_seconds);
     this.validationError.set(null);
+    afterNextRender(
+      () => {
+        this.editInput()?.nativeElement.focus();
+      },
+      { injector: this.injector },
+    );
   }
 
   onEditInput(event: Event): void {
