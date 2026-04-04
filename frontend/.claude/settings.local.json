@@ -34,7 +34,10 @@
       "Bash(python3 -c ':*)",
       "Bash(curl -s -X PATCH http://localhost/api/services/4/route -H 'Content-Type: application/json' -d '{:*)",
       "Bash(curl -s -X POST http://localhost/api/services -H 'Content-Type: application/json' -d '{\"name\": \"s2\", \"vehicle_id\": \"019d53e6-60bd-72ef-ad05-3fa8ac65730c\"}')",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npx vitest:*)",
+      "Bash(.venv/bin/pytest tests/api/test_graph_routes.py -v)",
+      "Bash(.venv/bin/pytest:*)"
     ]
   },
   "enabledMcpjsonServers": [
