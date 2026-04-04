@@ -11,11 +11,8 @@ import { TrackMapEditorComponent, MapStopEvent } from './track-map-editor';
   imports: [RouterLink, RouteEditorComponent, ConflictAlertComponent, TrackMapEditorComponent],
   template: `
     @if (service()) {
-      <div class="mb-4 flex items-center gap-4">
-        <a
-          routerLink="/schedule"
-          class="rounded bg-gray-200 px-4 py-2 text-sm font-medium hover:bg-gray-300"
-        >
+      <div class="mb-4">
+        <a routerLink="/schedule" class="text-sm text-gray-500 hover:text-gray-700">
           &larr; Back to Schedule
         </a>
         <h2 class="text-xl font-semibold">{{ service()!.name }}</h2>
