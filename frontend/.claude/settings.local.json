@@ -43,7 +43,11 @@
       "Bash(cp /home/feidon/Documents/vss/openspec/changes/editor-trackmap-blocks-as-edges-and-conflict-display/design.md /home/feidon/Documents/vss/frontend/openspec/changes/blocks-as-edges/)",
       "Bash(cp /home/feidon/Documents/vss/openspec/changes/editor-trackmap-blocks-as-edges-and-conflict-display/tasks.md /home/feidon/Documents/vss/frontend/openspec/changes/blocks-as-edges/)",
       "Bash(cp -r /home/feidon/Documents/vss/openspec/changes/editor-trackmap-blocks-as-edges-and-conflict-display/specs /home/feidon/Documents/vss/frontend/openspec/changes/blocks-as-edges/)",
-      "Bash(docker exec:*)"
+      "Bash(docker exec:*)",
+      "Bash(npm test:*)",
+      "Read(//tmp/**)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k: d[k] for k in ['instruction','template','rules']}, indent=2\\)\\)\")",
+      "Bash(npx tsc:*)"
     ]
   },
   "enabledMcpjsonServers": [
