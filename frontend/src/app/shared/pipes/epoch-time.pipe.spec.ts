@@ -1,12 +1,12 @@
 import { EpochTimePipe } from './epoch-time.pipe';
+import { epochToDisplayTime } from '../utils/time-utils';
 
 describe('EpochTimePipe', () => {
   const pipe = new EpochTimePipe();
 
-  it('should format a valid epoch timestamp as HH:mm:ss', () => {
-    // 1700000000 = 2023-11-14T22:13:20Z
-    const result = pipe.transform(1700000000);
-    expect(result).toMatch(/^\d{2}:\d{2}:\d{2}$/);
+  it('should delegate to epochToDisplayTime for a valid epoch', () => {
+    const epoch = 1700000000;
+    expect(pipe.transform(epoch)).toBe(epochToDisplayTime(epoch));
   });
 
   it('should return em dash for zero', () => {
@@ -19,7 +19,6 @@ describe('EpochTimePipe', () => {
   });
 
   it('should pad single-digit hours, minutes, seconds', () => {
-    // 1700000000 in local time — verify padding format
     const result = pipe.transform(1700000000);
     const parts = result.split(':');
     expect(parts).toHaveLength(3);
@@ -28,8 +27,7 @@ describe('EpochTimePipe', () => {
     });
   });
 
-  it('should handle midnight epoch (small positive value)', () => {
-    // epoch 0 is falsy, but epoch 1 should produce a time string
+  it('should handle small positive epoch value', () => {
     const result = pipe.transform(1);
     expect(result).toMatch(/^\d{2}:\d{2}:\d{2}$/);
   });

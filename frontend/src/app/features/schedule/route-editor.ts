@@ -1,6 +1,8 @@
 import { Component, effect, input, OnInit, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ServiceDetailResponse, GraphResponse, TimetableEntry } from '../../shared/models';
+import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
+import { localDatetimeToEpoch, epochToLocalDatetime } from '../../shared/utils/time-utils';
 
 interface StopEntry {
   readonly nodeId: string;
@@ -10,7 +12,7 @@ interface StopEntry {
 
 @Component({
   selector: 'app-route-editor',
-  imports: [FormsModule],
+  imports: [FormsModule, EpochTimePipe],
   template: `
     <!-- Stop list -->
     <div class="mb-4">
@@ -90,8 +92,8 @@ interface StopEntry {
             @for (entry of service().timetable; track entry.order) {
               <tr class="border-b">
                 <td class="px-3 py-1">{{ nodeName(entry.node_id) }}</td>
-                <td class="px-3 py-1">{{ formatTime(entry.arrival) }}</td>
-                <td class="px-3 py-1">{{ formatTime(entry.departure) }}</td>
+                <td class="px-3 py-1">{{ entry.arrival | epochTime }}</td>
+                <td class="px-3 py-1">{{ entry.departure | epochTime }}</td>
               </tr>
             }
           </tbody>
@@ -143,15 +145,10 @@ export class RouteEditorComponent implements OnInit {
   }
 
   onSubmit(): void {
-    const startEpoch = Math.floor(new Date(this.startTimeLocal()).getTime() / 1000);
     this.submitted.emit({
       stops: this.stops().map((s) => ({ node_id: s.nodeId, dwell_time: s.dwellTime })),
-      start_time: startEpoch,
+      start_time: localDatetimeToEpoch(this.startTimeLocal()),
     });
-  }
-
-  formatTime(epoch: number): string {
-    return new Date(epoch * 1000).toLocaleTimeString();
   }
 
   private deriveInitialState(svc: ServiceDetailResponse): void {
@@ -172,11 +169,7 @@ export class RouteEditorComponent implements OnInit {
 
     if (svc.timetable.length > 0) {
       const sorted = [...svc.timetable].sort((a, b) => a.order - b.order);
-      const startEpoch = sorted[0].arrival;
-      const dt = new Date(startEpoch * 1000);
-      const pad = (n: number) => String(n).padStart(2, '0');
-      const local = `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
-      this.startTimeLocal.set(local);
+      this.startTimeLocal.set(epochToLocalDatetime(sorted[0].arrival));
     }
   }
 }
