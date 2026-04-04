@@ -2,7 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Dialog } from '@angular/cdk/dialog';
 import { ServiceService } from '../../core/services/service.service';
-import { ServiceResponse } from '../../shared/models';
+import { ServiceDetailResponse, ServiceResponse } from '../../shared/models';
 import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
 import { CreateServiceDialogComponent, CreateServiceDialogResult } from './create-service-dialog';
 
@@ -36,7 +36,7 @@ import { CreateServiceDialogComponent, CreateServiceDialogResult } from './creat
         </thead>
         <tbody>
           @for (service of services(); track service.id) {
-            <tr class="border-b hover:bg-gray-50">
+            <tr class="cursor-pointer border-b hover:bg-gray-50" (click)="toggleExpand(service)">
               <td class="px-3 py-2 font-medium">{{ service.name }}</td>
               <td class="px-3 py-2">{{ service.vehicle_name }}</td>
               <td class="px-3 py-2">
@@ -59,6 +59,19 @@ import { CreateServiceDialogComponent, CreateServiceDialogResult } from './creat
                 </button>
               </td>
             </tr>
+            @if (expandedServiceId() === service.id) {
+              <tr class="border-b bg-gray-50">
+                <td colspan="6" class="px-6 py-3 text-sm text-gray-600">
+                  @if (!detailCache().has(service.id)) {
+                    Loading...
+                  } @else if (detailCache().get(service.id)!.route.length === 0) {
+                    No route defined
+                  } @else {
+                    {{ routePath(service.id) }}
+                  }
+                </td>
+              </tr>
+            }
           }
         </tbody>
       </table>
@@ -71,6 +84,8 @@ export class ScheduleListComponent implements OnInit {
   private readonly dialog = inject(Dialog);
 
   readonly services = signal<readonly ServiceResponse[]>([]);
+  readonly expandedServiceId = signal<number | null>(null);
+  readonly detailCache = signal<ReadonlyMap<number, ServiceDetailResponse>>(new Map());
 
   ngOnInit(): void {
     this.loadServices();
@@ -94,7 +109,32 @@ export class ScheduleListComponent implements OnInit {
     this.serviceService.deleteService(service.id).subscribe(() => this.loadServices());
   }
 
+  toggleExpand(service: ServiceResponse): void {
+    if (this.expandedServiceId() === service.id) {
+      this.expandedServiceId.set(null);
+      return;
+    }
+    this.expandedServiceId.set(service.id);
+    if (!this.detailCache().has(service.id)) {
+      this.serviceService.getService(service.id).subscribe((detail) => {
+        const updated = new Map(this.detailCache());
+        updated.set(service.id, detail);
+        this.detailCache.set(updated);
+      });
+    }
+  }
+
+  routePath(serviceId: number): string {
+    const detail = this.detailCache().get(serviceId);
+    if (!detail) return '';
+    return detail.route.map((node) => node.name).join(' → ');
+  }
+
   private loadServices(): void {
-    this.serviceService.getServices().subscribe((s) => this.services.set(s));
+    this.serviceService.getServices().subscribe((s) => {
+      this.services.set(s);
+      this.expandedServiceId.set(null);
+      this.detailCache.set(new Map());
+    });
   }
 }
