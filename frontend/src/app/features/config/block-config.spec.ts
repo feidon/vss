@@ -98,6 +98,24 @@ describe('BlockConfigComponent', () => {
     expect(component.validationError()).toBe('Must be a positive integer (≥ 1).');
   });
 
+  it('should render blocks sorted by name within each group', () => {
+    const blocks: BlockResponse[] = [
+      { id: 'b4', name: 'B4', group: 2, traversal_time_seconds: 20 },
+      { id: 'b3', name: 'B3', group: 2, traversal_time_seconds: 15 },
+      { id: 'b9', name: 'B9', group: 3, traversal_time_seconds: 25 },
+      { id: 'b7', name: 'B7', group: 3, traversal_time_seconds: 30 },
+    ];
+    const fixture = createAndLoad(blocks);
+    const rows = fixture.nativeElement.querySelectorAll(
+      'tr.border-b.hover\\:bg-gray-50',
+    ) as NodeListOf<HTMLTableRowElement>;
+    const names = Array.from(rows).map(
+      (row) => (row.querySelectorAll('td')[0] as HTMLTableCellElement).textContent?.trim() ?? '',
+    );
+    // Group 2 first (lower number), then Group 3; sorted within each group
+    expect(names).toEqual(['B3', 'B4', 'B7', 'B9']);
+  });
+
   it('should cancel without saving on Escape', () => {
     const fixture = createAndLoad([GROUPED_BLOCK]);
     const component = fixture.componentInstance;

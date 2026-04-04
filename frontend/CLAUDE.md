@@ -22,10 +22,8 @@ src/app/
 │   ├── models/     # TypeScript interfaces (Block, Service, Node, Graph, Conflict)
 │   └── pipes/      # EpochTimePipe (Unix timestamp → HH:MM:SS)
 ├── features/
-│   ├── schedule-editor/    # Create/edit/delete services with route building
-│   ├── schedule-viewer/    # Read-only schedule display with vehicle filter
-│   ├── block-config/       # Block traversal time inline editing
-│   └── track-map/          # d3.js interactive track visualization (bonus)
+│   ├── schedule/           # Schedule list, editor, track-map-editor
+│   └── config/             # Block config table + track map overview
 └── app.routes.ts           # Lazy-loaded feature routes
 ```
 
@@ -37,37 +35,29 @@ src/app/
 
 ## Routes
 
-| Path      | Component               | Description                |
-|-----------|-------------------------|----------------------------|
-| `/editor` | ScheduleEditorComponent | Create/edit/delete services (default) |
-| `/viewer` | ScheduleViewerComponent | Read-only schedule display |
-| `/blocks` | BlockConfigComponent    | Block traversal time config |
-| `/map`    | TrackMapComponent       | d3.js track visualization  |
+| Path              | Component               | Description                          |
+|-------------------|-------------------------|--------------------------------------|
+| `/schedule`       | ScheduleListComponent   | Service list (default)               |
+| `/schedule/:id/edit` | ScheduleEditorComponent | Edit service route and timetable  |
+| `/config`         | ConfigComponent         | Block config table + track map       |
 
 ## Pages
 
-### Schedule Editor (core)
-- Create, edit, and delete services
-- Define service path: select platform stops, intermediate blocks are auto-filled via backend route finder
+### Schedule List
+- List all scheduled services
+- Expandable rows showing route path
+- Navigate to editor for each service
+
+### Schedule Editor
+- Edit service route: select platform stops, intermediate blocks auto-filled via backend
 - Set dwell times per stop and start time
 - Assign vehicle (V1, V2, V3) to service
-- PATCH `/api/services/{id}/route` for updates — handle 409 conflict responses and display conflict details to user
+- PATCH `/api/services/{id}/route` for updates — handle 409 conflict responses
+- Interactive d3.js track map for stop selection
 
-### Schedule Viewer (core)
-- Read-only view of all scheduled services
-- Display timetable per service with arrival/departure times (EpochTimePipe)
-- Filter/group by vehicle
-
-### Block Configuration (core)
-- List all blocks with current traversal times, grouped by interlocking group
-- Inline editing with validation (positive integers >= 1)
-- Keyboard support: Enter to save, Escape to cancel
-
-### Interactive Track Map (bonus)
-- d3.js visualization of the track network
-- 14 blocks (B1-B14), 4 stations (Y, S1, S2, S3), 6 platforms
-- Show block directionality and interlocking groups
-- Highlight active services on the network
+### Config
+- **Block Configuration**: list all blocks grouped by interlocking group, inline editing of traversal times, pencil icon toggle, click-outside saves
+- **Track Map Overview**: read-only d3.js visualization of the track network (14 blocks, 6 platforms, 1 yard)
 
 ## Backend API
 

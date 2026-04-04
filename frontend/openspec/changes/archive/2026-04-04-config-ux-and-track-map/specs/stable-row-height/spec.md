@@ -1,3 +1,5 @@
+## MODIFIED Requirements
+
 ### Requirement: Stable row height during inline editing
 The system SHALL maintain a consistent row height for block rows regardless of whether the traversal time cell is in display mode or edit mode. The row height SHALL be set large enough to contain the input field. Entering or exiting edit mode SHALL NOT cause the row or any surrounding rows to resize or shift.
 

@@ -32,42 +32,52 @@ interface BlockGroup {
             </td>
           </tr>
           @for (block of g.blocks; track block.id) {
-            <tr class="border-b hover:bg-gray-50">
-              <td class="px-3 py-2 font-medium">{{ block.name }}</td>
-              <td class="px-3 py-2">{{ block.group === 0 ? '-' : block.group }}</td>
-              <td class="h-9 px-3 py-2">
-                @if (editingBlockId() === block.id) {
-                  <input
-                    type="number"
-                    class="w-20 rounded border px-2 py-1"
-                    [value]="editValue()"
-                    (input)="onEditInput($event)"
-                    (keydown)="onKeydown($event, block)"
-                    (blur)="onBlur(block)"
-                  />
-                  @if (validationError()) {
-                    <span class="ml-2 text-xs text-red-500">{{ validationError() }}</span>
+            <tr class="h-10 border-b hover:bg-gray-50">
+              <td class="px-3 py-1 font-medium">{{ block.name }}</td>
+              <td class="px-3 py-1">{{ block.group === 0 ? '-' : block.group }}</td>
+              <td class="px-3 py-1">
+                <div class="flex items-center gap-2">
+                  @if (editingBlockId() === block.id) {
+                    <input
+                      type="number"
+                      class="h-7 w-20 rounded border px-2 text-sm"
+                      [value]="editValue()"
+                      (input)="onEditInput($event)"
+                      (keydown)="onKeydown($event, block)"
+                      (blur)="onBlur(block)"
+                    />
+                    @if (validationError()) {
+                      <span class="text-xs text-red-500">{{ validationError() }}</span>
+                    }
+                  } @else {
+                    <span
+                      class="cursor-pointer rounded px-1 hover:bg-blue-50"
+                      tabindex="0"
+                      role="button"
+                      (click)="startEdit(block)"
+                      (keydown.enter)="startEdit(block)"
+                      (keydown.space)="startEdit(block)"
+                      >{{ block.traversal_time_seconds }}</span
+                    >
                   }
-                } @else {
-                  <span
-                    class="group inline-flex cursor-pointer items-center gap-1 rounded px-1 hover:bg-blue-50"
-                    tabindex="0"
-                    role="button"
-                    (click)="startEdit(block)"
-                    (keydown.enter)="startEdit(block)"
-                    (keydown.space)="startEdit(block)"
-                    >{{ block.traversal_time_seconds
-                    }}<svg
-                      class="inline h-3.5 w-3.5 text-gray-400 group-hover:text-blue-600"
+                  <button
+                    type="button"
+                    aria-label="Edit traversal time"
+                    (mousedown)="toggleEdit($event, block)"
+                    class="shrink-0 cursor-pointer text-gray-400 hover:text-blue-600"
+                  >
+                    <svg
+                      class="h-3.5 w-3.5"
                       viewBox="0 0 20 20"
                       fill="currentColor"
                       aria-hidden="true"
                     >
                       <path
                         d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z"
-                      /></svg
-                  ></span>
-                }
+                      />
+                    </svg>
+                  </button>
+                </div>
               </td>
             </tr>
           }
@@ -105,6 +115,15 @@ export class BlockConfigComponent implements OnInit {
       next: (blocks) => this.blocks.set(blocks),
       error: () => this.error.set('Failed to load blocks.'),
     });
+  }
+
+  toggleEdit(event: MouseEvent, block: BlockResponse): void {
+    event.preventDefault();
+    if (this.editingBlockId() === block.id) {
+      this.save(block);
+    } else {
+      this.startEdit(block);
+    }
   }
 
   startEdit(block: BlockResponse): void {
