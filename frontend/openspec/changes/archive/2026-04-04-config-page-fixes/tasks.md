@@ -15,4 +15,4 @@
 
 - [x] 3.1 Run frontend tests (`ng test`) — all pass
 - [x] 3.2 Run backend tests (`pytest`) — all pass
-- [ ] 3.3 Manual verification: config page track map renders correctly, click-outside dismiss works (user)
+- [x] 3.3 Manual verification: config page track map renders correctly, click-outside dismiss works (user)

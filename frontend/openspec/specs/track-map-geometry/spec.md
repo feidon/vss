@@ -1,9 +1,17 @@
 ### Requirement: Track map node geometry coordinates
-The system SHALL define x,y coordinates for all 21 network nodes (14 blocks, 6 platforms, 1 yard) that visually represent the railway topology. The layout SHALL follow a left-to-right arrangement: S3 (leftmost) -> S2 (center) -> S1 (right) -> Y (far right), with upper and lower tracks and crossover blocks at station junctions.
+The system SHALL define x,y coordinates for all 21 network nodes (14 blocks, 6 platforms, 1 yard) that visually represent the railway topology. The layout SHALL follow a left-to-right arrangement: S3 (leftmost) -> S2 (center) -> S1 (right) -> Y (far right), with upper and lower tracks and crossover blocks at station junctions. The graph data SHALL be available via a dedicated `GET /api/graph` endpoint so that the config page track map overview can load it independently of any service.
 
 #### Scenario: All nodes have coordinates
-- **WHEN** the graph is loaded from GET `/api/services/{id}` or GET `/api/graph`
+- **WHEN** the graph is loaded from `GET /api/services/{id}` or `GET /api/graph`
 - **THEN** every node in the response SHALL have x and y coordinates that position it correctly on the track map
+
+#### Scenario: Config page track map loads successfully
+- **WHEN** the config page track map overview component initializes
+- **THEN** it SHALL fetch graph data from `GET /api/graph` and render the track map with all nodes at their correct positions
+
+#### Scenario: GET /api/graph returns valid GraphResponse
+- **WHEN** the frontend calls `GET /api/graph`
+- **THEN** the backend SHALL return a `GraphResponse` containing nodes (with x,y coordinates), connections, stations, and vehicles
 
 #### Scenario: Track topology is visually correct
 - **WHEN** the track map renders nodes at their x,y coordinates
