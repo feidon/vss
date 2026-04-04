@@ -17,8 +17,14 @@ class RouteFinder:
     ) -> list[UUID]:
         """Return ordered block IDs between two platforms (exclusive of endpoints).
 
-        BFS through block nodes only. Raises ValueError if no path exists.
+        BFS through block nodes only. Raises DomainError if no path exists.
         """
+        if from_id == to_id:
+            raise DomainError(
+                ErrorCode.VALIDATION,
+                "Origin and destination must be different",
+            )
+
         adjacency: dict[UUID, list[UUID]] = {}
         for c in connections:
             adjacency.setdefault(c.from_id, []).append(c.to_id)

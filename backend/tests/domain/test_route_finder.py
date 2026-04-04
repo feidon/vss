@@ -3,7 +3,12 @@ from uuid import uuid7
 import pytest
 from domain.domain_service.route_finder import RouteFinder
 from domain.error import DomainError
-from infra.seed import BLOCK_ID_BY_NAME, PLATFORM_ID_BY_NAME, create_connections
+from infra.seed import (
+    BLOCK_ID_BY_NAME,
+    PLATFORM_ID_BY_NAME,
+    YARD_ID,
+    create_connections,
+)
 
 
 @pytest.fixture
@@ -156,3 +161,94 @@ class TestBuildFullPath:
             RouteFinder.build_full_path(
                 [PLATFORM_ID_BY_NAME["P1A"]], connections, block_ids
             )
+
+
+class TestFindBlockChainEdgeCases:
+    def test_yard_to_p1a(self, connections, block_ids):
+        result = RouteFinder.find_block_chain(
+            YARD_ID,
+            PLATFORM_ID_BY_NAME["P1A"],
+            connections,
+            block_ids,
+        )
+        assert result == [BLOCK_ID_BY_NAME["B1"]]
+
+    def test_yard_to_p1b(self, connections, block_ids):
+        result = RouteFinder.find_block_chain(
+            YARD_ID,
+            PLATFORM_ID_BY_NAME["P1B"],
+            connections,
+            block_ids,
+        )
+        assert result == [BLOCK_ID_BY_NAME["B2"]]
+
+    def test_p1a_to_yard_reverse(self, connections, block_ids):
+        result = RouteFinder.find_block_chain(
+            PLATFORM_ID_BY_NAME["P1A"],
+            YARD_ID,
+            connections,
+            block_ids,
+        )
+        assert result == [BLOCK_ID_BY_NAME["B1"]]
+
+    def test_duplicate_consecutive_stops_raises(self, connections, block_ids):
+        with pytest.raises(DomainError):
+            RouteFinder.find_block_chain(
+                PLATFORM_ID_BY_NAME["P1A"],
+                PLATFORM_ID_BY_NAME["P1A"],
+                connections,
+                block_ids,
+            )
+
+
+class TestBuildFullPathEdgeCases:
+    def test_from_yard(self, connections, block_ids):
+        result = RouteFinder.build_full_path(
+            [YARD_ID, PLATFORM_ID_BY_NAME["P1A"]],
+            connections,
+            block_ids,
+        )
+        assert result == [
+            YARD_ID,
+            BLOCK_ID_BY_NAME["B1"],
+            PLATFORM_ID_BY_NAME["P1A"],
+        ]
+
+    def test_to_yard(self, connections, block_ids):
+        result = RouteFinder.build_full_path(
+            [PLATFORM_ID_BY_NAME["P1A"], YARD_ID],
+            connections,
+            block_ids,
+        )
+        assert result == [
+            PLATFORM_ID_BY_NAME["P1A"],
+            BLOCK_ID_BY_NAME["B1"],
+            YARD_ID,
+        ]
+
+    def test_full_round_trip_from_yard(self, connections, block_ids):
+        result = RouteFinder.build_full_path(
+            [
+                YARD_ID,
+                PLATFORM_ID_BY_NAME["P1A"],
+                PLATFORM_ID_BY_NAME["P2A"],
+                PLATFORM_ID_BY_NAME["P3A"],
+                PLATFORM_ID_BY_NAME["P2B"],
+                PLATFORM_ID_BY_NAME["P1A"],
+                YARD_ID,
+            ],
+            connections,
+            block_ids,
+        )
+        assert result[0] == YARD_ID
+        assert result[-1] == YARD_ID
+        # Verify all intermediate blocks are present
+        assert BLOCK_ID_BY_NAME["B1"] in result
+        assert BLOCK_ID_BY_NAME["B3"] in result
+        assert BLOCK_ID_BY_NAME["B5"] in result
+        assert BLOCK_ID_BY_NAME["B6"] in result
+        assert BLOCK_ID_BY_NAME["B7"] in result
+        assert BLOCK_ID_BY_NAME["B10"] in result
+        assert BLOCK_ID_BY_NAME["B11"] in result
+        assert BLOCK_ID_BY_NAME["B12"] in result
+        assert BLOCK_ID_BY_NAME["B13"] in result

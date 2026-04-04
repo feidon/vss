@@ -3,7 +3,12 @@ from uuid import uuid7
 
 from domain.block.model import Block
 from domain.domain_service.conflict import detect_conflicts
-from domain.domain_service.conflict.model import BatteryConflictType
+from domain.domain_service.conflict.model import (
+    BatteryConflictType,
+    BlockConflict,
+    InterlockingConflict,
+    ServiceConflicts,
+)
 from domain.network.model import Node, NodeType
 from domain.service.model import Service, TimetableEntry
 from domain.vehicle.model import Vehicle
@@ -458,3 +463,231 @@ class TestBatteryConflicts:
         result = validate(s2, [s1], vehicles=[v])
         assert len(result.battery_conflicts) == 1
         assert result.battery_conflicts[0].type == BatteryConflictType.INSUFCHARGE
+
+
+class TestVehicleConflictsEdgeCases:
+    def test_single_service_no_conflicts(self):
+        """One service, no others → no vehicle conflicts."""
+        vid = uuid7()
+        node = make_block_node()
+        s1 = make_service_with_window(vid, node, arrival=0, departure=10)
+
+        result = validate(s1, [])
+        assert result.vehicle_conflicts == []
+
+    def test_multiple_location_discontinuities(self):
+        """3 sequential services at different locations → 2 discontinuity conflicts."""
+        vid = uuid7()
+        node_a, node_b, node_c = (
+            make_block_node(),
+            make_block_node(),
+            make_block_node(),
+        )
+        s1 = make_service_with_window(vid, node_a, arrival=0, departure=10)
+        s2 = make_service_with_window(vid, node_b, arrival=10, departure=20)
+        s3 = make_service_with_window(vid, node_c, arrival=20, departure=30)
+
+        result = validate(s3, [s1, s2])
+        discontinuities = [
+            c for c in result.vehicle_conflicts if c.reason == "Location discontinuity"
+        ]
+        assert len(discontinuities) == 2
+
+    def test_overlap_and_discontinuity_combined(self):
+        """2 services for same vehicle, overlapping in time AND at different locations."""
+        vid = uuid7()
+        node_a = make_block_node()
+        node_b = make_block_node()
+        s1 = make_service_with_window(vid, node_a, arrival=0, departure=20)
+        s2 = make_service_with_window(vid, node_b, arrival=10, departure=30)
+
+        result = validate(s2, [s1])
+        reasons = {c.reason for c in result.vehicle_conflicts}
+        assert len(result.vehicle_conflicts) >= 2
+        assert "Overlapping time windows" in reasons
+        assert "Location discontinuity" in reasons
+
+
+class TestInterlockingConflictsEdgeCases:
+    def test_same_block_same_group_not_interlocking(self):
+        """Two services on the SAME block in group 1 → block conflict, not interlocking."""
+        block = make_block(group=1)
+        node = make_block_node(block.id)
+        s1 = make_service_with_window(uuid7(), node, arrival=0, departure=15)
+        s2 = make_service_with_window(uuid7(), node, arrival=10, departure=20)
+
+        result = validate(s2, [s1], [block])
+        assert result.interlocking_conflicts == []
+
+    def test_different_groups_no_conflict(self):
+        """Service A on block in group 1, service B on block in group 2 → no interlocking conflict."""
+        b1 = make_block(group=1)
+        b2 = make_block(group=2)
+        n1 = make_block_node(b1.id)
+        n2 = make_block_node(b2.id)
+        s1 = make_service_with_window(uuid7(), n1, arrival=0, departure=15)
+        s2 = make_service_with_window(uuid7(), n2, arrival=10, departure=20)
+
+        result = validate(s2, [s1], [b1, b2])
+        assert result.interlocking_conflicts == []
+
+    def test_multi_group_conflicts(self):
+        """4 blocks in 2 groups, overlapping services → 2 interlocking conflicts."""
+        b1a = make_block(group=1)
+        b1b = make_block(group=1)
+        b2a = make_block(group=2)
+        b2b = make_block(group=2)
+        n1a = make_block_node(b1a.id)
+        n1b = make_block_node(b1b.id)
+        n2a = make_block_node(b2a.id)
+        n2b = make_block_node(b2b.id)
+        # Service A uses blocks from group 1 and group 2
+        sa = Service(
+            id=next(_id_counter),
+            name="S",
+            vehicle_id=uuid7(),
+            route=[n1a, n2a],
+            timetable=[
+                TimetableEntry(order=0, node_id=n1a.id, arrival=0, departure=15),
+                TimetableEntry(order=1, node_id=n2a.id, arrival=15, departure=30),
+            ],
+        )
+        # Service B uses different blocks in same groups, overlapping with A
+        sb = Service(
+            id=next(_id_counter),
+            name="S",
+            vehicle_id=uuid7(),
+            route=[n1b, n2b],
+            timetable=[
+                TimetableEntry(order=0, node_id=n1b.id, arrival=10, departure=20),
+                TimetableEntry(order=1, node_id=n2b.id, arrival=20, departure=35),
+            ],
+        )
+
+        result = validate(sb, [sa], [b1a, b1b, b2a, b2b])
+        assert len(result.interlocking_conflicts) == 2
+        groups = {c.group for c in result.interlocking_conflicts}
+        assert groups == {1, 2}
+
+
+class TestBlockConflictsEdgeCases:
+    def test_multiple_blocks_with_overlaps(self):
+        """Two blocks, each with overlapping services → 2 block conflicts total."""
+        block_a = make_block()
+        block_b = make_block()
+        node_a = make_block_node(block_a.id)
+        node_b = make_block_node(block_b.id)
+        # Service 1 uses both blocks
+        s1 = Service(
+            id=next(_id_counter),
+            name="S",
+            vehicle_id=uuid7(),
+            route=[node_a, node_b],
+            timetable=[
+                TimetableEntry(order=0, node_id=node_a.id, arrival=0, departure=15),
+                TimetableEntry(order=1, node_id=node_b.id, arrival=15, departure=30),
+            ],
+        )
+        # Service 2 uses same blocks, overlapping with s1 on both blocks
+        s2 = Service(
+            id=next(_id_counter),
+            name="S",
+            vehicle_id=uuid7(),
+            route=[node_a, node_b],
+            timetable=[
+                TimetableEntry(order=0, node_id=node_a.id, arrival=10, departure=20),
+                TimetableEntry(order=1, node_id=node_b.id, arrival=20, departure=35),
+            ],
+        )
+
+        result = validate(s2, [s1], [block_a, block_b])
+        assert len(result.block_conflicts) == 2
+        conflicting_blocks = {c.block_id for c in result.block_conflicts}
+        assert conflicting_blocks == {block_a.id, block_b.id}
+
+    def test_touching_boundary_no_conflict(self):
+        """Service A departs at t=100, service B arrives at t=100 → no conflict."""
+        block = make_block()
+        node = make_block_node(block.id)
+        s1 = make_service_with_window(uuid7(), node, arrival=50, departure=100)
+        s2 = make_service_with_window(uuid7(), node, arrival=100, departure=150)
+
+        result = validate(s2, [s1], [block])
+        assert result.block_conflicts == []
+
+
+class TestBatteryConflictsEdgeCases:
+    def test_empty_steps_no_conflict(self):
+        """Service has only platform nodes (no blocks) → no battery conflict."""
+        v = Vehicle(id=uuid7(), name="V1")
+        platform_node = Node(id=uuid7(), type=NodeType.PLATFORM)
+        s = make_service_with_window(v.id, platform_node, arrival=0, departure=100)
+
+        result = validate(s, [], vehicles=[v])
+        assert result.battery_conflicts == []
+
+    def test_single_block_traversal_no_conflict(self):
+        """1 block: 80 - 1 = 79% > 30% → no conflict."""
+        v = Vehicle(id=uuid7(), name="V1")
+        s = make_multi_block_service(v.id, num_blocks=1, arrival=0)
+
+        result = validate(s, [], vehicles=[v])
+        assert result.battery_conflicts == []
+
+    def test_battery_exactly_at_critical_boundary(self):
+        """50 blocks: 80 - 50 = 30%, exactly at threshold → no conflict."""
+        v = Vehicle(id=uuid7(), name="V1")
+        s = make_multi_block_service(v.id, num_blocks=50, arrival=0)
+
+        result = validate(s, [], vehicles=[v])
+        assert result.battery_conflicts == []
+
+
+class TestServiceConflictsModel:
+    def test_has_conflicts_with_only_block_conflicts(self):
+        """ServiceConflicts with only block conflicts → has_conflicts is True."""
+        conflicts = ServiceConflicts(
+            vehicle_conflicts=[],
+            block_conflicts=[
+                BlockConflict(
+                    block_id=uuid7(),
+                    service_a_id=1,
+                    service_b_id=2,
+                    overlap_start=0,
+                    overlap_end=10,
+                )
+            ],
+            interlocking_conflicts=[],
+            battery_conflicts=[],
+        )
+        assert conflicts.has_conflicts is True
+
+    def test_has_conflicts_with_only_interlocking_conflicts(self):
+        """ServiceConflicts with only interlocking conflicts → has_conflicts is True."""
+        conflicts = ServiceConflicts(
+            vehicle_conflicts=[],
+            block_conflicts=[],
+            interlocking_conflicts=[
+                InterlockingConflict(
+                    group=1,
+                    block_a_id=uuid7(),
+                    block_b_id=uuid7(),
+                    service_a_id=1,
+                    service_b_id=2,
+                    overlap_start=0,
+                    overlap_end=10,
+                )
+            ],
+            battery_conflicts=[],
+        )
+        assert conflicts.has_conflicts is True
+
+    def test_has_conflicts_all_empty(self):
+        """All empty lists → has_conflicts is False."""
+        conflicts = ServiceConflicts(
+            vehicle_conflicts=[],
+            block_conflicts=[],
+            interlocking_conflicts=[],
+            battery_conflicts=[],
+        )
+        assert conflicts.has_conflicts is False

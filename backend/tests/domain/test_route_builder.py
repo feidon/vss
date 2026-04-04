@@ -7,6 +7,7 @@ from domain.network.model import NodeType
 from infra.seed import (
     BLOCK_ID_BY_NAME,
     PLATFORM_ID_BY_NAME,
+    YARD_ID,
     create_blocks,
     create_connections,
     create_stations,
@@ -138,3 +139,80 @@ class TestBuildFullRoute:
 
         assert len(route) == 7
         assert len(timetable) == 7
+
+
+class TestBuildFullRouteEdgeCases:
+    def test_yard_as_first_stop(self, connections, stations, blocks):
+        p1a = PLATFORM_ID_BY_NAME["P1A"]
+        stop_ids = [YARD_ID, p1a]
+        dwell_by_stop = {YARD_ID: 0, p1a: 60}
+        start_time = 1000
+
+        route, timetable = build_full_route(
+            stop_ids, dwell_by_stop, start_time, connections, stations, blocks
+        )
+
+        # Expected path: Y -> B1 -> P1A
+        assert len(route) == 3
+        assert route[0].type == NodeType.YARD
+        assert route[1].type == NodeType.BLOCK
+        assert route[2].type == NodeType.PLATFORM
+        assert len(timetable) == 3
+
+    def test_yard_as_last_stop(self, connections, stations, blocks):
+        p1a = PLATFORM_ID_BY_NAME["P1A"]
+        stop_ids = [p1a, YARD_ID]
+        dwell_by_stop = {p1a: 60}
+        start_time = 1000
+
+        route, timetable = build_full_route(
+            stop_ids, dwell_by_stop, start_time, connections, stations, blocks
+        )
+
+        # Expected path: P1A -> B1 -> Y
+        assert len(route) == 3
+        assert route[-1].type == NodeType.YARD
+
+    def test_three_stop_timing_continuity(self, connections, stations, blocks):
+        p1a = PLATFORM_ID_BY_NAME["P1A"]
+        p2a = PLATFORM_ID_BY_NAME["P2A"]
+        p3a = PLATFORM_ID_BY_NAME["P3A"]
+        stop_ids = [p1a, p2a, p3a]
+        dwell_by_stop = {p1a: 60, p2a: 120, p3a: 0}
+        start_time = 0
+
+        _, timetable = build_full_route(
+            stop_ids, dwell_by_stop, start_time, connections, stations, blocks
+        )
+
+        for i in range(len(timetable) - 1):
+            assert timetable[i].departure == timetable[i + 1].arrival
+
+    def test_yard_dwell_time(self, connections, stations, blocks):
+        p1a = PLATFORM_ID_BY_NAME["P1A"]
+        stop_ids = [YARD_ID, p1a]
+        dwell_by_stop = {YARD_ID: 300}
+        start_time = 1000
+
+        _, timetable = build_full_route(
+            stop_ids, dwell_by_stop, start_time, connections, stations, blocks
+        )
+
+        assert timetable[0].departure == timetable[0].arrival + 300
+
+    def test_four_stop_route_node_count(self, connections, stations, blocks):
+        p1a = PLATFORM_ID_BY_NAME["P1A"]
+        p2a = PLATFORM_ID_BY_NAME["P2A"]
+        p3a = PLATFORM_ID_BY_NAME["P3A"]
+        p2b = PLATFORM_ID_BY_NAME["P2B"]
+        stop_ids = [p1a, p2a, p3a, p2b]
+        dwell_by_stop = {}
+        start_time = 0
+
+        route, timetable = build_full_route(
+            stop_ids, dwell_by_stop, start_time, connections, stations, blocks
+        )
+
+        # Expected path: P1A -> B3 -> B5 -> P2A -> B6 -> B7 -> P3A -> B10 -> B11 -> P2B
+        assert len(route) == 10
+        assert len(timetable) == 10

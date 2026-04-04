@@ -158,3 +158,44 @@ class TestServiceUpdateRoute:
         service = make_service(route=[make_node()])
         with pytest.raises(DomainError, match="No connection"):
             service.update_route([n1, n2], entries, frozenset())
+
+
+class TestServiceEqualityEdgeCases:
+    def test_none_id_not_equal_to_other_none_id(self):
+        vid = uuid7()
+        s1 = Service(name="S", vehicle_id=vid, route=[], timetable=[])
+        s2 = Service(name="S", vehicle_id=vid, route=[], timetable=[])
+        assert s1 != s2
+
+    def test_none_id_equals_itself(self):
+        s = Service(name="S", vehicle_id=uuid7(), route=[], timetable=[])
+        assert s == s
+
+    def test_none_id_vs_numeric_id_not_equal(self):
+        vid = uuid7()
+        s1 = Service(name="S", vehicle_id=vid, route=[], timetable=[])
+        s2 = Service(id=1, name="S", vehicle_id=vid, route=[], timetable=[])
+        assert s1 != s2
+
+    def test_none_id_services_distinct_in_set(self):
+        s1 = Service(name="S", vehicle_id=uuid7(), route=[], timetable=[])
+        s2 = Service(name="S", vehicle_id=uuid7(), route=[], timetable=[])
+        assert len({s1, s2}) == 2
+
+    def test_equality_with_non_service_returns_false(self):
+        s = Service(id=1, name="S", vehicle_id=uuid7(), route=[], timetable=[])
+        assert s != "not a service"
+
+
+class TestServiceUpdateRouteEdgeCases:
+    def test_empty_route_rejected(self):
+        service = make_service()
+        with pytest.raises(DomainError, match="at least one node"):
+            service.update_route([], [], frozenset())
+
+    def test_single_node_route_accepted(self):
+        n = make_node()
+        entry = TimetableEntry(order=0, node_id=n.id, arrival=0, departure=10)
+        service = make_service()
+        service.update_route([n], [entry], frozenset())
+        assert len(service.route) == 1
