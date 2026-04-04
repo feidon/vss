@@ -4,7 +4,6 @@ from uuid import UUID
 
 from application.graph.dto import GraphData
 from application.service.dto import RouteStop
-from domain.block.model import Block
 from domain.network.model import NodeType
 from domain.service.model import Service
 from domain.station.model import Platform
@@ -12,7 +11,6 @@ from domain.vehicle.model import Vehicle
 from pydantic import BaseModel, Field
 
 from api.shared.schemas import (
-    BlockNodeSchema,
     EdgeSchema,
     JunctionSchema,
     NodeSchema,
@@ -159,12 +157,9 @@ class ServiceDetailResponse(BaseModel):
         service: Service,
         graph_data: GraphData,
     ) -> ServiceDetailResponse:
-        block_dict = {b.id: b for b in graph_data.blocks}
         platform_dict = {p.id: p for p in graph_data.platforms}
         yard_name_dict = {y.id: y.name for y in graph_data.yards}
-        route_nodes = cls._get_route_nodes(
-            service, block_dict, platform_dict, yard_name_dict
-        )
+        route_nodes = cls._get_route_nodes(service, platform_dict, yard_name_dict)
 
         return cls(
             id=service.id,
@@ -187,23 +182,12 @@ class ServiceDetailResponse(BaseModel):
     def _get_route_nodes(
         cls,
         service: Service,
-        block_dict: dict[UUID, Block],
         platform_dict: dict[UUID, Platform],
         yard_name_dict: dict[UUID, str],
     ) -> list[PlatformNodeSchema | YardNodeSchema]:
         route_nodes: list[PlatformNodeSchema | YardNodeSchema] = []
         for node in service.route:
-            if node.type == NodeType.BLOCK and node.id in block_dict:
-                b = block_dict[node.id]
-                route_nodes.append(
-                    BlockNodeSchema(
-                        id=b.id,
-                        name=b.name,
-                        group=b.group,
-                        traversal_time_seconds=b.traversal_time_seconds,
-                    )
-                )
-            elif node.type == NodeType.PLATFORM and node.id in platform_dict:
+            if node.type == NodeType.PLATFORM and node.id in platform_dict:
                 p = platform_dict[node.id]
                 route_nodes.append(PlatformNodeSchema(id=p.id, name=p.name))
             elif node.type == NodeType.YARD:
