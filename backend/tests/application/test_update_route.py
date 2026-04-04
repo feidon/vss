@@ -10,6 +10,7 @@ from domain.vehicle.model import Vehicle
 from infra.seed import (
     BLOCK_ID_BY_NAME,
     PLATFORM_ID_BY_NAME,
+    YARD_ID,
     create_blocks,
     create_connections,
     create_stations,
@@ -276,3 +277,24 @@ class TestRouteConflicts:
         }
         assert s1.id in conflicting_service_ids, "Should detect conflict with S1"
         assert s2.id in conflicting_service_ids, "Should detect conflict with S2"
+
+    async def test_round_trip_yard_to_yard_no_battery_conflict(self):
+        """Round trip Y → P1A → P2A → P3A → P2B → P1B → Y saves without conflict."""
+        app, vehicle_repo = _make_app()
+        v = seed_vehicle(vehicle_repo, battery=80)
+        svc = await app.create_service(name="S1", vehicle_id=v.id)
+
+        stops = [
+            RouteStop(node_id=YARD_ID, dwell_time=30),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P1A"], dwell_time=30),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P2A"], dwell_time=30),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P3A"], dwell_time=30),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P2B"], dwell_time=30),
+            RouteStop(node_id=PLATFORM_ID_BY_NAME["P1B"], dwell_time=30),
+            RouteStop(node_id=YARD_ID, dwell_time=30),
+        ]
+        result = await app.update_service_route(svc.id, stops, start_time=1000)
+
+        assert result.id == svc.id
+        assert result.route[0].type == NodeType.YARD
+        assert result.route[-1].type == NodeType.YARD

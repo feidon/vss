@@ -56,10 +56,10 @@ def build_battery_steps(
     steps: list[ChargeStop | BlockTraversal] = []
     for i, entry in enumerate(node_entries):
         if entry.node_type == NodeType.YARD:
-            next_time = (
-                node_entries[i + 1].time if i + 1 < len(node_entries) else entry.time
-            )
-            steps.append(ChargeStop(next_time - entry.time, entry.service_id))
+            if i + 1 >= len(node_entries):
+                break
+            charge_seconds = node_entries[i + 1].time - entry.time
+            steps.append(ChargeStop(charge_seconds, entry.service_id))
         else:
             steps.append(BlockTraversal(entry.service_id))
 

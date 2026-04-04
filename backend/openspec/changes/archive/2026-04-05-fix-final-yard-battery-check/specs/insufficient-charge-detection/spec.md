@@ -1,15 +1,4 @@
-## ADDED Requirements
-
-### Requirement: Vehicle charging during idle time
-The system SHALL charge a vehicle's battery during idle time between consecutive services. The charging rate is 1% per 12 seconds of idle time. Battery MUST NOT exceed 100%.
-
-#### Scenario: Sufficient idle time to fully charge
-- **WHEN** a vehicle has 60% battery and 600 seconds of idle time between services
-- **THEN** the battery after charging is min(60 + 600 // 12, 100) = min(110, 100) = 100%
-
-#### Scenario: Partial charge during short idle
-- **WHEN** a vehicle has 70% battery and 60 seconds of idle time
-- **THEN** the battery after charging is 70 + 60 // 12 = 75%
+## MODIFIED Requirements
 
 ### Requirement: Minimum departure charge threshold
 The system SHALL require a vehicle to have at least 80% battery before departing on a service. If the battery is below 80% after charging during idle time, an `InsufficientChargeConflict` MUST be raised. The departure threshold check SHALL only apply when the vehicle has a subsequent departure. When a vehicle returns to the Yard as the final stop across all its services, the system MUST NOT check the departure threshold — the vehicle is parked and will charge indefinitely.
@@ -33,17 +22,3 @@ The system SHALL require a vehicle to have at least 80% battery before departing
 #### Scenario: Vehicle returns to Yard but has a subsequent service
 - **WHEN** a vehicle returns to the Yard with 50% battery and a subsequent service departs 100 seconds later
 - **THEN** the battery after charging is 50 + 100 // 12 = 58%, which is below 80%, and an `InsufficientChargeConflict` is raised
-
-### Requirement: Insufficient charge conflicts included in service validation
-The system SHALL detect insufficient-charge conflicts as part of the existing `validate_service()` pipeline. Insufficient-charge conflicts MUST be returned alongside all other conflict types.
-
-#### Scenario: Route update blocked by insufficient charge
-- **WHEN** a route update is submitted and the vehicle cannot charge to 80% between two of its services
-- **THEN** the API returns 409 with a response body containing `insufficient_charge_conflicts`
-
-### Requirement: Conflict identifies both services
-An `InsufficientChargeConflict` MUST identify both the preceding service (that drained the battery) and the following service (that cannot depart).
-
-#### Scenario: Conflict references service pair
-- **WHEN** an insufficient-charge conflict is detected between service A and service B
-- **THEN** the conflict object contains `service_a_id` (preceding) and `service_b_id` (following)

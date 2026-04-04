@@ -416,14 +416,45 @@ class TestBatteryConflicts:
         result = validate(light, [heavy], vehicles=[v1, v2])
         assert result.battery_conflicts == []
 
-    def test_yard_at_end_triggers_insufficient_charge_when_battery_low(self):
-        """Trailing yard with no idle time → charge 0 → battery < 80% → insufficient charge."""
+    def test_yard_at_end_no_conflict_when_no_subsequent_service(self):
+        """Trailing yard with no subsequent service → vehicle is parked, no departure check."""
         v = Vehicle(id=uuid7(), name="V1")
-        # 5 blocks → 75%, yard at end → charge 0 → 75% < 80% → can't depart
+        # 5 blocks → 75%, yard at end → no departure needed → no conflict
         s = make_multi_block_service(
             v.id, num_blocks=5, arrival=0, block_time=10, ends_at_yard=True
         )
 
         result = validate(s, [], vehicles=[v])
+        assert result.battery_conflicts == []
+
+    def test_round_trip_yard_to_yard_no_false_insufficient_charge(self):
+        """Yard → blocks → Yard round trip: battery drops below 80% but no conflict."""
+        v = Vehicle(id=uuid7(), name="V1")
+        # Yard → 10 blocks → Yard: 80 - 10 = 70%, no departure needed
+        s = make_multi_block_service(
+            v.id,
+            num_blocks=10,
+            arrival=0,
+            block_time=30,
+            starts_at_yard=True,
+            ends_at_yard=True,
+        )
+
+        result = validate(s, [], vehicles=[v])
+        assert result.battery_conflicts == []
+
+    def test_trailing_yard_with_subsequent_service_still_triggers_insufficient_charge(
+        self,
+    ):
+        """Yard at end of service A, service B departs shortly after → INSUFCHARGE."""
+        v = Vehicle(id=uuid7(), name="V1")
+        # Service 1: 50 blocks → 30%, ends at Yard at t=500
+        s1 = make_multi_block_service(
+            v.id, num_blocks=50, arrival=0, block_time=10, ends_at_yard=True
+        )
+        # Service 2: starts 100s later → charge 100//12=8 → 38% < 80% → can't depart
+        s2 = make_multi_block_service(v.id, num_blocks=5, arrival=600, block_time=10)
+
+        result = validate(s2, [s1], vehicles=[v])
         assert len(result.battery_conflicts) == 1
-        assert result.battery_conflicts[0].service_id == s.id
+        assert result.battery_conflicts[0].type == BatteryConflictType.INSUFCHARGE
