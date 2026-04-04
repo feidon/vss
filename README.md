@@ -313,15 +313,16 @@ Conflict response includes structured details (block IDs, overlap windows, reaso
 6. **Single valid path between most stops** — BFS always picks the shortest block chain. The current track map has at most one path between any stop pair, so no user choice is lost.
 7. **Services are independent runs** — No concept of "chaining" services into a vehicle's daily schedule. Conflict detection handles overlaps between independent services.
 8. **Route always starts and ends with a platform or yard** — User-specified stops are validated to be platforms or yards (`_validate_stops`), and blocks are only inserted between consecutive stops by BFS. Therefore the computed route can never begin or end with a block.
+9. **Block traversal time changes do not affect existing services** — Updating a block's `traversal_time_seconds` only modifies the block record. Existing service timetables are snapshots computed at route-save time and are not retroactively recomputed. A service only picks up updated traversal times when its route is explicitly re-saved via `PATCH /api/services/{id}/route`.
 
 ### Scope Boundaries
 
-9. **Single-user system** — No authentication, authorization, or concurrent editing support.
-10. **No concurrent editing or service versioning** — Last write wins. No optimistic locking, no version field, no conflict resolution for simultaneous edits.
-11. **No high-concurrency support** — No connection pooling tuning, no rate limiting, no caching layer.
-12. **Small number of services** — Conflict detection loads all services into memory on every route save. Suitable for dozens or hundreds of services, not thousands.
+10. **Single-user system** — No authentication, authorization, or concurrent editing support.
+11. **No concurrent editing or service versioning** — Last write wins. No optimistic locking, no version field, no conflict resolution for simultaneous edits.
+12. **No high-concurrency support** — No connection pooling tuning, no rate limiting, no caching layer.
+13. **Small number of services** — Conflict detection loads all services into memory on every route save. Suitable for dozens or hundreds of services, not thousands.
 
-13. **No distributed deployment preparations** — The system is designed as a single-node monolith with no provisions for horizontal scaling or distributed operation. Specifically:
+14. **No distributed deployment preparations** — The system is designed as a single-node monolith with no provisions for horizontal scaling or distributed operation. Specifically:
     - **No message queue or event bus** — All communication is synchronous in-process function calls. No Kafka, RabbitMQ, or similar infrastructure for decoupling services.
     - **No distributed caching** — No Redis or Memcached layer. All state lives in PostgreSQL or in-process memory.
     - **No service discovery or load balancing** — Single backend instance serves all requests. No reverse proxy configuration, health check endpoints for orchestrators, or graceful shutdown handling.
@@ -334,7 +335,7 @@ Conflict response includes structured details (block IDs, overlap windows, reaso
 
 ### Technical Choices
 
-14. **Time in Unix epoch seconds** — All timetable times use integer Unix timestamps. The frontend converts to/from local datetime for display. Avoids timezone complexity.
+15. **Time in Unix epoch seconds** — All timetable times use integer Unix timestamps. The frontend converts to/from local datetime for display. Avoids timezone complexity.
 
 ---
 
