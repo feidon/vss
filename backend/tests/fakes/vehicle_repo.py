@@ -19,7 +19,7 @@ class InMemoryVehicleRepository(VehicleRepository):
     async def add_by_number(self, number: int) -> None:
         current_number = len(self._store.items())
         for i in range(number):
-            new_vehicle = Vehicle(id=uuid7(), name=f"V{current_number + i}")
+            new_vehicle = Vehicle(id=uuid7(), name=f"V{current_number + i + 1}")
             self._store[new_vehicle.id] = new_vehicle
 
     async def save(self, vehicle: Vehicle) -> None:

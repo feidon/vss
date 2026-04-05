@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import math
 from collections import defaultdict
 
@@ -23,6 +24,8 @@ from application.schedule.dto import GenerateScheduleRequest, GenerateScheduleRe
 from application.schedule.model import SolverInput
 from application.schedule.route_variant import compute_route_variants
 from application.schedule.solver import solve_schedule
+
+logger = logging.getLogger(__name__)
 
 
 class ScheduleAppService:
@@ -58,11 +61,30 @@ class ScheduleAppService:
             stations, blocks, connections, req.dwell_time_seconds
         )
 
-        # 4. Compute num_vehicles
+        # 4. Check feasibility — the minimum departure gap is set by the
+        #    widest interlocking group occupancy window in a single trip.
+        effective_interval = req.interval_seconds + req.dwell_time_seconds
+        min_departure_gap = _compute_min_departure_gap(variants, blocks)
+        if effective_interval < min_departure_gap:
+            min_passenger_wait = min_departure_gap - req.dwell_time_seconds
+            raise DomainError(
+                ErrorCode.INTERVAL_BELOW_MINIMUM,
+                f"Requested interval {req.interval_seconds}s is not achievable. "
+                f"Minimum passenger wait is {min_passenger_wait}s "
+                f"due to interlocking constraints.",
+                context={
+                    "requested_interval": req.interval_seconds,
+                    "minimum_interval": min_passenger_wait,
+                    "dwell_time": req.dwell_time_seconds,
+                    "min_departure_gap": min_departure_gap,
+                },
+            )
+
+        # 5. Compute num_vehicles
         cycle_times = [v.cycle_time for v in variants]
         min_yard_dwells = [v.num_blocks * 12 for v in variants]
         max_turnaround = max(c + y for c, y in zip(cycle_times, min_yard_dwells))
-        num_vehicles = math.ceil(max_turnaround / req.interval_seconds) + 1
+        num_vehicles = math.ceil(max_turnaround / effective_interval) + 1
 
         if num_vehicles > len(vehicles):
             await self._vehicle_repo.add_by_number(num_vehicles - len(vehicles))
@@ -70,31 +92,38 @@ class ScheduleAppService:
 
         used_vehicles = vehicles[:num_vehicles]
 
-        # 5. Build interlocking groups
+        # 6. Build interlocking groups
         interlocking_groups: dict[int, list] = {}
         for b in blocks:
             if b.group != 0:
                 interlocking_groups.setdefault(b.group, []).append(b.id)
 
-        # 6. Solve
+        # 7. Solve
         solver_input = SolverInput(
             variants=variants,
             num_vehicles=num_vehicles,
             vehicle_ids=[v.id for v in used_vehicles],
             start_time=req.start_time,
             end_time=req.end_time,
-            interval_seconds=req.interval_seconds,
+            departure_gap_seconds=effective_interval,
             interlocking_groups=interlocking_groups,
         )
 
         result = solve_schedule(solver_input)
 
-        # 7. Delete all existing services
+        if not result.assignments:
+            raise DomainError(
+                ErrorCode.SCHEDULE_INFEASIBLE,
+                "Could not place any trips in the given time window.",
+            )
+
+        # 8. Delete all existing services
         await self._service_repo.delete_all()
 
-        # 8. Create services from solver output (absolute departure times)
+        # 9. Create services from solver output
         yard = next(s for s in stations if s.is_yard)
         services: list[Service] = []
+        trip_counter: dict[int, int] = defaultdict(int)
         for assignment in result.assignments:
             variant = variants[assignment.variant_index]
             vehicle = used_vehicles[assignment.vehicle_index]
@@ -111,14 +140,9 @@ class ScheduleAppService:
                 blocks,
             )
 
-            trip_num = sum(
-                1
-                for a in result.assignments
-                if a.vehicle_index == assignment.vehicle_index
-                and a.depart_time <= assignment.depart_time
-            )
+            trip_counter[assignment.vehicle_index] += 1
             service = Service(
-                name=f"Auto-V{assignment.vehicle_index + 1}-T{trip_num}",
+                name=f"Auto-V{assignment.vehicle_index + 1}-T{trip_counter[assignment.vehicle_index]}",
                 vehicle_id=vehicle.id,
                 route=route,
                 timetable=timetable,
@@ -126,7 +150,7 @@ class ScheduleAppService:
             created = await self._service_repo.create(service)
             services.append(created)
 
-        # 9. Sanity check: run conflict detection on all generated services
+        # 10. Sanity check — conflicts in generated schedule indicate a solver bug
         block_occ, group_occ = build_occupancies(services, blocks)
         block_conflicts = detect_block_conflicts(block_occ)
         interlocking_conflicts = detect_interlocking_conflicts(group_occ)
@@ -152,7 +176,7 @@ class ScheduleAppService:
                 f"BUG: Generated schedule has conflicts: {', '.join(conflict_details)}"
             )
 
-        # 10. Station frequency assertion
+        # 11. Station frequency assertion
         platform_to_station = {p.id: s.name for s in stations for p in s.platforms}
         arrivals_by_station: dict[str, list[int]] = defaultdict(list)
         for svc in services:
@@ -164,18 +188,16 @@ class ScheduleAppService:
             times.sort()
             for i in range(len(times) - 1):
                 gap = times[i + 1] - times[i]
-                if gap > req.interval_seconds:
-                    import logging
-
-                    logging.getLogger(__name__).warning(
-                        "Station %s: gap %ds > interval %ds (at t=%d)",
+                if gap > effective_interval:
+                    logger.warning(
+                        "Station %s: gap %ds > effective interval %ds (at t=%d)",
                         sname,
                         gap,
-                        req.interval_seconds,
+                        effective_interval,
                         times[i],
                     )
 
-        # 11. Return response
+        # 12. Return response
         return GenerateScheduleResponse(
             services_created=len(services),
             vehicles_used=[v.id for v in used_vehicles],
@@ -199,3 +221,65 @@ class ScheduleAppService:
                 ErrorCode.INVALID_TIME_RANGE,
                 "end_time must be greater than start_time",
             )
+
+
+def _compute_min_departure_gap(variants, blocks) -> int:
+    """Minimum seconds between consecutive departures.
+
+    For each pair of variants, compute the set of gap values that would
+    cause an interlocking conflict (forbidden intervals).  The minimum
+    feasible gap is the smallest positive integer outside all forbidden
+    intervals.  Return the best (smallest) across all variant pairs.
+    """
+    block_group = {b.id: b.group for b in blocks}
+
+    def _group_intervals(variant):
+        gi: dict[int, list[tuple[int, int]]] = {}
+        for bt in variant.block_timings:
+            g = block_group.get(bt.block_id, 0)
+            if g != 0:
+                gi.setdefault(g, []).append((bt.enter_offset, bt.exit_offset))
+        return gi
+
+    all_gi = [_group_intervals(v) for v in variants]
+    all_groups: set[int] = set()
+    for gi in all_gi:
+        all_groups.update(gi.keys())
+
+    if not all_groups:
+        return 0
+
+    best_gap: int | None = None
+    for gi1 in all_gi:
+        for gi2 in all_gi:
+            forbidden: list[tuple[int, int]] = []
+            for g_id in all_groups:
+                for a, b in gi1.get(g_id, []):
+                    for c, d in gi2.get(g_id, []):
+                        lo = a - d + 1
+                        hi = b - c - 1
+                        if lo <= hi:
+                            forbidden.append((lo, hi))
+
+            pair_min = _min_positive_outside(forbidden)
+            if best_gap is None or pair_min < best_gap:
+                best_gap = pair_min
+
+    return best_gap if best_gap is not None else 0
+
+
+def _min_positive_outside(intervals: list[tuple[int, int]]) -> int:
+    """Smallest positive integer not covered by any interval."""
+    pos = [(max(lo, 1), hi) for lo, hi in intervals if hi >= 1]
+    if not pos:
+        return 1
+    pos.sort()
+    merged = [list(pos[0])]
+    for lo, hi in pos[1:]:
+        if lo <= merged[-1][1] + 1:
+            merged[-1][1] = max(merged[-1][1], hi)
+        else:
+            merged.append([lo, hi])
+    if merged[0][0] > 1:
+        return 1
+    return merged[0][1] + 1

@@ -10,6 +10,7 @@ from collections import defaultdict
 from uuid import UUID
 
 from application.schedule.model import (
+    RouteVariant,
     SolverInput,
     SolverOutput,
     TripAssignment,
@@ -55,7 +56,7 @@ def solve_schedule(inp: SolverInput) -> SolverOutput:
                         variant_index=variant.index,
                     )
                 )
-                next_desired = depart + inp.interval_seconds
+                next_desired = depart + inp.departure_gap_seconds
                 placed = True
                 break
             earliest_conflict_end = max(earliest_conflict_end, conflict_end)
@@ -81,12 +82,17 @@ def _build_group_lookup(
 
 def _find_conflict(
     depart: int,
-    variant,
+    variant: RouteVariant,
     occupancies: dict[UUID, list[tuple[int, int]]],
     interlocking_groups: dict[int, list[UUID]],
     group_for_block: dict[UUID, int],
 ) -> int | None:
-    """Return the exit time of the first conflicting occupancy, or None."""
+    """Return the earliest valid departure time that avoids the conflict, or None.
+
+    When a block at enter_offset conflicts with an existing occupancy ending
+    at conflict_exit, the vehicle doesn't need the block until enter_offset
+    seconds after departure. So the earliest safe departure = conflict_exit - enter_offset.
+    """
     for bt in variant.block_timings:
         enter = depart + bt.enter_offset
         exit_ = depart + bt.exit_offset
@@ -94,7 +100,7 @@ def _find_conflict(
         # Check same block
         conflict_end = _check_overlap(enter, exit_, occupancies.get(bt.block_id, []))
         if conflict_end is not None:
-            return conflict_end
+            return conflict_end - bt.enter_offset
 
         # Check interlocking group peers
         group_id = group_for_block.get(bt.block_id)
@@ -106,7 +112,7 @@ def _find_conflict(
                     enter, exit_, occupancies.get(peer_bid, [])
                 )
                 if conflict_end is not None:
-                    return conflict_end
+                    return conflict_end - bt.enter_offset
 
     return None
 
@@ -122,7 +128,7 @@ def _check_overlap(
 
 
 def _record_occupancies(
-    depart: int, variant, occupancies: dict[UUID, list[tuple[int, int]]]
+    depart: int, variant: RouteVariant, occupancies: dict[UUID, list[tuple[int, int]]]
 ) -> None:
     for bt in variant.block_timings:
         occupancies[bt.block_id].append(

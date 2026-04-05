@@ -1,7 +1,7 @@
 import pytest
 from application.schedule.dto import GenerateScheduleRequest
 from application.schedule.schedule_service import ScheduleAppService
-from domain.error import DomainError
+from domain.error import DomainError, ErrorCode
 from domain.network.model import NodeType
 from infra.seed import (
     VEHICLE_ID_BY_NAME,
@@ -18,7 +18,11 @@ from tests.fakes.station_repo import InMemoryStationRepository
 from tests.fakes.vehicle_repo import InMemoryVehicleRepository
 
 
-def _make_app():
+def _make_app(num_vehicles: int | None = None):
+    """Build ScheduleAppService with in-memory repos.
+
+    num_vehicles=None seeds all vehicles; an int seeds that many.
+    """
     block_repo = InMemoryBlockRepository()
     for b in create_blocks():
         block_repo._store[b.id] = b
@@ -30,23 +34,27 @@ def _make_app():
     connection_repo = InMemoryConnectionRepository(create_connections())
 
     vehicle_repo = InMemoryVehicleRepository()
-    for v in create_vehicles():
+    seed = (
+        create_vehicles() if num_vehicles is None else create_vehicles()[:num_vehicles]
+    )
+    for v in seed:
         vehicle_repo._store[v.id] = v
 
     service_repo = InMemoryServiceRepository()
 
-    return ScheduleAppService(
+    app = ScheduleAppService(
         service_repo=service_repo,
         block_repo=block_repo,
         connection_repo=connection_repo,
         vehicle_repo=vehicle_repo,
         station_repo=station_repo,
-    ), service_repo
+    )
+    return app, service_repo, vehicle_repo
 
 
 class TestScheduleAppService:
     async def test_generates_services(self):
-        app, service_repo = _make_app()
+        app, service_repo, _ = _make_app()
         req = GenerateScheduleRequest(
             interval_seconds=360,
             start_time=0,
@@ -58,7 +66,7 @@ class TestScheduleAppService:
         assert len(await service_repo.find_all()) == result.services_created
 
     async def test_clears_existing_services_first(self):
-        app, service_repo = _make_app()
+        app, service_repo, _ = _make_app()
         req = GenerateScheduleRequest(
             interval_seconds=360,
             start_time=0,
@@ -70,7 +78,7 @@ class TestScheduleAppService:
         assert len(await service_repo.find_all()) == second.services_created
 
     async def test_rejects_invalid_interval(self):
-        app, _ = _make_app()
+        app, _, _ = _make_app()
         req = GenerateScheduleRequest(
             interval_seconds=0,
             start_time=0,
@@ -80,8 +88,35 @@ class TestScheduleAppService:
         with pytest.raises(DomainError, match="interval"):
             await app.generate_schedule(req)
 
+    async def test_rejects_interval_below_minimum(self):
+        """With dwell=15, min departure gap is 75s, so min passenger wait is 60s.
+        interval=59 should be rejected."""
+        app, _, _ = _make_app()
+        req = GenerateScheduleRequest(
+            interval_seconds=59,
+            start_time=0,
+            end_time=3600,
+            dwell_time_seconds=15,
+        )
+        with pytest.raises(DomainError, match="not achievable") as exc_info:
+            await app.generate_schedule(req)
+        assert exc_info.value.code == ErrorCode.INTERVAL_BELOW_MINIMUM
+        assert exc_info.value.context["minimum_interval"] == 60
+
+    async def test_accepts_exact_minimum_interval(self):
+        """interval=60 with dwell=15 is exactly achievable (effective=75=min gap)."""
+        app, service_repo, _ = _make_app()
+        req = GenerateScheduleRequest(
+            interval_seconds=60,
+            start_time=0,
+            end_time=3600,
+            dwell_time_seconds=15,
+        )
+        result = await app.generate_schedule(req)
+        assert result.services_created > 0
+
     async def test_rejects_invalid_time_range(self):
-        app, _ = _make_app()
+        app, _, _ = _make_app()
         req = GenerateScheduleRequest(
             interval_seconds=360,
             start_time=3600,
@@ -92,7 +127,7 @@ class TestScheduleAppService:
             await app.generate_schedule(req)
 
     async def test_vehicles_used_in_response(self):
-        app, _ = _make_app()
+        app, _, _ = _make_app()
         req = GenerateScheduleRequest(
             interval_seconds=360,
             start_time=0,
@@ -105,7 +140,7 @@ class TestScheduleAppService:
             assert vid in VEHICLE_ID_BY_NAME.values()
 
     async def test_service_names_follow_convention(self):
-        app, service_repo = _make_app()
+        app, service_repo, _ = _make_app()
         req = GenerateScheduleRequest(
             interval_seconds=360,
             start_time=0,
@@ -118,7 +153,7 @@ class TestScheduleAppService:
             assert svc.name.startswith("Auto-V")
 
     async def test_no_conflicts_in_generated_schedule(self):
-        app, service_repo = _make_app()
+        app, service_repo, _ = _make_app()
         req = GenerateScheduleRequest(
             interval_seconds=360,
             start_time=0,
@@ -136,8 +171,11 @@ class TestScheduleAppService:
             conflicts = detect_conflicts(svc, others, blocks)
             assert not conflicts.has_conflicts, f"Service {svc.name} has conflicts"
 
-    async def test_station_frequency_within_interval(self):
-        app, service_repo = _make_app()
+    async def test_passenger_wait_within_interval(self):
+        """Worst case: passenger arrives at a station just as the last vehicle
+        departs. The next vehicle arriving at *any* platform of that station
+        must come within the requested interval."""
+        app, service_repo, _ = _make_app()
         interval = 360
         req = GenerateScheduleRequest(
             interval_seconds=interval,
@@ -149,26 +187,32 @@ class TestScheduleAppService:
         services = await service_repo.find_all()
         stations = create_stations()
 
-        platform_to_station = {p.id: s.name for s in stations for p in s.platforms}
+        platform_to_station = {
+            p.id: s.name for s in stations if not s.is_yard for p in s.platforms
+        }
 
-        arrivals_by_station: dict[str, list[int]] = {"S1": [], "S2": [], "S3": []}
+        # Collect (arrival, departure) per station across all platforms
+        visits_by_station: dict[str, list[tuple[int, int]]] = {}
         for svc in services:
             for entry in svc.timetable:
                 sname = platform_to_station.get(entry.node_id)
                 if sname:
-                    arrivals_by_station[sname].append(entry.arrival)
+                    visits_by_station.setdefault(sname, []).append(
+                        (entry.arrival, entry.departure)
+                    )
 
-        for sname, times in arrivals_by_station.items():
-            times.sort()
-            for i in range(len(times) - 1):
-                gap = times[i + 1] - times[i]
-                assert gap <= interval, (
-                    f"Station {sname}: gap {gap}s between arrivals "
-                    f"at t={times[i]} and t={times[i + 1]} exceeds interval {interval}s"
+        for sname, visits in visits_by_station.items():
+            visits.sort(key=lambda v: v[1])  # sort by departure
+            for i in range(len(visits) - 1):
+                wait = visits[i + 1][0] - visits[i][1]
+                assert wait <= interval, (
+                    f"Station {sname}: passenger wait {wait}s "
+                    f"(depart t={visits[i][1]}, next arrive t={visits[i + 1][0]}) "
+                    f"exceeds interval {interval}s"
                 )
 
     async def test_vehicle_yard_dwell_sufficient_for_recharge(self):
-        app, service_repo = _make_app()
+        app, service_repo, _ = _make_app()
         req = GenerateScheduleRequest(
             interval_seconds=360,
             start_time=0,
@@ -195,7 +239,7 @@ class TestScheduleAppService:
 
     async def test_tiling_produces_multiple_trips_per_vehicle(self):
         """With a 2-hour window, each vehicle should serve multiple trips."""
-        app, service_repo = _make_app()
+        app, service_repo, _ = _make_app()
         req = GenerateScheduleRequest(
             interval_seconds=360,
             start_time=0,
@@ -213,39 +257,11 @@ class TestScheduleAppService:
             assert len(trips) > 1, f"Vehicle {vid} has only {len(trips)} trip(s)"
 
 
-def _make_app_with_vehicles(num_vehicles: int):
-    """Build ScheduleAppService seeding exactly `num_vehicles` vehicles."""
-    block_repo = InMemoryBlockRepository()
-    for b in create_blocks():
-        block_repo._store[b.id] = b
-
-    station_repo = InMemoryStationRepository()
-    for s in create_stations():
-        station_repo._store[s.id] = s
-
-    connection_repo = InMemoryConnectionRepository(create_connections())
-
-    vehicle_repo = InMemoryVehicleRepository()
-    for v in create_vehicles()[:num_vehicles]:
-        vehicle_repo._store[v.id] = v
-
-    service_repo = InMemoryServiceRepository()
-
-    app = ScheduleAppService(
-        service_repo=service_repo,
-        block_repo=block_repo,
-        connection_repo=connection_repo,
-        vehicle_repo=vehicle_repo,
-        station_repo=station_repo,
-    )
-    return app, service_repo, vehicle_repo
-
-
 class TestScheduleAutoGeneratesVehicles:
     """Tests for vehicle auto-generation when insufficient vehicles exist."""
 
     async def test_generates_vehicles_when_none_exist(self):
-        app, service_repo, vehicle_repo = _make_app_with_vehicles(0)
+        app, service_repo, vehicle_repo = _make_app(0)
         req = GenerateScheduleRequest(
             interval_seconds=360,
             start_time=0,
@@ -258,7 +274,7 @@ class TestScheduleAutoGeneratesVehicles:
         assert len(vehicles_after) == len(result.vehicles_used)
 
     async def test_generates_deficit_when_not_enough(self):
-        app, service_repo, vehicle_repo = _make_app_with_vehicles(1)
+        app, service_repo, vehicle_repo = _make_app(1)
         req = GenerateScheduleRequest(
             interval_seconds=360,
             start_time=0,
@@ -272,7 +288,7 @@ class TestScheduleAutoGeneratesVehicles:
         assert len(vehicles_after) >= len(result.vehicles_used)
 
     async def test_no_new_vehicles_when_sufficient(self):
-        app, service_repo, vehicle_repo = _make_app_with_vehicles(3)
+        app, service_repo, vehicle_repo = _make_app(3)
         req = GenerateScheduleRequest(
             interval_seconds=360,
             start_time=0,

@@ -38,13 +38,13 @@ class TestPostgresVehicleRepository:
         vehicles = await repo.find_all()
         assert len(vehicles) == 2
         names = sorted(v.name for v in vehicles)
-        assert names == ["V0", "V1"]
+        assert names == ["V1", "V2"]
 
     async def test_add_by_number_continues_naming(self, repo, pg_session):
-        await insert_vehicle(pg_session, uuid7(), "V0")
         await insert_vehicle(pg_session, uuid7(), "V1")
+        await insert_vehicle(pg_session, uuid7(), "V2")
         await repo.add_by_number(2)
         vehicles = await repo.find_all()
         assert len(vehicles) == 4
         names = sorted(v.name for v in vehicles)
-        assert names == ["V0", "V1", "V2", "V3"]
+        assert names == ["V1", "V2", "V3", "V4"]

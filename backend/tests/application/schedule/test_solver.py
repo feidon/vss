@@ -51,7 +51,7 @@ def _build_input(
         vehicle_ids=vehicle_ids[:num_vehicles],
         start_time=start_time,
         end_time=end_time,
-        interval_seconds=interval,
+        departure_gap_seconds=interval,
         interlocking_groups=interlocking_groups,
     )
 

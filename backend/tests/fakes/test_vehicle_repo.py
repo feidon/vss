@@ -8,7 +8,7 @@ class TestInMemoryVehicleRepoAddByNumber:
         vehicles = await repo.find_all()
         assert len(vehicles) == 3
         names = sorted(v.name for v in vehicles)
-        assert names == ["V0", "V1", "V2"]
+        assert names == ["V1", "V2", "V3"]
 
     async def test_add_continues_naming_from_current_count(self):
         repo = InMemoryVehicleRepository()
@@ -17,7 +17,7 @@ class TestInMemoryVehicleRepoAddByNumber:
         vehicles = await repo.find_all()
         assert len(vehicles) == 4
         names = sorted(v.name for v in vehicles)
-        assert names == ["V0", "V1", "V2", "V3"]
+        assert names == ["V1", "V2", "V3", "V4"]
 
     async def test_add_zero_creates_nothing(self):
         repo = InMemoryVehicleRepository()

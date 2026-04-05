@@ -48,7 +48,7 @@ class SolverInput:
     vehicle_ids: list[UUID]
     start_time: int  # epoch seconds
     end_time: int  # epoch seconds
-    interval_seconds: int
+    departure_gap_seconds: int
     interlocking_groups: dict[int, list[UUID]]  # group_id -> block_ids
 
 
