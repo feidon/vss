@@ -16,9 +16,11 @@ export interface CreateServiceDialogResult {
   selector: 'app-create-service-dialog',
   imports: [FormsModule, ErrorAlertComponent],
   template: `
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-        <h3 class="mb-4 text-lg font-semibold">Create Service</h3>
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div
+        class="animate-modal w-full max-w-md rounded-xl bg-panel border border-edge p-6 shadow-2xl shadow-black/40"
+      >
+        <h3 class="mb-5 font-display text-lg font-bold text-ink">Create Service</h3>
 
         @if (loadError()) {
           <app-error-alert [message]="loadError()!" (dismiss)="loadError.set(null)" />
@@ -30,29 +32,35 @@ export interface CreateServiceDialogResult {
 
         <form (ngSubmit)="onSubmit()">
           <div class="mb-4">
-            <label class="mb-1 block text-sm font-medium text-gray-700" for="dlg-name">
+            <label
+              class="mb-1.5 block font-display text-xs font-semibold uppercase tracking-wider text-ink-muted"
+              for="dlg-name"
+            >
               Name
             </label>
             <input
               id="dlg-name"
-              class="w-full rounded border px-3 py-2 text-sm"
+              class="h-10 w-full rounded-lg px-3 font-display text-sm"
               [(ngModel)]="name"
               name="name"
               placeholder="e.g. S101"
               required
             />
             @if (submitted() && !name().trim()) {
-              <p class="mt-1 text-xs text-red-500">Name is required</p>
+              <p class="mt-1.5 font-display text-xs text-signal-danger">Name is required</p>
             }
           </div>
 
           <div class="mb-6">
-            <label class="mb-1 block text-sm font-medium text-gray-700" for="dlg-vehicle">
+            <label
+              class="mb-1.5 block font-display text-xs font-semibold uppercase tracking-wider text-ink-muted"
+              for="dlg-vehicle"
+            >
               Vehicle
             </label>
             <select
               id="dlg-vehicle"
-              class="w-full rounded border px-3 py-2 text-sm"
+              class="h-10 w-full rounded-lg px-3 font-display text-sm"
               [(ngModel)]="vehicleId"
               name="vehicleId"
               [disabled]="loading()"
@@ -64,21 +72,21 @@ export interface CreateServiceDialogResult {
               }
             </select>
             @if (submitted() && !vehicleId()) {
-              <p class="mt-1 text-xs text-red-500">Vehicle is required</p>
+              <p class="mt-1.5 font-display text-xs text-signal-danger">Vehicle is required</p>
             }
           </div>
 
           <div class="flex justify-end gap-3">
             <button
               type="button"
-              class="rounded border px-4 py-2 text-sm hover:bg-gray-100"
+              class="rounded-lg border border-edge px-4 py-2.5 font-display text-sm font-medium text-ink-secondary transition-colors hover:bg-panel-hover hover:text-ink"
               (click)="onCancel()"
             >
               Cancel
             </button>
             <button
               type="submit"
-              class="rounded bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700 disabled:opacity-50"
+              class="rounded-lg bg-signal-clear/15 px-5 py-2.5 font-display text-sm font-semibold text-signal-clear ring-1 ring-signal-clear/25 transition-all hover:bg-signal-clear/25 hover:ring-signal-clear/40 hover:shadow-[0_0_16px_var(--color-glow-green)] disabled:opacity-30"
               [disabled]="loading() || saving()"
             >
               {{ saving() ? 'Creating...' : 'Create' }}

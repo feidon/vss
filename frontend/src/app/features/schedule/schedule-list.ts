@@ -13,13 +13,19 @@ import { CreateServiceDialogComponent, CreateServiceDialogResult } from './creat
   selector: 'app-schedule-list',
   imports: [EpochTimePipe, ErrorAlertComponent],
   template: `
-    <div class="mb-4 flex items-center justify-between">
-      <h2 class="text-xl font-semibold">Schedule</h2>
+    <div class="mb-6 flex items-center justify-between animate-fade-in">
+      <div>
+        <h2 class="font-display text-2xl font-bold tracking-wide text-ink">Schedule</h2>
+        <p class="mt-0.5 font-display text-sm text-ink-muted">Service route management</p>
+      </div>
       <button
-        class="rounded bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700"
+        class="flex items-center gap-2 rounded-lg bg-signal-clear/10 px-4 py-2.5 font-display text-sm font-semibold text-signal-clear ring-1 ring-signal-clear/25 transition-all hover:bg-signal-clear/20 hover:ring-signal-clear/40 hover:shadow-[0_0_16px_var(--color-glow-green)]"
         (click)="onCreateService()"
       >
-        + Create Service
+        <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M8 3v10M3 8h10" />
+        </svg>
+        Create Service
       </button>
     </div>
 
@@ -28,60 +34,110 @@ import { CreateServiceDialogComponent, CreateServiceDialogResult } from './creat
     }
 
     @if (services().length === 0) {
-      <p class="py-4 text-gray-500">No services created yet.</p>
+      <div class="card flex flex-col items-center justify-center py-16 animate-fade-in">
+        <div
+          class="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-panel-raised ring-1 ring-edge"
+        >
+          <svg
+            class="h-6 w-6 text-ink-muted"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+          >
+            <path d="M9 6h11M9 12h11M9 18h7M4 6h.01M4 12h.01M4 18h.01" stroke-linecap="round" />
+          </svg>
+        </div>
+        <p class="font-display text-sm text-ink-muted">No services created yet</p>
+        <p class="mt-1 text-xs text-ink-muted/60">Click "Create Service" to get started</p>
+      </div>
     } @else {
-      <table class="w-full text-left text-sm">
-        <thead class="border-b text-xs uppercase text-gray-500">
-          <tr>
-            <th class="px-3 py-2">Name</th>
-            <th class="px-3 py-2">Vehicle</th>
-            <th class="px-3 py-2">Start Time</th>
-            <th class="px-3 py-2">Origin</th>
-            <th class="px-3 py-2">Destination</th>
-            <th class="px-3 py-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (service of services(); track service.id) {
-            <tr class="cursor-pointer border-b hover:bg-gray-50" (click)="toggleExpand(service)">
-              <td class="px-3 py-2 font-medium">{{ service.name }}</td>
-              <td class="px-3 py-2">{{ service.vehicle_name }}</td>
-              <td class="px-3 py-2">
-                {{ service.start_time ? (service.start_time | epochTime) : '—' }}
-              </td>
-              <td class="px-3 py-2">{{ service.origin_name ?? '—' }}</td>
-              <td class="px-3 py-2">{{ service.destination_name ?? '—' }}</td>
-              <td class="flex gap-2 px-3 py-2">
-                <button
-                  class="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
-                  (click)="onEdit(service); $event.stopPropagation()"
-                >
-                  Edit
-                </button>
-                <button
-                  class="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
-                  (click)="onDelete(service); $event.stopPropagation()"
-                >
-                  Delete
-                </button>
-              </td>
+      <div class="card overflow-hidden animate-fade-in delay-1">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Vehicle</th>
+              <th>Start Time</th>
+              <th>Origin</th>
+              <th>Destination</th>
+              <th class="text-right">Actions</th>
             </tr>
-            @if (expandedServiceId() === service.id) {
-              <tr class="border-b bg-gray-50">
-                <td colspan="6" class="px-6 py-3 text-sm text-gray-600">
-                  @if (!detailCache().has(service.id)) {
-                    Loading...
-                  } @else if (detailCache().get(service.id)!.route.length === 0) {
-                    No route defined
-                  } @else {
-                    {{ routePath(service.id) }}
-                  }
+          </thead>
+          <tbody>
+            @for (service of services(); track service.id) {
+              <tr class="cursor-pointer transition-colors" (click)="toggleExpand(service)">
+                <td class="font-display font-semibold text-ink">{{ service.name }}</td>
+                <td>
+                  <span
+                    class="inline-flex items-center gap-1.5 rounded-md bg-signal-info/10 px-2 py-0.5 text-xs font-medium text-signal-info ring-1 ring-signal-info/20"
+                  >
+                    {{ service.vehicle_name }}
+                  </span>
+                </td>
+                <td class="font-mono text-xs">
+                  {{ service.start_time ? (service.start_time | epochTime) : '—' }}
+                </td>
+                <td>{{ service.origin_name ?? '—' }}</td>
+                <td>{{ service.destination_name ?? '—' }}</td>
+                <td class="text-right">
+                  <div class="flex items-center justify-end gap-1.5">
+                    <button
+                      class="rounded-md p-1.5 text-ink-muted transition-colors hover:bg-signal-info/10 hover:text-signal-info"
+                      title="Edit"
+                      (click)="onEdit(service); $event.stopPropagation()"
+                    >
+                      <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor">
+                        <path
+                          d="M11.013 1.427a1.75 1.75 0 012.474 0l1.086 1.086a1.75 1.75 0 010 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 01-.927-.928l.929-3.25a1.75 1.75 0 01.445-.758l8.61-8.61z"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      class="rounded-md p-1.5 text-ink-muted transition-colors hover:bg-signal-danger/10 hover:text-signal-danger"
+                      title="Delete"
+                      (click)="onDelete(service); $event.stopPropagation()"
+                    >
+                      <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor">
+                        <path
+                          d="M5.75 1a.75.75 0 00-.75.75V3H2a.75.75 0 000 1.5h.75l.573 8.583A1.75 1.75 0 005.07 14.75h5.86a1.75 1.75 0 001.747-1.667L13.25 4.5H14A.75.75 0 0014 3h-3V1.75A.75.75 0 0010.25 1h-4.5zM6.5 3V2.5h3V3h-3z"
+                        />
+                      </svg>
+                    </button>
+                  </div>
                 </td>
               </tr>
+              @if (expandedServiceId() === service.id) {
+                <tr>
+                  <td colspan="6" class="!border-b-edge bg-panel-raised/50 px-6 py-3">
+                    <div class="flex items-center gap-2 font-mono text-xs text-ink-secondary">
+                      @if (!detailCache().has(service.id)) {
+                        <span
+                          class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-ink-muted border-t-signal-info"
+                        ></span>
+                        Loading...
+                      } @else if (detailCache().get(service.id)!.route.length === 0) {
+                        <span class="text-ink-muted">No route defined</span>
+                      } @else {
+                        <svg
+                          class="h-3.5 w-3.5 shrink-0 text-signal-clear"
+                          viewBox="0 0 16 16"
+                          fill="currentColor"
+                        >
+                          <path
+                            d="M8 0a8 8 0 100 16A8 8 0 008 0zm3.28 5.78l-4 4a.75.75 0 01-1.06 0l-2-2a.75.75 0 011.06-1.06L6.5 8.19l3.47-3.47a.75.75 0 011.06 1.06z"
+                          />
+                        </svg>
+                        {{ routePath(service.id) }}
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
             }
-          }
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
     }
   `,
 })

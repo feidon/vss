@@ -15,16 +15,16 @@ export interface MapStopEvent {
 @Component({
   selector: 'app-track-map-editor',
   template: `
-    <div class="relative overflow-auto rounded border bg-gray-50">
+    <div class="relative overflow-auto bg-panel-base">
       @if (showHint()) {
-        <p class="px-3 py-2 text-sm text-gray-500">
+        <p class="border-b border-edge px-4 py-2 font-display text-xs text-ink-muted">
           Click a platform or yard on the map to add a stop
         </p>
       }
       <svg #mapSvg></svg>
       <div
         #tooltip
-        class="pointer-events-none absolute z-10 hidden rounded bg-gray-900 px-2 py-1 text-xs text-white shadow"
+        class="pointer-events-none absolute z-10 hidden rounded-md bg-panel-raised px-2.5 py-1.5 font-display text-xs font-medium text-ink shadow-lg ring-1 ring-edge-bright"
       ></div>
     </div>
   `,
@@ -92,7 +92,11 @@ export class TrackMapEditorComponent {
 
     const svg = d3.select(svgEl);
     svg.selectAll('*').remove();
-    svg.attr('width', svgWidth).attr('height', svgHeight).attr('class', 'select-none');
+    svg
+      .attr('width', svgWidth)
+      .attr('height', svgHeight)
+      .attr('class', 'select-none')
+      .style('background', '#05080f');
 
     const queuedSet = new Set(queuedIds);
     const queuedOrder = new Map<string, number>();
@@ -111,7 +115,7 @@ export class TrackMapEditorComponent {
       .attr('orient', 'auto')
       .append('path')
       .attr('d', 'M 0 0 L 10 5 L 0 10 Z')
-      .attr('fill', '#64748b');
+      .attr('fill', '#4a5c75');
 
     // Draw station indicator rectangles (behind everything else)
     const stationPadding = 30;
@@ -153,10 +157,10 @@ export class TrackMapEditorComponent {
       .attr('y', (d) => d.y)
       .attr('width', (d) => d.w)
       .attr('height', (d) => d.h)
-      .attr('rx', 6)
-      .attr('ry', 6)
-      .attr('fill', '#e8f0fe')
-      .attr('stroke', '#94a3b8')
+      .attr('rx', 8)
+      .attr('ry', 8)
+      .attr('fill', '#0b1121')
+      .attr('stroke', '#1a2744')
       .attr('stroke-width', 1);
 
     stationGroups
@@ -165,9 +169,11 @@ export class TrackMapEditorComponent {
       .attr('y', (d) => d.y + d.h / 2)
       .attr('text-anchor', 'middle')
       .attr('dominant-baseline', 'central')
-      .attr('font-size', '12px')
+      .attr('font-family', 'Rajdhani, sans-serif')
+      .attr('font-size', '11px')
       .attr('font-weight', '600')
-      .attr('fill', '#475569')
+      .attr('letter-spacing', '0.05em')
+      .attr('fill', '#4a5c75')
       .text((d) => d.station.name);
 
     // Build node ID set for radius lookup (nodes=12, junctions=4)
@@ -201,7 +207,7 @@ export class TrackMapEditorComponent {
       .attr('y1', (d: Edge) => yScale(posMap.get(d.from_id)?.y ?? 0))
       .attr('x2', (d: Edge) => shortenedEnd(d).x)
       .attr('y2', (d: Edge) => shortenedEnd(d).y)
-      .attr('stroke', '#94a3b8')
+      .attr('stroke', '#263a5c')
       .attr('stroke-width', 2)
       .attr('marker-end', 'url(#arrowhead)');
 
@@ -237,8 +243,9 @@ export class TrackMapEditorComponent {
       .attr('x', (d: Edge) => edgeLabelPos(d).x)
       .attr('y', (d: Edge) => edgeLabelPos(d).y)
       .attr('text-anchor', 'middle')
-      .attr('font-size', '9px')
-      .attr('fill', '#94a3b8')
+      .attr('font-family', 'Azeret Mono, monospace')
+      .attr('font-size', '8px')
+      .attr('fill', '#3a4d6a')
       .text((d: Edge) => d.name);
 
     // Draw junction dots (small non-interactive)
@@ -251,8 +258,8 @@ export class TrackMapEditorComponent {
       .attr('cx', (d: Junction) => xScale(d.x))
       .attr('cy', (d: Junction) => yScale(d.y))
       .attr('r', 4)
-      .attr('fill', '#cbd5e1')
-      .attr('stroke', '#94a3b8')
+      .attr('fill', '#1a2744')
+      .attr('stroke', '#263a5c')
       .attr('stroke-width', 1);
 
     // Draw clickable nodes (platforms + yards)
@@ -265,15 +272,36 @@ export class TrackMapEditorComponent {
       .attr('transform', (d: Node) => `translate(${xScale(d.x)},${yScale(d.y)})`)
       .style('cursor', interactive ? 'pointer' : 'default');
 
+    // Glow filter for active nodes
+    const defs = svg.select('defs');
+    const glowFilter = defs
+      .append('filter')
+      .attr('id', 'node-glow')
+      .attr('x', '-50%')
+      .attr('y', '-50%')
+      .attr('width', '200%')
+      .attr('height', '200%');
+    glowFilter.append('feGaussianBlur').attr('stdDeviation', '4').attr('result', 'blur');
+    glowFilter
+      .append('feMerge')
+      .selectAll('feMergeNode')
+      .data(['blur', 'SourceGraphic'])
+      .enter()
+      .append('feMergeNode')
+      .attr('in', (d: string) => d);
+
     // Node circles
     nodeGroups
       .append('circle')
       .attr('r', 12)
       .attr('fill', (d: Node) =>
-        queuedSet.has(d.id) ? '#2563eb' : d.type === 'yard' ? '#f59e0b' : '#3b82f6',
+        queuedSet.has(d.id) ? '#22c55e' : d.type === 'yard' ? '#eab308' : '#38bdf8',
       )
-      .attr('stroke', (d: Node) => (queuedSet.has(d.id) ? '#1d4ed8' : '#1e40af'))
-      .attr('stroke-width', 2);
+      .attr('stroke', (d: Node) =>
+        queuedSet.has(d.id) ? '#16a34a' : d.type === 'yard' ? '#ca8a04' : '#0ea5e9',
+      )
+      .attr('stroke-width', 2)
+      .attr('filter', (d: Node) => (queuedSet.has(d.id) ? 'url(#node-glow)' : null));
 
     // Queue order numbers
     nodeGroups
@@ -291,9 +319,10 @@ export class TrackMapEditorComponent {
       .append('text')
       .attr('dy', 22)
       .attr('text-anchor', 'middle')
+      .attr('font-family', 'Rajdhani, sans-serif')
       .attr('font-size', '11px')
       .attr('font-weight', '600')
-      .attr('fill', '#1e293b')
+      .attr('fill', '#8896ab')
       .text((d: Node) => d.name);
 
     if (interactive) {

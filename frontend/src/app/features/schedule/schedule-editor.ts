@@ -20,11 +20,26 @@ import { TrackMapEditorComponent, MapStopEvent } from './track-map-editor';
   ],
   template: `
     @if (service()) {
-      <div class="mb-4">
-        <a routerLink="/schedule" class="text-sm text-gray-500 hover:text-gray-700">
-          &larr; Back to Schedule
+      <div class="mb-6 animate-fade-in">
+        <a
+          routerLink="/schedule"
+          class="group mb-2 inline-flex items-center gap-1.5 font-display text-sm text-ink-muted transition-colors hover:text-signal-info"
+        >
+          <svg
+            class="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5"
+            viewBox="0 0 16 16"
+            fill="currentColor"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M9.78 4.22a.75.75 0 010 1.06L7.06 8l2.72 2.72a.75.75 0 11-1.06 1.06L5.47 8.53a.75.75 0 010-1.06l3.25-3.25a.75.75 0 011.06 0z"
+            />
+          </svg>
+          Back to Schedule
         </a>
-        <h2 class="text-xl font-semibold">{{ service()!.name }}</h2>
+        <h2 class="font-display text-2xl font-bold tracking-wide text-ink">
+          {{ service()!.name }}
+        </h2>
       </div>
 
       @if (conflicts()) {
@@ -40,25 +55,42 @@ import { TrackMapEditorComponent, MapStopEvent } from './track-map-editor';
       }
 
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div>
+        <div class="card overflow-hidden animate-fade-in delay-1">
+          <div class="border-b border-edge px-4 py-3">
+            <h3 class="font-display text-sm font-semibold uppercase tracking-wider text-ink-muted">
+              Track Map
+            </h3>
+          </div>
           <app-track-map-editor
             [graph]="service()!.graph"
             [queuedNodeIds]="queuedNodeIds()"
             (stopAdded)="onMapStopAdded($event)"
           />
         </div>
-        <div>
-          <app-route-editor
-            [service]="service()!"
-            [graph]="service()!.graph"
-            (submitted)="onRouteSubmitted($event)"
-            (back)="onBack()"
-            (stopsChanged)="onStopsChanged($event)"
-          />
+        <div class="card overflow-hidden animate-fade-in delay-2">
+          <div class="border-b border-edge px-4 py-3">
+            <h3 class="font-display text-sm font-semibold uppercase tracking-wider text-ink-muted">
+              Route Editor
+            </h3>
+          </div>
+          <div class="p-4">
+            <app-route-editor
+              [service]="service()!"
+              [graph]="service()!.graph"
+              (submitted)="onRouteSubmitted($event)"
+              (back)="onBack()"
+              (stopsChanged)="onStopsChanged($event)"
+            />
+          </div>
         </div>
       </div>
     } @else {
-      <p class="py-4 text-gray-500">Loading service...</p>
+      <div class="flex items-center gap-3 py-12 justify-center">
+        <span
+          class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-ink-muted border-t-signal-info"
+        ></span>
+        <span class="font-display text-sm text-ink-muted">Loading service...</span>
+      </div>
     }
   `,
 })

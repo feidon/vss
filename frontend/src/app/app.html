@@ -1,23 +1,68 @@
-<header class="bg-gray-900 text-white">
-  <nav class="mx-auto flex max-w-7xl items-center gap-6 px-6 py-3">
-    <span class="text-lg font-bold tracking-tight">VSS</span>
+<header class="relative bg-panel">
+  <!-- Accent gradient line -->
+  <div class="accent-line"></div>
+
+  <nav class="mx-auto flex max-w-7xl items-center gap-1 px-6 py-3">
+    <!-- Logo -->
+    <a routerLink="/schedule" class="mr-6 flex items-center gap-2.5 group">
+      <div
+        class="flex h-8 w-8 items-center justify-center rounded-lg bg-signal-clear/10 ring-1 ring-signal-clear/30 transition-all group-hover:bg-signal-clear/20 group-hover:ring-signal-clear/50"
+      >
+        <svg
+          class="h-4 w-4 text-signal-clear"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+        >
+          <circle cx="4" cy="4" r="2.5" />
+          <circle cx="12" cy="12" r="2.5" />
+          <path d="M6 5l4 6" stroke-dasharray="2 2" />
+        </svg>
+      </div>
+      <span class="font-display text-xl font-bold tracking-wide text-ink">VSS</span>
+    </a>
+
+    <!-- Nav links -->
     <a
       routerLink="/schedule"
-      routerLinkActive="bg-gray-700"
-      class="rounded px-3 py-1.5 text-sm hover:bg-gray-800"
+      routerLinkActive="nav-active"
+      class="nav-link relative rounded-lg px-4 py-2 font-display text-sm font-medium text-ink-secondary transition-colors hover:bg-panel-hover hover:text-ink"
     >
       Schedule
     </a>
     <a
       routerLink="/config"
-      routerLinkActive="bg-gray-700"
-      class="rounded px-3 py-1.5 text-sm hover:bg-gray-800"
+      routerLinkActive="nav-active"
+      class="nav-link relative rounded-lg px-4 py-2 font-display text-sm font-medium text-ink-secondary transition-colors hover:bg-panel-hover hover:text-ink"
     >
       Config
     </a>
   </nav>
+
+  <!-- Bottom border -->
+  <div class="h-px bg-edge"></div>
 </header>
 
-<main class="mx-auto max-w-7xl px-6 py-6">
+<main class="mx-auto max-w-7xl px-6 py-8">
   <router-outlet />
 </main>
+
+<style>
+  .nav-active {
+    color: var(--color-ink) !important;
+    background: var(--color-panel-hover);
+  }
+  .nav-active::after {
+    content: '';
+    position: absolute;
+    bottom: -13px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 2px;
+    background: var(--color-signal-clear);
+    border-radius: 1px;
+    box-shadow: 0 0 8px var(--color-glow-green);
+  }
+</style>

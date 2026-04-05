@@ -22,81 +22,108 @@ interface BlockGroup {
   selector: 'app-block-config',
   imports: [ErrorAlertComponent],
   template: `
-    <h2 class="mb-4 text-xl font-semibold">Block Configuration</h2>
+    <div class="mb-6 animate-fade-in">
+      <h2 class="font-display text-2xl font-bold tracking-wide text-ink">Block Configuration</h2>
+      <p class="mt-0.5 font-display text-sm text-ink-muted">Track section traversal times</p>
+    </div>
 
     @if (error()) {
       <app-error-alert [message]="error()!" (dismiss)="error.set(null)" />
     }
 
-    <table class="w-full border-collapse text-sm">
-      <thead>
-        <tr class="border-b text-left text-gray-500">
-          <th class="px-3 py-2">Block</th>
-          <th class="px-3 py-2">Group</th>
-          <th class="px-3 py-2">Traversal Time (s)</th>
-        </tr>
-      </thead>
-      @for (g of groupedBlocks(); track g.group) {
-        <tbody>
-          <tr data-testid="group-header">
-            <td colspan="3" class="bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
-              {{ g.group === 0 ? 'Ungrouped' : 'Group ' + g.group }}
-            </td>
+    <div class="card overflow-hidden animate-fade-in delay-1">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Block</th>
+            <th>Group</th>
+            <th>Traversal Time</th>
           </tr>
-          @for (block of g.blocks; track block.id) {
-            <tr class="h-10 border-b hover:bg-gray-50">
-              <td class="px-3 py-1 font-medium">{{ block.name }}</td>
-              <td class="px-3 py-1">{{ block.group === 0 ? '-' : block.group }}</td>
-              <td class="px-3 py-1">
+        </thead>
+        @for (g of groupedBlocks(); track g.group) {
+          <tbody>
+            <tr data-testid="group-header">
+              <td colspan="3" class="!border-b-edge bg-panel-raised px-4 py-2">
                 <div class="flex items-center gap-2">
-                  @if (editingBlockId() === block.id) {
-                    <input
-                      #editInput
-                      type="number"
-                      class="h-7 w-20 rounded border px-2 text-sm"
-                      [value]="editValue()"
-                      (input)="onEditInput($event)"
-                      (keydown)="onKeydown($event, block)"
-                      (blur)="onBlur(block)"
-                    />
-                    @if (validationError()) {
-                      <span class="text-xs text-red-500">{{ validationError() }}</span>
-                    }
-                  } @else {
-                    <span
-                      class="cursor-pointer rounded px-1 hover:bg-blue-50"
-                      tabindex="0"
-                      role="button"
-                      (click)="startEdit(block)"
-                      (keydown.enter)="startEdit(block)"
-                      (keydown.space)="startEdit(block)"
-                      >{{ block.traversal_time_seconds }}</span
-                    >
-                  }
-                  <button
-                    type="button"
-                    aria-label="Edit traversal time"
-                    (mousedown)="toggleEdit($event, block)"
-                    class="shrink-0 cursor-pointer text-gray-400 hover:text-blue-600"
+                  <span
+                    class="h-1.5 w-1.5 rounded-full"
+                    [class]="g.group === 0 ? 'bg-ink-muted' : 'bg-signal-caution'"
+                  ></span>
+                  <span
+                    class="font-display text-xs font-semibold uppercase tracking-wider text-ink-muted"
                   >
-                    <svg
-                      class="h-3.5 w-3.5"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z"
-                      />
-                    </svg>
-                  </button>
+                    {{ g.group === 0 ? 'Ungrouped' : 'Interlocking Group ' + g.group }}
+                  </span>
                 </div>
               </td>
             </tr>
-          }
-        </tbody>
-      }
-    </table>
+            @for (block of g.blocks; track block.id) {
+              <tr class="h-10 transition-colors">
+                <td class="font-display font-semibold text-ink">{{ block.name }}</td>
+                <td>
+                  @if (block.group !== 0) {
+                    <span
+                      class="inline-flex items-center rounded-md bg-signal-caution/10 px-2 py-0.5 font-mono text-xs font-medium text-signal-caution ring-1 ring-signal-caution/20"
+                    >
+                      {{ block.group }}
+                    </span>
+                  } @else {
+                    <span class="text-ink-muted">—</span>
+                  }
+                </td>
+                <td>
+                  <div class="flex items-center gap-2">
+                    @if (editingBlockId() === block.id) {
+                      <input
+                        #editInput
+                        type="number"
+                        class="h-7 w-20 rounded-md px-2 font-mono text-sm"
+                        [value]="editValue()"
+                        (input)="onEditInput($event)"
+                        (keydown)="onKeydown($event, block)"
+                        (blur)="onBlur(block)"
+                      />
+                      @if (validationError()) {
+                        <span class="font-display text-xs text-signal-danger">{{
+                          validationError()
+                        }}</span>
+                      }
+                    } @else {
+                      <span
+                        class="cursor-pointer rounded-md px-2 py-0.5 font-mono text-sm text-signal-info transition-colors hover:bg-signal-info/10"
+                        tabindex="0"
+                        role="button"
+                        (click)="startEdit(block)"
+                        (keydown.enter)="startEdit(block)"
+                        (keydown.space)="startEdit(block)"
+                        >{{ block.traversal_time_seconds }}s</span
+                      >
+                    }
+                    <button
+                      type="button"
+                      aria-label="Edit traversal time"
+                      (mousedown)="toggleEdit($event, block)"
+                      class="shrink-0 cursor-pointer rounded-md p-1 text-ink-muted transition-colors hover:bg-signal-info/10 hover:text-signal-info"
+                    >
+                      <svg
+                        class="h-3.5 w-3.5"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        }
+      </table>
+    </div>
   `,
 })
 export class BlockConfigComponent implements OnInit {

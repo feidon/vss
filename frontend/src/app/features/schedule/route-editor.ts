@@ -15,61 +15,77 @@ interface StopEntry {
   imports: [FormsModule, EpochTimePipe],
   template: `
     <!-- Stop list -->
-    <div class="mb-4">
-      <h4 class="mb-2 text-sm font-medium text-gray-600">Stops</h4>
+    <div class="mb-5">
+      <h4 class="mb-2 font-display text-xs font-semibold uppercase tracking-wider text-ink-muted">
+        Stops
+      </h4>
 
       @if (stops().length > 0) {
-        <table class="w-full text-left text-sm">
-          <thead class="border-b text-xs uppercase text-gray-500">
-            <tr>
-              <th class="px-3 py-1">#</th>
-              <th class="px-3 py-1">Stop</th>
-              <th class="px-3 py-1">Dwell (s)</th>
-              <th class="px-3 py-1"></th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (stop of stops(); track $index; let i = $index) {
-              <tr class="border-b">
-                <td class="px-3 py-1">{{ i + 1 }}</td>
-                <td class="px-3 py-1">{{ stop.nodeName }}</td>
-                <td class="px-3 py-1">
-                  <input
-                    type="number"
-                    class="w-16 rounded border px-1 py-0.5 text-sm"
-                    [ngModel]="stop.dwellTime"
-                    (ngModelChange)="updateDwellTime(i, $event)"
-                    min="0"
+        <div class="space-y-1">
+          @for (stop of stops(); track $index; let i = $index) {
+            <div
+              class="flex items-center gap-3 rounded-lg bg-panel-raised/60 px-3 py-2 ring-1 ring-edge/50 transition-colors hover:ring-edge-bright/50"
+            >
+              <span
+                class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-signal-info/15 font-mono text-xs font-medium text-signal-info"
+              >
+                {{ i + 1 }}
+              </span>
+              <span class="flex-1 font-display text-sm font-medium text-ink">
+                {{ stop.nodeName }}
+              </span>
+              <div class="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  class="h-7 w-16 rounded-md px-2 text-center font-mono text-xs"
+                  [ngModel]="stop.dwellTime"
+                  (ngModelChange)="updateDwellTime(i, $event)"
+                  min="0"
+                />
+                <span class="text-[0.65rem] text-ink-muted">s</span>
+              </div>
+              <button
+                class="rounded-md p-1 text-ink-muted transition-colors hover:bg-signal-danger/10 hover:text-signal-danger"
+                title="Remove stop"
+                (click)="removeStop(i)"
+              >
+                <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor">
+                  <path
+                    d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"
                   />
-                </td>
-                <td class="px-3 py-1">
-                  <button class="text-xs text-red-600 hover:text-red-800" (click)="removeStop(i)">
-                    Remove
-                  </button>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
+                </svg>
+              </button>
+            </div>
+          }
+        </div>
+      } @else {
+        <p
+          class="rounded-lg border border-dashed border-edge py-6 text-center font-display text-xs text-ink-muted"
+        >
+          Click stops on the track map to add them
+        </p>
       }
     </div>
 
     <!-- Start time -->
-    <div class="mb-4">
-      <label class="mb-1 block text-sm font-medium text-gray-600" for="start-time">
+    <div class="mb-5">
+      <label
+        class="mb-1.5 block font-display text-xs font-semibold uppercase tracking-wider text-ink-muted"
+        for="start-time"
+      >
         Start Time
       </label>
       <input
         id="start-time"
         type="datetime-local"
-        class="rounded border px-2 py-1 text-sm"
+        class="h-9 w-full rounded-lg px-3 font-mono text-sm"
         [(ngModel)]="startTimeLocal"
       />
     </div>
 
     <!-- Submit -->
     <button
-      class="rounded bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700 disabled:opacity-50"
+      class="w-full rounded-lg bg-signal-clear/15 px-4 py-2.5 font-display text-sm font-semibold text-signal-clear ring-1 ring-signal-clear/25 transition-all hover:bg-signal-clear/25 hover:ring-signal-clear/40 hover:shadow-[0_0_16px_var(--color-glow-green)] disabled:opacity-30 disabled:hover:bg-signal-clear/15 disabled:hover:shadow-none"
       [disabled]="stops().length < 2 || !startTimeLocal()"
       (click)="onSubmit()"
     >
@@ -78,22 +94,26 @@ interface StopEntry {
 
     <!-- Timetable display -->
     @if (service().timetable.length > 0) {
-      <div class="mt-6">
-        <h4 class="mb-2 text-sm font-medium text-gray-600">Timetable</h4>
-        <table class="w-full text-left text-sm">
-          <thead class="border-b text-xs uppercase text-gray-500">
+      <div class="mt-6 border-t border-edge pt-5">
+        <h4 class="mb-3 font-display text-xs font-semibold uppercase tracking-wider text-ink-muted">
+          Timetable
+        </h4>
+        <table class="data-table">
+          <thead>
             <tr>
-              <th class="px-3 py-1">Node</th>
-              <th class="px-3 py-1">Arrival</th>
-              <th class="px-3 py-1">Departure</th>
+              <th>Node</th>
+              <th>Arrival</th>
+              <th>Departure</th>
             </tr>
           </thead>
           <tbody>
             @for (entry of service().timetable; track entry.order) {
-              <tr class="border-b">
-                <td class="px-3 py-1">{{ nodeName(entry.node_id) }}</td>
-                <td class="px-3 py-1">{{ entry.arrival | epochTime }}</td>
-                <td class="px-3 py-1">{{ entry.departure | epochTime }}</td>
+              <tr>
+                <td class="font-display font-medium text-ink">{{ nodeName(entry.node_id) }}</td>
+                <td class="font-mono text-xs text-signal-info">{{ entry.arrival | epochTime }}</td>
+                <td class="font-mono text-xs text-signal-info">
+                  {{ entry.departure | epochTime }}
+                </td>
               </tr>
             }
           </tbody>
