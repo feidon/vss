@@ -18,3 +18,4 @@ export type {
   ConflictResponse,
 } from './conflict';
 export type { ErrorDetail } from './error';
+export type { GenerateScheduleRequest, GenerateScheduleResponse } from './schedule';

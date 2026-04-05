@@ -10,6 +10,7 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../shared/componen
 import { extractErrorMessage } from '../../shared/utils/error-utils';
 import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
 import { CreateServiceDialogComponent, CreateServiceDialogResult } from './create-service-dialog';
+import { AutoScheduleDialogComponent, AutoScheduleDialogResult } from './auto-schedule-dialog';
 
 @Component({
   selector: 'app-schedule-list',
@@ -20,15 +21,38 @@ import { CreateServiceDialogComponent, CreateServiceDialogResult } from './creat
         <h2 class="font-display text-3xl font-bold tracking-wide text-ink">Schedule</h2>
         <p class="mt-0.5 font-display text-base text-ink-muted">Service route management</p>
       </div>
-      <button
-        class="flex items-center gap-2 rounded-lg bg-signal-clear/10 px-4 py-2.5 font-display text-base font-semibold text-signal-clear ring-1 ring-signal-clear/25 transition-all hover:bg-signal-clear/20 hover:ring-signal-clear/40 hover:shadow-[0_0_16px_var(--color-glow-green)]"
-        (click)="onCreateService()"
-      >
-        <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M8 3v10M3 8h10" />
-        </svg>
-        Create Service
-      </button>
+      <div class="flex items-center gap-3">
+        <button
+          class="flex items-center gap-2 rounded-lg bg-signal-caution/10 px-4 py-2.5 font-display text-base font-semibold text-signal-caution ring-1 ring-signal-caution/25 transition-all hover:bg-signal-caution/20 hover:ring-signal-caution/40"
+          (click)="onAutoSchedule()"
+        >
+          <svg
+            class="h-4 w-4"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M2 8h3l2-5 3 10 2-5h3" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          Auto Schedule
+        </button>
+        <button
+          class="flex items-center gap-2 rounded-lg bg-signal-clear/10 px-4 py-2.5 font-display text-base font-semibold text-signal-clear ring-1 ring-signal-clear/25 transition-all hover:bg-signal-clear/20 hover:ring-signal-clear/40 hover:shadow-[0_0_16px_var(--color-glow-green)]"
+          (click)="onCreateService()"
+        >
+          <svg
+            class="h-4 w-4"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M8 3v10M3 8h10" />
+          </svg>
+          Create Service
+        </button>
+      </div>
     </div>
 
     @if (errorMessage()) {
@@ -163,6 +187,15 @@ export class ScheduleListComponent implements OnInit {
     ref.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
       if (result) {
         this.router.navigate(['/schedule', result.serviceId, 'edit']);
+      }
+    });
+  }
+
+  onAutoSchedule(): void {
+    const ref = this.dialog.open<AutoScheduleDialogResult>(AutoScheduleDialogComponent);
+    ref.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
+      if (result) {
+        this.loadServices();
       }
     });
   }
