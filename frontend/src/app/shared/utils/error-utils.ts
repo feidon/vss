@@ -9,39 +9,25 @@ function name(id: unknown, nameMap: ReadonlyMap<string, string>): string | undef
   return typeof id === 'string' ? nameMap.get(id) : undefined;
 }
 
+function named(key: string, template: (n: string) => string): ErrorFormatter {
+  return (ctx, m) => {
+    const n = name(ctx[key], m);
+    return n ? template(n) : null;
+  };
+}
+
 const ERROR_FORMATTERS: Readonly<Record<string, ErrorFormatter>> = {
-  VEHICLE_NOT_FOUND: (ctx, m) => {
-    const n = name(ctx['vehicle_id'], m);
-    return n ? `Vehicle "${n}" not found` : null;
-  },
-  STOP_NOT_FOUND: (ctx, m) => {
-    const n = name(ctx['stop_id'], m);
-    return n ? `Stop "${n}" not found` : null;
-  },
-  SAME_ORIGIN_DESTINATION: (ctx, m) => {
-    const n = name(ctx['stop_id'], m);
-    return n ? `Origin and destination cannot both be "${n}"` : null;
-  },
+  VEHICLE_NOT_FOUND: named('vehicle_id', (n) => `Vehicle "${n}" not found`),
+  STOP_NOT_FOUND: named('stop_id', (n) => `Stop "${n}" not found`),
+  SAME_ORIGIN_DESTINATION: named('stop_id', (n) => `Origin and destination cannot both be "${n}"`),
+  BLOCK_NOT_FOUND: named('block_id', (n) => `Block "${n}" not found`),
+  PLATFORM_NOT_FOUND: named('platform_id', (n) => `Platform "${n}" not found`),
+  UNKNOWN_NODE: named('node_id', (n) => `Unknown node "${n}"`),
+  ENTRY_NODE_NOT_IN_ROUTE: named('node_id', (n) => `Node "${n}" is not part of the route`),
   NO_ROUTE_BETWEEN_STOPS: (ctx, m) => {
     const from = name(ctx['from_stop_id'], m);
     const to = name(ctx['to_stop_id'], m);
     return from && to ? `No route between ${from} and ${to}` : null;
-  },
-  BLOCK_NOT_FOUND: (ctx, m) => {
-    const n = name(ctx['block_id'], m);
-    return n ? `Block "${n}" not found` : null;
-  },
-  PLATFORM_NOT_FOUND: (ctx, m) => {
-    const n = name(ctx['platform_id'], m);
-    return n ? `Platform "${n}" not found` : null;
-  },
-  UNKNOWN_NODE: (ctx, m) => {
-    const n = name(ctx['node_id'], m);
-    return n ? `Unknown node "${n}"` : null;
-  },
-  ENTRY_NODE_NOT_IN_ROUTE: (ctx, m) => {
-    const n = name(ctx['node_id'], m);
-    return n ? `Node "${n}" is not part of the route` : null;
   },
   INSUFFICIENT_VEHICLES: (ctx) => {
     const needed = ctx['needed'];

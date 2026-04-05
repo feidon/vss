@@ -1,10 +1,23 @@
 import { Component, computed, input, output } from '@angular/core';
-import { ConflictResponse, GraphResponse } from '../../shared/models';
+import {
+  ConflictResponse,
+  GraphResponse,
+  VehicleConflict,
+  BlockConflict,
+  InterlockingConflict,
+} from '../../shared/models';
 import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
+
+const epochPipe = new EpochTimePipe();
+
+interface ConflictSection {
+  readonly title: string;
+  readonly items: readonly string[];
+}
 
 @Component({
   selector: 'app-conflict-alert',
-  imports: [EpochTimePipe],
+  imports: [],
   template: `
     <div
       class="animate-fade-in relative mb-4 overflow-hidden rounded-lg border border-signal-danger/25 bg-signal-danger/5 p-5 text-base shadow-[0_0_24px_var(--color-glow-red)]"
@@ -40,70 +53,18 @@ import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
       </div>
 
       <div class="space-y-3 pl-7">
-        @if (conflicts().vehicle_conflicts.length > 0) {
+        @for (section of conflictSections(); track section.title) {
           <div>
             <h5
               class="mb-1 font-display text-sm font-semibold uppercase tracking-wider text-signal-danger/80"
             >
-              Vehicle Conflicts
+              {{ section.title }}
             </h5>
             <ul class="space-y-0.5">
-              @for (c of conflicts().vehicle_conflicts; track $index) {
+              @for (item of section.items; track $index) {
                 <li class="flex items-start gap-2 text-signal-danger/70">
                   <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-signal-danger/50"></span>
-                  <span class="font-display">
-                    {{ vehicleName(c.vehicle_id) }} - S{{ c.service_a_id }} &amp; S{{
-                      c.service_b_id
-                    }}:
-                    {{ c.reason }}
-                  </span>
-                </li>
-              }
-            </ul>
-          </div>
-        }
-
-        @if (conflicts().block_conflicts.length > 0) {
-          <div>
-            <h5
-              class="mb-1 font-display text-sm font-semibold uppercase tracking-wider text-signal-danger/80"
-            >
-              Block Conflicts
-            </h5>
-            <ul class="space-y-0.5">
-              @for (c of conflicts().block_conflicts; track $index) {
-                <li class="flex items-start gap-2 text-signal-danger/70">
-                  <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-signal-danger/50"></span>
-                  <span class="font-display">
-                    {{ nodeName(c.block_id) }} - S{{ c.service_a_id }} &amp; S{{ c.service_b_id }}
-                    <span class="font-mono text-sm"
-                      >({{ c.overlap_start | epochTime }} – {{ c.overlap_end | epochTime }})</span
-                    >
-                  </span>
-                </li>
-              }
-            </ul>
-          </div>
-        }
-
-        @if (conflicts().interlocking_conflicts.length > 0) {
-          <div>
-            <h5
-              class="mb-1 font-display text-sm font-semibold uppercase tracking-wider text-signal-danger/80"
-            >
-              Interlocking Conflicts
-            </h5>
-            <ul class="space-y-0.5">
-              @for (c of conflicts().interlocking_conflicts; track $index) {
-                <li class="flex items-start gap-2 text-signal-danger/70">
-                  <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-signal-danger/50"></span>
-                  <span class="font-display">
-                    Group {{ c.group }} - {{ nodeName(c.block_a_id) }} &amp;
-                    {{ nodeName(c.block_b_id) }}, S{{ c.service_a_id }} &amp; S{{ c.service_b_id }}
-                    <span class="font-mono text-sm"
-                      >({{ c.overlap_start | epochTime }} – {{ c.overlap_end | epochTime }})</span
-                    >
-                  </span>
+                  <span class="font-display">{{ item }}</span>
                 </li>
               }
             </ul>
@@ -158,6 +119,43 @@ export class ConflictAlertComponent {
       map.set(v.id, v.name);
     }
     return map;
+  });
+
+  readonly conflictSections = computed<readonly ConflictSection[]>(() => {
+    const c = this.conflicts();
+    const sections: ConflictSection[] = [];
+
+    if (c.vehicle_conflicts.length > 0) {
+      sections.push({
+        title: 'Vehicle Conflicts',
+        items: c.vehicle_conflicts.map(
+          (v: VehicleConflict) =>
+            `${this.vehicleName(v.vehicle_id)} - S${v.service_a_id} & S${v.service_b_id}: ${v.reason}`,
+        ),
+      });
+    }
+
+    if (c.block_conflicts.length > 0) {
+      sections.push({
+        title: 'Block Conflicts',
+        items: c.block_conflicts.map(
+          (b: BlockConflict) =>
+            `${this.nodeName(b.block_id)} - S${b.service_a_id} & S${b.service_b_id} (${epochPipe.transform(b.overlap_start)} – ${epochPipe.transform(b.overlap_end)})`,
+        ),
+      });
+    }
+
+    if (c.interlocking_conflicts.length > 0) {
+      sections.push({
+        title: 'Interlocking Conflicts',
+        items: c.interlocking_conflicts.map(
+          (ic: InterlockingConflict) =>
+            `Group ${ic.group} - ${this.nodeName(ic.block_a_id)} & ${this.nodeName(ic.block_b_id)}, S${ic.service_a_id} & S${ic.service_b_id} (${epochPipe.transform(ic.overlap_start)} – ${epochPipe.transform(ic.overlap_end)})`,
+        ),
+      });
+    }
+
+    return sections;
   });
 
   nodeName(id: string): string {

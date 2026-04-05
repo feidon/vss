@@ -57,21 +57,17 @@ class ScheduleAppService:
             stations, blocks, connections, req.dwell_time_seconds
         )
 
-        # 4. Calculate num_vehicles needed
-        max_cycle = max(v.cycle_time for v in variants)
-        max_blocks = max(v.num_blocks for v in variants)
-        worst_yard_dwell = max_blocks * 12
-        effective_cycle = max_cycle + worst_yard_dwell
-        num_vehicles = math.ceil(effective_cycle / req.interval_seconds) + 1
+        # 4. Compute tile_period and num_vehicles
+        cycle_times = [v.cycle_time for v in variants]
+        min_yard_dwells = [v.num_blocks * 12 for v in variants]
+        tile_period = max(c + y for c, y in zip(cycle_times, min_yard_dwells))
+        num_vehicles = math.ceil(tile_period / req.interval_seconds) + 1
 
         if num_vehicles > len(vehicles):
             await self._vehicle_repo.add_by_number(num_vehicles - len(vehicles))
             vehicles = await self._vehicle_repo.find_all()
 
         used_vehicles = vehicles[:num_vehicles]
-        trips_per_vehicle = max(
-            (req.end_time - req.start_time) // (num_vehicles * req.interval_seconds), 1
-        )
 
         # 5. Build interlocking groups
         interlocking_groups: dict[int, list] = {}
@@ -79,61 +75,74 @@ class ScheduleAppService:
             if b.group != 0:
                 interlocking_groups.setdefault(b.group, []).append(b.id)
 
-        # 6. Build SolverInput and call solve_schedule()
+        # 6. Solve one cycle
         solver_input = SolverInput(
             variants=variants,
             num_vehicles=num_vehicles,
             vehicle_ids=[v.id for v in used_vehicles],
-            trips_per_vehicle=trips_per_vehicle,
+            tile_period=tile_period,
             interval_seconds=req.interval_seconds,
-            start_time=req.start_time,
-            end_time=req.end_time,
-            min_yard_dwells=[v.num_blocks * 12 for v in variants],
-            cycle_times=[v.cycle_time for v in variants],
+            min_yard_dwells=min_yard_dwells,
+            cycle_times=cycle_times,
             interlocking_groups=interlocking_groups,
         )
 
         result = solve_schedule(solver_input)
 
-        # 7. If infeasible
         if result is None:
             raise DomainError(
                 ErrorCode.SCHEDULE_INFEASIBLE,
                 "Schedule is infeasible: solver could not find a valid assignment",
             )
 
-        # 8. Delete all existing services
+        # 7. Delete all existing services
         await self._service_repo.delete_all()
 
-        # 9. For each trip assignment: build Service, persist
+        # 8. Tile across [start_time, end_time], only emit complete tiles
+        #    A tile is "complete" when every trip finishes before end_time.
+        #    Partial tiles would break the station frequency guarantee.
+        max_cycle = max(cycle_times)
+        cycle_end = max(
+            a.depart_time + variants[a.variant_index].cycle_time
+            for a in result.assignments
+        )
+        yard = next(s for s in stations if s.is_yard)
         services: list[Service] = []
-        for assignment in result.assignments:
-            variant = variants[assignment.variant_index]
-            vehicle = used_vehicles[assignment.vehicle_index]
+        tile = 0
+        while True:
+            tile_start = req.start_time + tile * tile_period
+            if tile_start + cycle_end > req.end_time:
+                break
+            for assignment in result.assignments:
+                depart_abs = tile_start + assignment.depart_time
+                variant = variants[assignment.variant_index]
+                vehicle = used_vehicles[assignment.vehicle_index]
 
-            dwell_by_stop = {sid: req.dwell_time_seconds for sid in variant.stop_ids}
-            yard = next(s for s in stations if s.is_yard)
-            dwell_by_stop[yard.id] = 0  # yard dwell handled by solver spacing
+                dwell_by_stop = {
+                    sid: req.dwell_time_seconds for sid in variant.stop_ids
+                }
+                dwell_by_stop[yard.id] = 0
 
-            route, timetable = build_full_route(
-                variant.stop_ids,
-                dwell_by_stop,
-                assignment.depart_time,
-                connections,
-                stations,
-                blocks,
-            )
+                route, timetable = build_full_route(
+                    variant.stop_ids,
+                    dwell_by_stop,
+                    depart_abs,
+                    connections,
+                    stations,
+                    blocks,
+                )
 
-            service = Service(
-                name=f"Auto-V{assignment.vehicle_index + 1}-T{assignment.trip_index + 1}",
-                vehicle_id=vehicle.id,
-                route=route,
-                timetable=timetable,
-            )
-            created = await self._service_repo.create(service)
-            services.append(created)
+                service = Service(
+                    name=f"Auto-V{assignment.vehicle_index + 1}-T{tile + 1}",
+                    vehicle_id=vehicle.id,
+                    route=route,
+                    timetable=timetable,
+                )
+                created = await self._service_repo.create(service)
+                services.append(created)
+            tile += 1
 
-        # 10. Sanity check: run conflict detection on all generated services
+        # 9. Sanity check: run conflict detection on all generated services
         block_occ, group_occ = build_occupancies(services, blocks)
         block_conflicts = detect_block_conflicts(block_occ)
         interlocking_conflicts = detect_interlocking_conflicts(group_occ)
@@ -159,7 +168,7 @@ class ScheduleAppService:
                 f"BUG: Generated schedule has conflicts: {', '.join(conflict_details)}"
             )
 
-        # 11. Return response
+        # 10. Return response
         return GenerateScheduleResponse(
             services_created=len(services),
             vehicles_used=[v.id for v in used_vehicles],

@@ -46,10 +46,8 @@ class SolverInput:
     variants: list[RouteVariant]
     num_vehicles: int
     vehicle_ids: list[UUID]
-    trips_per_vehicle: int
+    tile_period: int  # seconds; max(cycle_time + yard_dwell) across variants
     interval_seconds: int
-    start_time: EpochSeconds
-    end_time: EpochSeconds
     min_yard_dwells: list[int]  # per variant index
     cycle_times: list[int]  # per variant index
     interlocking_groups: dict[int, list[UUID]]  # group_id -> block_ids

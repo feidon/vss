@@ -193,6 +193,25 @@ class TestScheduleAppService:
                     f"Yard dwell {yard_dwell}s < min {min_dwell}s for {num_blocks} blocks"
                 )
 
+    async def test_tiling_produces_multiple_trips_per_vehicle(self):
+        """With a 2-hour window, each vehicle should serve multiple trips."""
+        app, service_repo = _make_app()
+        req = GenerateScheduleRequest(
+            interval_seconds=360,
+            start_time=0,
+            end_time=7200,
+            dwell_time_seconds=30,
+        )
+        await app.generate_schedule(req)
+        services = await service_repo.find_all()
+
+        by_vehicle: dict[str, list] = {}
+        for svc in services:
+            by_vehicle.setdefault(str(svc.vehicle_id), []).append(svc)
+
+        for vid, trips in by_vehicle.items():
+            assert len(trips) > 1, f"Vehicle {vid} has only {len(trips)} trip(s)"
+
 
 def _make_app_with_vehicles(num_vehicles: int):
     """Build ScheduleAppService seeding exactly `num_vehicles` vehicles."""

@@ -23,38 +23,31 @@ def solve_schedule(
     *,
     timeout_seconds: int = 60,
 ) -> SolverOutput | None:
-    """Solve the vehicle scheduling problem using CP-SAT.
+    """Solve one cycle of the vehicle scheduling problem using CP-SAT.
 
-    Decision variables per trip:
-        depart_time  – IntVar in [start_time, end_time - max_cycle]
-        s1_out       – BoolVar (0=P1A, 1=P1B)
-        s3           – BoolVar (0=P3A, 1=P3B)
-        s1_ret       – BoolVar (0=P1A, 1=P1B)
-        variant_idx  – IntVar derived as s1_out*4 + s3*2 + s1_ret
+    Produces exactly num_vehicles trip assignments (one per vehicle).
+    Departures are 0-based offsets within [0, tile_period).
+    Ghost intervals shifted by +tile_period enforce wraparound safety
+    so the solution can be tiled without conflicts.
 
     Constraints:
-        C1 – Block occupancy (no overlap on same block)
-        C2 – Interlocking (no overlap on blocks in same group)
-        C3 – Vehicle continuity (consecutive trips spaced by cycle + yard dwell)
-        C5 – Station frequency (consecutive arrivals at each station within interval)
-        C6 – Time range (departures within allowed window)
+        C1 - Block occupancy (no overlap on same block, incl. wraparound ghosts)
+        C2 - Interlocking (no overlap in same group, incl. wraparound ghosts)
+        C5 - Station frequency (consecutive arrivals within interval + wraparound)
+        C6 - Departures within [0, tile_period)
     """
     model = cp_model.CpModel()
-    total_trips = inp.num_vehicles * inp.trips_per_vehicle
-    max_cycle = max(inp.cycle_times)
-    time_horizon = inp.end_time + max_cycle
+    num_trips = inp.num_vehicles
+    P = inp.tile_period
 
-    # ── Decision variables ──────────────────────────────────────
+    # -- Decision variables --------------------------------------------------
 
     depart: list[cp_model.IntVar] = []
     variant_idx: list[cp_model.IntVar] = []
-
-    # Pre-create is_variant[s][v] booleans - shared across all constraints
     is_variant: list[list[cp_model.IntVar]] = []
 
-    for s in range(total_trips):
-        # C6: departures within [start_time, end_time - max_cycle]
-        d = model.new_int_var(inp.start_time, inp.end_time - max_cycle, f"depart_{s}")
+    for s in range(num_trips):
+        d = model.new_int_var(0, P - 1, f"depart_{s}")
         depart.append(d)
 
         b_s1_out = model.new_bool_var(f"s1_out_{s}")
@@ -65,14 +58,13 @@ def solve_schedule(
         model.add(vi == b_s1_out * 4 + b_s3 * 2 + b_s1_ret)
         variant_idx.append(vi)
 
-        # Create exactly-one booleans for each variant
         bools = [model.new_bool_var(f"is_v{v}_t{s}") for v in range(8)]
         for v in range(8):
             model.add(vi == v).only_enforce_if(bools[v])
             model.add(vi != v).only_enforce_if(~bools[v])
         is_variant.append(bools)
 
-    # ── Precompute block-to-variant timing lookup ───────────────
+    # -- Block-to-variant timing lookup --------------------------------------
 
     block_occurrences: dict[UUID, list[tuple[int, int, int]]] = defaultdict(list)
     for var in inp.variants:
@@ -81,99 +73,68 @@ def solve_schedule(
                 (var.index, bt.enter_offset, bt.exit_offset)
             )
 
-    # Identify which blocks are in interlocking groups (C2 subsumes C1)
     group_block_set: set[UUID] = set()
     for gblocks in inp.interlocking_groups.values():
         group_block_set.update(gblocks)
 
-    # Helper to create optional interval for a (trip, block, variant) combo
-    def _make_optional_interval(
+    # -- Interval helpers ----------------------------------------------------
+
+    def _make_interval(
         s: int,
         var_i: int,
         enter_off: int,
         exit_off: int,
         prefix: str,
+        shift: int = 0,
     ) -> cp_model.IntervalVar:
+        """Create optional interval at depart[s] + shift + enter_off."""
         lit = is_variant[s][var_i]
         duration = exit_off - enter_off
-        start = model.new_int_var(
-            inp.start_time + enter_off,
-            inp.end_time - max_cycle + enter_off,
-            f"{prefix}_start_t{s}_v{var_i}",
-        )
-        model.add(start == depart[s] + enter_off).only_enforce_if(lit)
+        lo = shift + enter_off
+        hi = P - 1 + shift + enter_off
+        start = model.new_int_var(lo, hi, f"{prefix}_st_t{s}_v{var_i}")
+        model.add(start == depart[s] + shift + enter_off).only_enforce_if(lit)
         return model.new_optional_fixed_size_interval_var(
             start, duration, lit, f"{prefix}_iv_t{s}_v{var_i}"
         )
 
-    # ── C1 + C2: Block and interlocking constraints ─────────────
-    # For interlocking groups: one NoOverlap per group (all blocks in group).
-    # For non-group blocks: one NoOverlap per block.
-    # This avoids duplicating constraints for interlocking-group blocks.
+    def _block_intervals(
+        bid: UUID,
+        occs: list[tuple[int, int, int]],
+        prefix: str,
+    ) -> list[cp_model.IntervalVar]:
+        """Real + ghost intervals for one block across all trips."""
+        intervals: list[cp_model.IntervalVar] = []
+        for s in range(num_trips):
+            for var_i, enter_off, exit_off in occs:
+                intervals.append(_make_interval(s, var_i, enter_off, exit_off, prefix))
+                intervals.append(
+                    _make_interval(
+                        s, var_i, enter_off, exit_off, f"g_{prefix}", shift=P
+                    )
+                )
+        return intervals
 
-    # C1: per-block NoOverlap for blocks NOT in any interlocking group
+    # -- C1: Block occupancy (non-interlocking) + wraparound -----------------
+
     for bid, occs in block_occurrences.items():
         if bid in group_block_set:
             continue
-        intervals: list[cp_model.IntervalVar] = []
-        for s in range(total_trips):
-            for var_i, enter_off, exit_off in occs:
-                intervals.append(
-                    _make_optional_interval(s, var_i, enter_off, exit_off, f"b_{bid}")
-                )
+        intervals = _block_intervals(bid, occs, f"b_{bid}")
         if len(intervals) > 1:
             model.add_no_overlap(intervals)
 
-    # C2: per-group NoOverlap (subsumes C1 for these blocks)
+    # -- C2: Interlocking groups + wraparound --------------------------------
+
     for group_id, group_block_ids in inp.interlocking_groups.items():
         group_intervals: list[cp_model.IntervalVar] = []
         for bid in group_block_ids:
-            for s in range(total_trips):
-                for var_i, enter_off, exit_off in block_occurrences.get(bid, []):
-                    group_intervals.append(
-                        _make_optional_interval(
-                            s,
-                            var_i,
-                            enter_off,
-                            exit_off,
-                            f"g{group_id}_{bid}",
-                        )
-                    )
+            occs = block_occurrences.get(bid, [])
+            group_intervals.extend(_block_intervals(bid, occs, f"g{group_id}_{bid}"))
         if len(group_intervals) > 1:
             model.add_no_overlap(group_intervals)
 
-    # ── C3: Vehicle continuity ──────────────────────────────────
-
-    for v in range(inp.num_vehicles):
-        vehicle_trips = [
-            v * inp.trips_per_vehicle + t for t in range(inp.trips_per_vehicle)
-        ]
-
-        for i in range(len(vehicle_trips) - 1):
-            s_prev = vehicle_trips[i]
-            s_next = vehicle_trips[i + 1]
-
-            cycle_var = model.new_int_var(
-                min(inp.cycle_times),
-                max(inp.cycle_times),
-                f"cycle_{s_prev}",
-            )
-            model.add_element(variant_idx[s_prev], inp.cycle_times, cycle_var)
-
-            yd_var = model.new_int_var(
-                min(inp.min_yard_dwells),
-                max(inp.min_yard_dwells),
-                f"yd_{s_prev}",
-            )
-            model.add_element(variant_idx[s_prev], inp.min_yard_dwells, yd_var)
-
-            model.add(depart[s_next] >= depart[s_prev] + cycle_var + yd_var)
-
-        # Symmetry breaking: order trips within a vehicle
-        for i in range(len(vehicle_trips) - 1):
-            model.add(depart[vehicle_trips[i]] < depart[vehicle_trips[i + 1]])
-
-    # ── C5: Station frequency ───────────────────────────────────
+    # -- C5: Station frequency + wraparound ----------------------------------
 
     station_names = ["S1", "S2", "S3"]
     for sname in station_names:
@@ -183,11 +144,14 @@ def solve_schedule(
             visits_per_variant.append([h.arrival_offset for h in hits])
 
         num_visits = len(visits_per_variant[0])
+        time_horizon = 2 * P + max(
+            off for offsets in visits_per_variant for off in offsets
+        )
 
         arrivals: list[cp_model.IntVar] = []
         for visit_idx in range(num_visits):
             offsets = [visits_per_variant[v][visit_idx] for v in range(8)]
-            for s in range(total_trips):
+            for s in range(num_trips):
                 off_var = model.new_int_var(
                     min(offsets),
                     max(offsets),
@@ -195,7 +159,7 @@ def solve_schedule(
                 )
                 model.add_element(variant_idx[s], offsets, off_var)
                 arr = model.new_int_var(
-                    inp.start_time,
+                    0,
                     time_horizon,
                     f"arr_{sname}_v{visit_idx}_t{s}",
                 )
@@ -207,8 +171,7 @@ def solve_schedule(
             continue
 
         sorted_arr = [
-            model.new_int_var(inp.start_time, time_horizon, f"sorted_{sname}_{k}")
-            for k in range(n)
+            model.new_int_var(0, time_horizon, f"sorted_{sname}_{k}") for k in range(n)
         ]
         pos = [model.new_int_var(0, n - 1, f"pos_{sname}_{i}") for i in range(n)]
         model.add_all_different(pos)
@@ -220,7 +183,12 @@ def solve_schedule(
             model.add(sorted_arr[k] <= sorted_arr[k + 1])
             model.add(sorted_arr[k + 1] - sorted_arr[k] <= inp.interval_seconds)
 
-    # ── Solve ───────────────────────────────────────────────────
+        # Wraparound: gap from last arrival to first arrival of next tile
+        # (first_of_next_tile) - last_of_this_tile <= interval
+        # (sorted_arr[0] + P) - sorted_arr[n-1] <= interval
+        model.add(sorted_arr[0] + P - sorted_arr[n - 1] <= inp.interval_seconds)
+
+    # -- Solve ---------------------------------------------------------------
 
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = timeout_seconds
@@ -232,13 +200,11 @@ def solve_schedule(
         return None
 
     assignments: list[TripAssignment] = []
-    for s in range(total_trips):
-        vehicle_index = s // inp.trips_per_vehicle
-        trip_index = s % inp.trips_per_vehicle
+    for s in range(num_trips):
         assignments.append(
             TripAssignment(
-                vehicle_index=vehicle_index,
-                trip_index=trip_index,
+                vehicle_index=s,
+                trip_index=0,
                 depart_time=solver.value(depart[s]),
                 variant_index=solver.value(variant_idx[s]),
             )

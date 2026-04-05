@@ -8,9 +8,138 @@ interface Position {
   readonly y: number;
 }
 
+interface StationBounds {
+  readonly station: Station;
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+}
+
 export interface MapStopEvent {
   readonly nodeId: string;
   readonly nodeName: string;
+}
+
+function computeStationBounds(
+  stations: readonly Station[],
+  nodeMap: ReadonlyMap<string, Node>,
+  xScale: d3.ScaleLinear<number, number>,
+  yScale: d3.ScaleLinear<number, number>,
+): readonly StationBounds[] {
+  const padding = 30;
+  const minSize = 60;
+
+  return stations
+    .map((station) => {
+      const platforms = station.platform_ids
+        .map((pid) => nodeMap.get(pid))
+        .filter((n): n is Node => n !== undefined);
+      if (platforms.length === 0) return null;
+
+      const sxs = platforms.map((p) => xScale(p.x));
+      const sys = platforms.map((p) => yScale(p.y));
+      const rawX = Math.min(...sxs) - padding;
+      const rawY = Math.min(...sys) - padding;
+      const rawW = Math.max(...sxs) - Math.min(...sxs) + padding * 2;
+      const rawH = Math.max(...sys) - Math.min(...sys) + padding * 2;
+      const cx = rawX + rawW / 2;
+      const cy = rawY + rawH / 2;
+      const w = Math.max(rawW, minSize);
+      const h = Math.max(rawH, minSize);
+      return { station, x: cx - w / 2, y: cy - h / 2, w, h };
+    })
+    .filter((s): s is StationBounds => s !== null);
+}
+
+function drawEdges(
+  svg: d3.Selection<SVGSVGElement, unknown, null, undefined>,
+  edges: readonly Edge[],
+  posMap: ReadonlyMap<string, Position>,
+  nodeIdSet: ReadonlySet<string>,
+  xScale: d3.ScaleLinear<number, number>,
+  yScale: d3.ScaleLinear<number, number>,
+): void {
+  const targetRadius = (id: string) => (nodeIdSet.has(id) ? 12 : 4);
+
+  const shortenedEnd = (d: Edge) => {
+    const sx1 = xScale(posMap.get(d.from_id)?.x ?? 0);
+    const sy1 = yScale(posMap.get(d.from_id)?.y ?? 0);
+    const sx2 = xScale(posMap.get(d.to_id)?.x ?? 0);
+    const sy2 = yScale(posMap.get(d.to_id)?.y ?? 0);
+    const dx = sx2 - sx1;
+    const dy = sy2 - sy1;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const r = targetRadius(d.to_id);
+    return { x: sx2 - (dx / len) * r, y: sy2 - (dy / len) * r };
+  };
+
+  const edgeGroups = svg.selectAll('g.edge').data(edges).enter().append('g').attr('class', 'edge');
+
+  edgeGroups
+    .append('line')
+    .attr('x1', (d: Edge) => xScale(posMap.get(d.from_id)?.x ?? 0))
+    .attr('y1', (d: Edge) => yScale(posMap.get(d.from_id)?.y ?? 0))
+    .attr('x2', (d: Edge) => shortenedEnd(d).x)
+    .attr('y2', (d: Edge) => shortenedEnd(d).y)
+    .attr('stroke', THEME.edgeBright)
+    .attr('stroke-width', 2)
+    .attr('marker-end', 'url(#arrowhead)');
+
+  // Label positioning: offset perpendicular to edge, staggered for parallel edges
+  const baseOffset = 14;
+  const edgePairIndex = new Map<string, number>();
+  const edgePairCount = new Map<string, number>();
+  for (const edge of edges) {
+    const key = [edge.from_id, edge.to_id].sort().join('|');
+    const count = edgePairCount.get(key) ?? 0;
+    edgePairIndex.set(edge.id, count);
+    edgePairCount.set(key, count + 1);
+  }
+
+  const edgeLabelPos = (d: Edge) => {
+    const sx1 = xScale(posMap.get(d.from_id)?.x ?? 0);
+    const sy1 = yScale(posMap.get(d.from_id)?.y ?? 0);
+    const sx2 = xScale(posMap.get(d.to_id)?.x ?? 0);
+    const sy2 = yScale(posMap.get(d.to_id)?.y ?? 0);
+    const dx = sx2 - sx1;
+    const dy = sy2 - sy1;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const idx = edgePairIndex.get(d.id) ?? 0;
+    const offset = baseOffset + idx * 14;
+    return {
+      x: (sx1 + sx2) / 2 + (-dy / len) * offset,
+      y: (sy1 + sy2) / 2 + (dx / len) * offset,
+    };
+  };
+
+  edgeGroups
+    .append('text')
+    .attr('x', (d: Edge) => edgeLabelPos(d).x)
+    .attr('y', (d: Edge) => edgeLabelPos(d).y)
+    .attr('text-anchor', 'middle')
+    .attr('font-family', 'Azeret Mono, monospace')
+    .attr('font-size', '10px')
+    .attr('fill', THEME.inkMuted)
+    .text((d: Edge) => d.name);
+}
+
+function createGlowFilter(defs: d3.Selection<SVGDefsElement, unknown, null, undefined>): void {
+  const filter = defs
+    .append('filter')
+    .attr('id', 'node-glow')
+    .attr('x', '-50%')
+    .attr('y', '-50%')
+    .attr('width', '200%')
+    .attr('height', '200%');
+  filter.append('feGaussianBlur').attr('stdDeviation', '4').attr('result', 'blur');
+  filter
+    .append('feMerge')
+    .selectAll('feMergeNode')
+    .data(['blur', 'SourceGraphic'])
+    .enter()
+    .append('feMergeNode')
+    .attr('in', (d: string) => d);
 }
 
 @Component({
@@ -104,8 +233,8 @@ export class TrackMapEditorComponent {
     queuedIds.forEach((id, i) => queuedOrder.set(id, i + 1));
 
     // Define arrowhead marker
-    svg
-      .append('defs')
+    const defs = svg.append('defs');
+    defs
       .append('marker')
       .attr('id', 'arrowhead')
       .attr('viewBox', '0 0 10 10')
@@ -118,31 +247,9 @@ export class TrackMapEditorComponent {
       .attr('d', 'M 0 0 L 10 5 L 0 10 Z')
       .attr('fill', THEME.inkMuted);
 
-    // Draw station indicator rectangles (behind everything else)
-    const stationPadding = 30;
-    const minStationSize = 60;
+    // Station indicator rectangles (behind everything else)
     const nodeMap = new Map(graph.nodes.map((n) => [n.id, n]));
-
-    const stationsWithBounds = graph.stations
-      .map((station: Station) => {
-        const platforms = station.platform_ids
-          .map((pid) => nodeMap.get(pid))
-          .filter((n): n is Node => n !== undefined);
-        if (platforms.length === 0) return null;
-
-        const sxs = platforms.map((p) => xScale(p.x));
-        const sys = platforms.map((p) => yScale(p.y));
-        const rawX = Math.min(...sxs) - stationPadding;
-        const rawY = Math.min(...sys) - stationPadding;
-        const rawW = Math.max(...sxs) - Math.min(...sxs) + stationPadding * 2;
-        const rawH = Math.max(...sys) - Math.min(...sys) + stationPadding * 2;
-        const cx = rawX + rawW / 2;
-        const cy = rawY + rawH / 2;
-        const w = Math.max(rawW, minStationSize);
-        const h = Math.max(rawH, minStationSize);
-        return { station, x: cx - w / 2, y: cy - h / 2, w, h };
-      })
-      .filter((s): s is NonNullable<typeof s> => s !== null);
+    const stationsWithBounds = computeStationBounds(graph.stations, nodeMap, xScale, yScale);
 
     const stationGroups = svg
       .selectAll('g.station')
@@ -177,79 +284,11 @@ export class TrackMapEditorComponent {
       .attr('fill', THEME.inkMuted)
       .text((d) => d.station.name);
 
-    // Build node ID set for radius lookup (nodes=12, junctions=4)
+    // Edges (blocks) as labeled lines with direction arrows
     const nodeIdSet = new Set(graph.nodes.map((n) => n.id));
-    const targetRadius = (id: string) => (nodeIdSet.has(id) ? 12 : 4);
+    drawEdges(svg, graph.edges, posMap, nodeIdSet, xScale, yScale);
 
-    // Compute shortened endpoint that stops at target node boundary
-    const shortenedEnd = (d: Edge) => {
-      const sx1 = xScale(posMap.get(d.from_id)?.x ?? 0);
-      const sy1 = yScale(posMap.get(d.from_id)?.y ?? 0);
-      const sx2 = xScale(posMap.get(d.to_id)?.x ?? 0);
-      const sy2 = yScale(posMap.get(d.to_id)?.y ?? 0);
-      const dx = sx2 - sx1;
-      const dy = sy2 - sy1;
-      const len = Math.sqrt(dx * dx + dy * dy) || 1;
-      const r = targetRadius(d.to_id);
-      return { x: sx2 - (dx / len) * r, y: sy2 - (dy / len) * r };
-    };
-
-    // Draw edges (blocks) as labeled lines with direction arrows
-    const edgeGroups = svg
-      .selectAll('g.edge')
-      .data(graph.edges)
-      .enter()
-      .append('g')
-      .attr('class', 'edge');
-
-    edgeGroups
-      .append('line')
-      .attr('x1', (d: Edge) => xScale(posMap.get(d.from_id)?.x ?? 0))
-      .attr('y1', (d: Edge) => yScale(posMap.get(d.from_id)?.y ?? 0))
-      .attr('x2', (d: Edge) => shortenedEnd(d).x)
-      .attr('y2', (d: Edge) => shortenedEnd(d).y)
-      .attr('stroke', THEME.edgeBright)
-      .attr('stroke-width', 2)
-      .attr('marker-end', 'url(#arrowhead)');
-
-    // Block labels offset perpendicular to edge direction (computed in screen space)
-    // Group edges by shared endpoint pair for index-based staggering
-    const baseOffset = 14;
-    const edgePairIndex = new Map<string, number>();
-    const edgePairCount = new Map<string, number>();
-    for (const edge of graph.edges) {
-      const key = [edge.from_id, edge.to_id].sort().join('|');
-      const count = edgePairCount.get(key) ?? 0;
-      edgePairIndex.set(edge.id, count);
-      edgePairCount.set(key, count + 1);
-    }
-
-    const edgeLabelPos = (d: Edge) => {
-      const sx1 = xScale(posMap.get(d.from_id)?.x ?? 0);
-      const sy1 = yScale(posMap.get(d.from_id)?.y ?? 0);
-      const sx2 = xScale(posMap.get(d.to_id)?.x ?? 0);
-      const sy2 = yScale(posMap.get(d.to_id)?.y ?? 0);
-      const dx = sx2 - sx1;
-      const dy = sy2 - sy1;
-      const len = Math.sqrt(dx * dx + dy * dy) || 1;
-      const idx = edgePairIndex.get(d.id) ?? 0;
-      const offset = baseOffset + idx * 14;
-      return {
-        x: (sx1 + sx2) / 2 + (-dy / len) * offset,
-        y: (sy1 + sy2) / 2 + (dx / len) * offset,
-      };
-    };
-    edgeGroups
-      .append('text')
-      .attr('x', (d: Edge) => edgeLabelPos(d).x)
-      .attr('y', (d: Edge) => edgeLabelPos(d).y)
-      .attr('text-anchor', 'middle')
-      .attr('font-family', 'Azeret Mono, monospace')
-      .attr('font-size', '10px')
-      .attr('fill', THEME.inkMuted)
-      .text((d: Edge) => d.name);
-
-    // Draw junction dots (small non-interactive)
+    // Junction dots (small non-interactive)
     svg
       .selectAll('circle.junction')
       .data(graph.junctions)
@@ -263,7 +302,7 @@ export class TrackMapEditorComponent {
       .attr('stroke', THEME.edgeBright)
       .attr('stroke-width', 1);
 
-    // Draw clickable nodes (platforms + yards)
+    // Clickable nodes (platforms + yards)
     const nodeGroups = svg
       .selectAll('g.clickable')
       .data(graph.nodes)
@@ -274,22 +313,7 @@ export class TrackMapEditorComponent {
       .style('cursor', interactive ? 'pointer' : 'default');
 
     // Glow filter for active nodes
-    const defs = svg.select('defs');
-    const glowFilter = defs
-      .append('filter')
-      .attr('id', 'node-glow')
-      .attr('x', '-50%')
-      .attr('y', '-50%')
-      .attr('width', '200%')
-      .attr('height', '200%');
-    glowFilter.append('feGaussianBlur').attr('stdDeviation', '4').attr('result', 'blur');
-    glowFilter
-      .append('feMerge')
-      .selectAll('feMergeNode')
-      .data(['blur', 'SourceGraphic'])
-      .enter()
-      .append('feMergeNode')
-      .attr('in', (d: string) => d);
+    createGlowFilter(defs);
 
     // Node circles
     nodeGroups
