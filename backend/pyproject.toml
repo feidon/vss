@@ -8,7 +8,6 @@ dependencies = [
     "alembic>=1.18.4",
     "asyncpg>=0.31.0",
     "fastapi>=0.135.2",
-    "ortools>=9.15.6755",
     "psycopg[binary]>=3.3.3",
     "python-dotenv>=1.2.2",
     "sqlalchemy>=2.0.48",
