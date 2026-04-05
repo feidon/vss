@@ -50,7 +50,8 @@
       "Bash(npx tsc:*)",
       "mcp__filesystem__search_files",
       "Bash(wc -l /home/feidon/Documents/vss/frontend/src/app/**/*.ts /home/feidon/Documents/vss/frontend/src/app/**/**/*.ts /home/feidon/Documents/vss/frontend/src/app/**/**/**/*.ts)",
-      "Bash(ng test:*)"
+      "Bash(ng test:*)",
+      "mcp__filesystem__list_directory_with_sizes"
     ]
   },
   "enabledMcpjsonServers": [
