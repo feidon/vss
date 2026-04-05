@@ -51,6 +51,13 @@ const ERROR_FORMATTERS: Readonly<Record<string, ErrorFormatter>> = {
   INVALID_INTERVAL: () => 'Invalid schedule interval',
   INVALID_DWELL_TIME: () => 'Invalid dwell time',
   INVALID_TIME_RANGE: () => 'Invalid time range',
+  INTERVAL_BELOW_MINIMUM: (ctx) => {
+    const requested = ctx['requested_interval'];
+    const minimum = ctx['minimum_interval'];
+    return typeof requested === 'number' && typeof minimum === 'number'
+      ? `Interval ${requested}s is below the minimum of ${minimum}s due to interlocking constraints.`
+      : null;
+  },
 };
 
 export function extractErrorMessage(

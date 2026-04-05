@@ -170,6 +170,39 @@ describe('extractErrorMessage', () => {
       expect(extractErrorMessage(err, fallback, nameMap)).toBe(fallback);
     });
 
+    it('should format INTERVAL_BELOW_MINIMUM with interval values', () => {
+      const err = new HttpErrorResponse({
+        status: 400,
+        error: {
+          detail: {
+            error_code: 'INTERVAL_BELOW_MINIMUM',
+            context: {
+              requested_interval: 59,
+              minimum_interval: 60,
+              dwell_time: 15,
+              min_departure_gap: 75,
+            },
+          },
+        },
+      });
+      expect(extractErrorMessage(err, fallback)).toBe(
+        'Interval 59s is below the minimum of 60s due to interlocking constraints.',
+      );
+    });
+
+    it('should return fallback for INTERVAL_BELOW_MINIMUM with missing context', () => {
+      const err = new HttpErrorResponse({
+        status: 400,
+        error: {
+          detail: {
+            error_code: 'INTERVAL_BELOW_MINIMUM',
+            context: {},
+          },
+        },
+      });
+      expect(extractErrorMessage(err, fallback)).toBe(fallback);
+    });
+
     it('should return fallback for unknown error code', () => {
       const err = new HttpErrorResponse({
         status: 400,
