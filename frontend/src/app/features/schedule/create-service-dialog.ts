@@ -6,7 +6,7 @@ import { VehicleService } from '../../core/services/vehicle.service';
 import { ServiceService } from '../../core/services/service.service';
 import { Vehicle } from '../../shared/models';
 import { ErrorAlertComponent } from '../../shared/components/error-alert';
-import { extractErrorMessage } from '../../shared/utils/error-utils';
+import { extractErrorMessage, buildNameMap } from '../../shared/utils/error-utils';
 
 export interface CreateServiceDialogResult {
   readonly serviceId: number;
@@ -138,7 +138,9 @@ export class CreateServiceDialogComponent implements OnInit {
         this.dialogRef.close({ serviceId: res.id });
       },
       error: (err: HttpErrorResponse) => {
-        this.createError.set(extractErrorMessage(err, 'Failed to create service.'));
+        this.createError.set(
+          extractErrorMessage(err, 'Failed to create service.', buildNameMap(this.vehicles())),
+        );
         this.saving.set(false);
       },
     });

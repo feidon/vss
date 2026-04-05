@@ -168,6 +168,34 @@ describe('BlockConfigComponent', () => {
     httpTesting.expectOne((r) => r.url.endsWith(`/blocks/${GROUPED_BLOCK.id}`)).flush({});
   });
 
+  it('should resolve block UUID in structured error message on update failure', () => {
+    const fixture = createAndLoad([GROUPED_BLOCK]);
+    const component = fixture.componentInstance;
+
+    component.startEdit(GROUPED_BLOCK);
+    component.editValue.set(60);
+    fixture.detectChanges();
+
+    component.onBlur(GROUPED_BLOCK);
+    fixture.detectChanges();
+
+    httpTesting
+      .expectOne((r) => r.url.endsWith(`/blocks/${GROUPED_BLOCK.id}`))
+      .flush(
+        {
+          detail: {
+            error_code: 'INVALID_TRAVERSAL_TIME',
+            message: `Invalid traversal time for block ${GROUPED_BLOCK.id}`,
+            context: { block_id: GROUPED_BLOCK.id },
+          },
+        },
+        { status: 400, statusText: 'Bad Request' },
+      );
+    fixture.detectChanges();
+
+    expect(component.error()).toBe('Invalid traversal time');
+  });
+
   it('should cancel without saving on Escape', () => {
     const fixture = createAndLoad([GROUPED_BLOCK]);
     const component = fixture.componentInstance;

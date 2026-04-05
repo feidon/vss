@@ -162,6 +162,37 @@ describe('ScheduleEditorComponent', () => {
     httpTesting.expectOne(`${API_BASE_URL}/services/101`).flush(mockServiceDetail);
   });
 
+  it('should resolve UUIDs to names in structured error message', async () => {
+    const fixture = TestBed.createComponent(ScheduleEditorComponent);
+    fixture.detectChanges();
+
+    httpTesting.expectOne(`${API_BASE_URL}/services/101`).flush(mockServiceDetail);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const component = fixture.componentInstance;
+    component.onRouteSubmitted({
+      stops: [
+        { node_id: 'p1', dwell_time: 60 },
+        { node_id: 'p2', dwell_time: 45 },
+      ],
+      start_time: 1700000000,
+    });
+
+    httpTesting.expectOne(`${API_BASE_URL}/services/101/route`).flush(
+      {
+        detail: {
+          error_code: 'NO_ROUTE_BETWEEN_STOPS',
+          context: { from_stop_id: 'p1', to_stop_id: 'p2' },
+        },
+      },
+      { status: 422, statusText: 'Unprocessable Entity' },
+    );
+
+    expect(component.errorMessage()).toBe('No route between P1A and P2A');
+    expect(component.conflicts()).toBeNull();
+  });
+
   it('should set conflicts signal on 409 route update', async () => {
     const fixture = TestBed.createComponent(ScheduleEditorComponent);
     fixture.detectChanges();
@@ -181,18 +212,20 @@ describe('ScheduleEditorComponent', () => {
 
     const conflictBody = {
       detail: {
-        message: 'Conflicts detected',
-        vehicle_conflicts: [
-          {
-            vehicle_id: 'v1',
-            service_a_id: 101,
-            service_b_id: 102,
-            reason: 'Overlapping time windows',
-          },
-        ],
-        block_conflicts: [],
-        interlocking_conflicts: [],
-        battery_conflicts: [],
+        error_code: 'SCHEDULING_CONFLICT',
+        context: {
+          vehicle_conflicts: [
+            {
+              vehicle_id: 'v1',
+              service_a_id: 101,
+              service_b_id: 102,
+              reason: 'Overlapping time windows',
+            },
+          ],
+          block_conflicts: [],
+          interlocking_conflicts: [],
+          battery_conflicts: [],
+        },
       },
     };
 
@@ -204,7 +237,6 @@ describe('ScheduleEditorComponent', () => {
     await fixture.whenStable();
 
     expect(component.conflicts()).toBeTruthy();
-    expect(component.conflicts()!.message).toBe('Conflicts detected');
     expect(component.conflicts()!.vehicle_conflicts.length).toBe(1);
   });
 });

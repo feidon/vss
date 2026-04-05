@@ -5,7 +5,7 @@ import { switchMap } from 'rxjs';
 import { ServiceService } from '../../core/services/service.service';
 import { ServiceDetailResponse, ConflictResponse } from '../../shared/models';
 import { ErrorAlertComponent } from '../../shared/components/error-alert';
-import { extractErrorMessage } from '../../shared/utils/error-utils';
+import { extractErrorMessage, buildNameMap } from '../../shared/utils/error-utils';
 import { RouteEditorComponent } from './route-editor';
 import { ConflictAlertComponent } from './conflict-alert';
 import { TrackMapEditorComponent, MapStopEvent } from './track-map-editor';
@@ -115,8 +115,16 @@ export class ScheduleEditorComponent implements OnInit {
     this.serviceService.getService(id).subscribe({
       next: (s) => this.service.set(s),
       error: (err: HttpErrorResponse) =>
-        this.errorMessage.set(extractErrorMessage(err, 'Failed to load service.')),
+        this.errorMessage.set(
+          extractErrorMessage(err, 'Failed to load service.', this.graphNameMap()),
+        ),
     });
+  }
+
+  private graphNameMap(): Map<string, string> | undefined {
+    const graph = this.service()?.graph;
+    if (!graph) return undefined;
+    return buildNameMap(graph.nodes, graph.edges, graph.vehicles);
   }
 
   onMapStopAdded(event: MapStopEvent): void {
@@ -141,16 +149,19 @@ export class ScheduleEditorComponent implements OnInit {
         next: (s) => this.service.set(s),
         error: (err: HttpErrorResponse) => {
           if (err.status === 409) {
-            const body = err.error;
-            const detail = body?.detail ?? body;
-            if (detail && 'vehicle_conflicts' in detail && 'block_conflicts' in detail) {
-              this.conflicts.set(detail as ConflictResponse);
+            const context = err.error?.detail?.context;
+            if (context && 'vehicle_conflicts' in context && 'block_conflicts' in context) {
+              this.conflicts.set(context as ConflictResponse);
             } else {
               this.errorMessage.set('Conflict detected but response format was unexpected.');
             }
           } else {
             this.errorMessage.set(
-              extractErrorMessage(err, 'Failed to update route. Please try again.'),
+              extractErrorMessage(
+                err,
+                'Failed to update route. Please try again.',
+                this.graphNameMap(),
+              ),
             );
           }
         },

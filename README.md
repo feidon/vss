@@ -376,3 +376,11 @@ vss/
             ├── block-config/    # Block traversal time editing
             └── track-map/       # d3.js interactive visualization (bonus)
 ```
+
+## Todo
+
+- frontend
+  - the route editor's stops queue, it should be able to drag and drop to change the order 
+    
+- backend
+  - some domain error codes don't return explicit error response, like validation and no route. they don't indicate where the error happened

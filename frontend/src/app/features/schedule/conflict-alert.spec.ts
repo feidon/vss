@@ -28,7 +28,6 @@ const mockGraph: GraphResponse = {
 })
 class TestHostComponent {
   conflicts = signal<ConflictResponse>({
-    message: 'Conflicts detected',
     vehicle_conflicts: [],
     block_conflicts: [],
     interlocking_conflicts: [],
@@ -54,7 +53,6 @@ describe('ConflictAlertComponent', () => {
 
   it('should display vehicle name instead of UUID', () => {
     host.conflicts.set({
-      message: 'Conflicts detected',
       vehicle_conflicts: [
         {
           vehicle_id: 'v1',
@@ -79,7 +77,6 @@ describe('ConflictAlertComponent', () => {
 
   it('should display block name instead of UUID', () => {
     host.conflicts.set({
-      message: 'Conflicts detected',
       vehicle_conflicts: [],
       block_conflicts: [
         {
@@ -103,7 +100,6 @@ describe('ConflictAlertComponent', () => {
 
   it('should display interlocking conflict with block names', () => {
     host.conflicts.set({
-      message: 'Conflicts detected',
       vehicle_conflicts: [],
       block_conflicts: [],
       interlocking_conflicts: [
@@ -131,7 +127,6 @@ describe('ConflictAlertComponent', () => {
 
   it('should display service names with S prefix for battery conflicts', () => {
     host.conflicts.set({
-      message: 'Conflicts detected',
       vehicle_conflicts: [],
       block_conflicts: [],
       interlocking_conflicts: [],
@@ -146,7 +141,6 @@ describe('ConflictAlertComponent', () => {
 
   it('should fall back to raw ID when node not found in graph', () => {
     host.conflicts.set({
-      message: 'Conflicts detected',
       vehicle_conflicts: [],
       block_conflicts: [
         {
@@ -168,7 +162,6 @@ describe('ConflictAlertComponent', () => {
 
   it('should fall back to raw ID when vehicle not found in graph', () => {
     host.conflicts.set({
-      message: 'Conflicts detected',
       vehicle_conflicts: [
         { vehicle_id: 'unknown-vehicle', service_a_id: 101, service_b_id: 102, reason: 'Overlap' },
       ],

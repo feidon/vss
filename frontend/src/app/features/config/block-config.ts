@@ -12,6 +12,7 @@ import {
 import { BlockService } from '../../core/services/block.service';
 import { BlockResponse } from '../../shared/models';
 import { ErrorAlertComponent } from '../../shared/components/error-alert';
+import { extractErrorMessage, buildNameMap } from '../../shared/utils/error-utils';
 
 interface BlockGroup {
   readonly group: number;
@@ -213,9 +214,11 @@ export class BlockConfigComponent implements OnInit {
     this.updateBlockLocally(block.id, value);
     this.editingBlockId.set(null);
     this.blockService.updateBlock(block.id, { traversal_time_seconds: value }).subscribe({
-      error: () => {
+      error: (err) => {
         this.updateBlockLocally(block.id, previousValue);
-        this.error.set(`Failed to update ${block.name}.`);
+        this.error.set(
+          extractErrorMessage(err, `Failed to update ${block.name}.`, buildNameMap(this.blocks())),
+        );
       },
     });
   }

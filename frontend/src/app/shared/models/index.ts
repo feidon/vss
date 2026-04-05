@@ -17,3 +17,4 @@ export type {
   BatteryConflict,
   ConflictResponse,
 } from './conflict';
+export type { ErrorDetail } from './error';

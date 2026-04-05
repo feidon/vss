@@ -40,7 +40,8 @@
       "Bash(mv /home/feidon/Documents/vss/openspec/changes/separate-service-repo-create-update /home/feidon/Documents/vss/openspec/changes/archive/2026-04-03-separate-service-repo-create-update)",
       "Bash(cp:*)",
       "Bash(wc:*)",
-      "Bash(mv /home/feidon/Documents/vss/openspec/changes/seed-block-geometry /home/feidon/Documents/vss/openspec/changes/archive/2026-04-04-seed-block-geometry)"
+      "Bash(mv /home/feidon/Documents/vss/openspec/changes/seed-block-geometry /home/feidon/Documents/vss/openspec/changes/archive/2026-04-04-seed-block-geometry)",
+      "Read(//tmp/**)"
     ]
   },
   "enabledMcpjsonServers": [

@@ -65,6 +65,32 @@ describe('CreateServiceDialogComponent', () => {
     expect(dialogRefSpy.close).toHaveBeenCalledWith();
   });
 
+  it('should resolve vehicle UUID in structured creation error', () => {
+    const fixture = TestBed.createComponent(CreateServiceDialogComponent);
+    fixture.detectChanges();
+
+    httpTesting.expectOne(`${API_BASE_URL}/vehicles`).flush([{ id: 'v1', name: 'V1' }]);
+    fixture.detectChanges();
+
+    const component = fixture.componentInstance;
+    component.name.set('S201');
+    component.vehicleId.set('v1');
+    component.onSubmit();
+
+    httpTesting.expectOne(`${API_BASE_URL}/services`).flush(
+      {
+        detail: {
+          error_code: 'VEHICLE_NOT_FOUND',
+          context: { vehicle_id: 'v1' },
+        },
+      },
+      { status: 400, statusText: 'Bad Request' },
+    );
+    fixture.detectChanges();
+
+    expect(component.createError()).toBe('Vehicle "V1" not found');
+  });
+
   it('should show error when vehicles fail to load', () => {
     const fixture = TestBed.createComponent(CreateServiceDialogComponent);
     fixture.detectChanges();

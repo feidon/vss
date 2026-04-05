@@ -29,7 +29,6 @@ export interface BatteryConflict {
 }
 
 export interface ConflictResponse {
-  readonly message: string;
   readonly vehicle_conflicts: readonly VehicleConflict[];
   readonly block_conflicts: readonly BlockConflict[];
   readonly interlocking_conflicts: readonly InterlockingConflict[];
