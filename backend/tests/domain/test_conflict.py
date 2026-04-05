@@ -127,7 +127,7 @@ class TestBlockConflicts:
         assert result.block_conflicts[0].block_id == block.id
 
     def test_finds_all_overlapping_pairs(self):
-        """A:[0,10], B:[1,2], C:[3,9] — should find A-B, A-C, B-C is not overlap (3 >= 2)."""
+        """A:[0,10], B:[1,2], C:[3,9] - should find A-B, A-C, B-C is not overlap (3 >= 2)."""
         block = make_block()
         node = make_block_node(block.id)
         sa = make_service_with_window(uuid7(), node, arrival=0, departure=10)
@@ -271,7 +271,7 @@ def make_service_with_mid_yard(
 
 class TestBatteryConflicts:
     def test_no_conflict_sufficient_battery(self):
-        """5 blocks: 80 - 5 = 75% — well above 30%."""
+        """5 blocks: 80 - 5 = 75% - well above 30%."""
         v = Vehicle(id=uuid7(), name="V1")
         s = make_multi_block_service(v.id, num_blocks=5, arrival=0)
 
@@ -279,7 +279,7 @@ class TestBatteryConflicts:
         assert result.battery_conflicts == []
 
     def test_low_battery_conflict_detected(self):
-        """75 blocks: 80 - 75 = 5% < 30% — should trigger LowBatteryConflict."""
+        """75 blocks: 80 - 75 = 5% < 30% - should trigger LowBatteryConflict."""
         v = Vehicle(id=uuid7(), name="V1")
         s = make_multi_block_service(v.id, num_blocks=75, arrival=0)
 
@@ -307,7 +307,7 @@ class TestBatteryConflicts:
         assert result.has_conflicts
 
     def test_charging_prevents_conflict(self):
-        """Enough idle time at the Yard to charge above 80% — no conflict."""
+        """Enough idle time at the Yard to charge above 80% - no conflict."""
         v = Vehicle(id=uuid7(), name="V1")
         # Service 1: 50 blocks → 80 - 50 = 30%, returns to Yard
         s1 = make_multi_block_service(
@@ -321,7 +321,7 @@ class TestBatteryConflicts:
         assert result.battery_conflicts == []
 
     def test_no_charging_when_not_at_yard(self):
-        """Vehicle doesn't return to Yard between services — battery drops to critical."""
+        """Vehicle doesn't return to Yard between services - battery drops to critical."""
         v = Vehicle(id=uuid7(), name="V1")
         # Service 1: 50 blocks → 80 - 50 = 30%, does NOT return to Yard
         s1 = make_multi_block_service(v.id, num_blocks=50, arrival=0, block_time=10)
@@ -385,7 +385,7 @@ class TestBatteryConflicts:
     def test_battery_exactly_at_critical_threshold_no_conflict(self):
         """Battery at exactly 30% is NOT critical (< 30 required)."""
         v = Vehicle(id=uuid7(), name="V1")
-        # 50 blocks: 80 - 50 = 30 — exactly at threshold, not below
+        # 50 blocks: 80 - 50 = 30 - exactly at threshold, not below
         s = make_multi_block_service(v.id, num_blocks=50, arrival=0)
 
         result = validate(s, [], vehicles=[v])
@@ -394,7 +394,7 @@ class TestBatteryConflicts:
     def test_battery_exactly_at_depart_threshold_no_conflict(self):
         """Battery at exactly 80% can depart (>= 80 required)."""
         v = Vehicle(id=uuid7(), name="V1")
-        # 50 blocks → 30%, yard charges 600s → 30 + 50 = 80% — exactly at threshold
+        # 50 blocks → 30%, yard charges 600s → 30 + 50 = 80% - exactly at threshold
         s1 = make_multi_block_service(
             v.id, num_blocks=50, arrival=0, block_time=10, ends_at_yard=True
         )
@@ -414,7 +414,7 @@ class TestBatteryConflicts:
         """Battery simulation only considers services assigned to the candidate's vehicle."""
         v1 = Vehicle(id=uuid7(), name="V1")
         v2 = Vehicle(id=uuid7(), name="V2")
-        # v2 has a heavy service — should not affect v1's battery
+        # v2 has a heavy service - should not affect v1's battery
         heavy = make_multi_block_service(v2.id, num_blocks=75, arrival=0, block_time=10)
         light = make_multi_block_service(v1.id, num_blocks=5, arrival=0, block_time=10)
 

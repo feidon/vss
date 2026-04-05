@@ -41,7 +41,7 @@ class RouteVariant:
 
 @dataclass(frozen=True)
 class SolverInput:
-    """Everything the CP-SAT solver needs — no domain objects."""
+    """Everything the CP-SAT solver needs - no domain objects."""
 
     variants: list[RouteVariant]
     num_vehicles: int

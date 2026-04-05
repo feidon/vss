@@ -143,7 +143,7 @@ def create_connections() -> frozenset[NodeConnection]:
     y = YARD_ID
 
     edges: list[tuple[UUID, UUID]] = [
-        # B1 / B2 — bidirectional between Yard and S1 platforms
+        # B1 / B2 - bidirectional between Yard and S1 platforms
         (y, b["B1"]),
         (b["B1"], p["P1A"]),
         (p["P1A"], b["B1"]),
