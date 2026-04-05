@@ -129,7 +129,6 @@ export class RouteEditorComponent {
     stops: { node_id: string; dwell_time: number }[];
     start_time: number;
   }>();
-  readonly back = output<void>();
   readonly stopsChanged = output<readonly string[]>();
 
   readonly stops = signal<readonly StopEntry[]>([]);

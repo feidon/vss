@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { TrackMapEditorComponent } from './track-map-editor';
 import { GraphResponse } from '../../shared/models';
+import { THEME } from '../../shared/theme-constants';
 import { ComponentFixture } from '@angular/core/testing';
 
 const mockGraph: GraphResponse = {
@@ -83,7 +84,7 @@ describe('TrackMapEditorComponent', () => {
     expect(Number(marker.getAttribute('markerWidth'))).toBeGreaterThanOrEqual(8);
     expect(Number(marker.getAttribute('markerHeight'))).toBeGreaterThanOrEqual(8);
     const arrowPath = marker.querySelector('path');
-    expect(arrowPath?.getAttribute('fill')).toBe('#64748b');
+    expect(arrowPath?.getAttribute('fill')).toBe(THEME.inkMuted);
   });
 
   it('should apply marker-end to all edge lines', () => {
@@ -108,7 +109,7 @@ describe('TrackMapEditorComponent', () => {
     const b0Line = lines[0] as SVGLineElement;
     const b1Line = lines[1] as SVGLineElement;
 
-    // The target p1 is a node (radius 12) — x2 should be pulled back from p1's position
+    // The target p1 is a node (radius 12) - x2 should be pulled back from p1's position
     const p1ScreenX = Number(
       svg
         .querySelectorAll('g.clickable')[0]
@@ -120,7 +121,7 @@ describe('TrackMapEditorComponent', () => {
       expect(b0X2).toBeLessThan(p1ScreenX);
     }
 
-    // The target j1 is a junction (radius 4) — should be shortened less than node edges
+    // The target j1 is a junction (radius 4) - should be shortened less than node edges
     const b1X2 = Number(b1Line.getAttribute('x2'));
     const b0X2 = Number(b0Line.getAttribute('x2'));
     // Both lines point right; junction target should be closer to actual position
@@ -238,7 +239,7 @@ describe('TrackMapEditorComponent', () => {
 
     const svg = fixture.nativeElement.querySelector('svg');
     const stationGroups = svg.querySelectorAll('g.station');
-    // Y station has 1 platform — bounding box collapses, minimum size enforced
+    // Y station has 1 platform - bounding box collapses, minimum size enforced
     const yardGroup = Array.from(stationGroups as NodeListOf<SVGGElement>).find(
       (g) => g.querySelector('text')?.textContent === 'Y',
     );
@@ -266,9 +267,9 @@ describe('TrackMapEditorComponent', () => {
     const svg = fixture.nativeElement.querySelector('svg');
     const rect = svg.querySelector('g.station rect');
     expect(rect).toBeTruthy();
-    expect(rect.getAttribute('fill')).toBe('#e8f0fe');
-    expect(rect.getAttribute('stroke')).toBe('#94a3b8');
-    expect(rect.getAttribute('rx')).toBe('6');
+    expect(rect.getAttribute('fill')).toBe(THEME.panel);
+    expect(rect.getAttribute('stroke')).toBe(THEME.edge);
+    expect(rect.getAttribute('rx')).toBe('8');
   });
 
   it('should show queue numbers for queued nodes', () => {

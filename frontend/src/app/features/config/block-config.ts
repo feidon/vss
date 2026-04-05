@@ -68,7 +68,7 @@ interface BlockGroup {
                       {{ block.group }}
                     </span>
                   } @else {
-                    <span class="text-ink-muted">—</span>
+                    <span class="text-ink-muted">-</span>
                   }
                 </td>
                 <td>
@@ -158,8 +158,7 @@ export class BlockConfigComponent implements OnInit {
   ngOnInit(): void {
     this.blockService.getBlocks().subscribe({
       next: (blocks) => {
-        blocks.sort((a, b) => a.id.localeCompare(b.id));
-        this.blocks.set(blocks);
+        this.blocks.set([...blocks].sort((a, b) => a.id.localeCompare(b.id)));
       },
       error: () => this.error.set('Failed to load blocks.'),
     });

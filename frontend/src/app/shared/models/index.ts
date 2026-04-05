@@ -1,4 +1,4 @@
-export type { PlatformNode, YardNode, Node } from './node';
+export type { PlatformNode, YardNode, BlockNode, Node } from './node';
 export type { BlockResponse, UpdateBlockRequest, BlockIdResponse } from './block';
 export type {
   TimetableEntry,

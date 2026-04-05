@@ -44,7 +44,7 @@ describe('BlockConfigComponent', () => {
 
   function getGroupCells(fixture: ReturnType<typeof createAndLoad>): string[] {
     const rows = fixture.nativeElement.querySelectorAll(
-      'tr.border-b.hover\\:bg-gray-50',
+      'tr.h-10',
     ) as NodeListOf<HTMLTableRowElement>;
     return Array.from(rows).map(
       (row) => (row.querySelectorAll('td')[1] as HTMLTableCellElement).textContent?.trim() ?? '',
@@ -107,7 +107,7 @@ describe('BlockConfigComponent', () => {
     ];
     const fixture = createAndLoad(blocks);
     const rows = fixture.nativeElement.querySelectorAll(
-      'tr.border-b.hover\\:bg-gray-50',
+      'tr.h-10',
     ) as NodeListOf<HTMLTableRowElement>;
     const names = Array.from(rows).map(
       (row) => (row.querySelectorAll('td')[0] as HTMLTableCellElement).textContent?.trim() ?? '',
@@ -125,7 +125,7 @@ describe('BlockConfigComponent', () => {
     ];
     const fixture = createAndLoad(blocks);
     const rows = fixture.nativeElement.querySelectorAll(
-      'tr.border-b.hover\\:bg-gray-50',
+      'tr.h-10',
     ) as NodeListOf<HTMLTableRowElement>;
     const names = Array.from(rows).map(
       (row) => (row.querySelectorAll('td')[0] as HTMLTableCellElement).textContent?.trim() ?? '',
@@ -142,7 +142,7 @@ describe('BlockConfigComponent', () => {
     ];
     const fixture = createAndLoad(blocks);
     const rows = fixture.nativeElement.querySelectorAll(
-      'tr.border-b.hover\\:bg-gray-50',
+      'tr.h-10',
     ) as NodeListOf<HTMLTableRowElement>;
     const names = Array.from(rows).map(
       (row) => (row.querySelectorAll('td')[0] as HTMLTableCellElement).textContent?.trim() ?? '',

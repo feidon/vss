@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { Dialog } from '@angular/cdk/dialog';
 import { ScheduleListComponent } from './schedule-list';
 import { API_BASE_URL } from '../../core/services/api.config';
 import { ServiceDetailResponse, ServiceResponse } from '../../shared/models';
@@ -42,6 +43,7 @@ const mockServices: ServiceResponse[] = [
 describe('ScheduleListComponent', () => {
   let httpTesting: HttpTestingController;
   let router: Router;
+  let dialog: Dialog;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -55,6 +57,7 @@ describe('ScheduleListComponent', () => {
 
     httpTesting = TestBed.inject(HttpTestingController);
     router = TestBed.inject(Router);
+    dialog = TestBed.inject(Dialog);
   });
 
   afterEach(() => {
@@ -74,7 +77,7 @@ describe('ScheduleListComponent', () => {
     expect(rows[0].textContent).toContain('V1');
     expect(rows[0].textContent).toContain('P1A');
     expect(rows[0].textContent).toContain('P2A');
-    expect(rows[1].textContent).toContain('—');
+    expect(rows[1].textContent).toContain('-');
   });
 
   it('should show empty state when no services exist', async () => {
@@ -84,20 +87,24 @@ describe('ScheduleListComponent', () => {
     httpTesting.expectOne(`${API_BASE_URL}/services`).flush([]);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('No services created yet.');
+    expect(fixture.nativeElement.textContent).toContain('No services created yet');
   });
 
   it('should delete a service with confirmation', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-
     const fixture = TestBed.createComponent(ScheduleListComponent);
     fixture.detectChanges();
 
     httpTesting.expectOne(`${API_BASE_URL}/services`).flush(mockServices);
     fixture.detectChanges();
 
-    const deleteBtn = fixture.nativeElement.querySelector('button.bg-red-600');
+    const deleteBtn = fixture.nativeElement.querySelector('button[title="Delete"]');
     deleteBtn.click();
+    fixture.detectChanges();
+
+    // Confirm via CDK dialog
+    const openDialogs = dialog.openDialogs;
+    expect(openDialogs.length).toBe(1);
+    openDialogs[0].close(true);
     fixture.detectChanges();
 
     const deleteReq = httpTesting.expectOne(`${API_BASE_URL}/services/101`);
@@ -118,7 +125,7 @@ describe('ScheduleListComponent', () => {
     httpTesting.expectOne(`${API_BASE_URL}/services`).flush(mockServices);
     fixture.detectChanges();
 
-    const editBtns = fixture.nativeElement.querySelectorAll('button.bg-blue-600');
+    const editBtns = fixture.nativeElement.querySelectorAll('button[title="Edit"]');
     editBtns[0].click();
     fixture.detectChanges();
 
@@ -141,7 +148,7 @@ describe('ScheduleListComponent', () => {
     detailReq.flush(mockDetail);
     fixture.detectChanges();
 
-    const expandedRow = fixture.nativeElement.querySelector('tr.bg-gray-50');
+    const expandedRow = fixture.nativeElement.querySelector('td[colspan="6"]');
     expect(expandedRow).toBeTruthy();
     expect(expandedRow.textContent).toContain('Y → P1A');
   });
@@ -165,7 +172,7 @@ describe('ScheduleListComponent', () => {
     updatedRows[0].click();
     fixture.detectChanges();
 
-    const expandedRow = fixture.nativeElement.querySelector('tr.bg-gray-50');
+    const expandedRow = fixture.nativeElement.querySelector('td[colspan="6"]');
     expect(expandedRow).toBeNull();
   });
 
@@ -188,12 +195,12 @@ describe('ScheduleListComponent', () => {
     fixture.nativeElement.querySelectorAll('tbody tr')[0].click();
     fixture.detectChanges();
 
-    // Re-expand — no new HTTP request
+    // Re-expand - no new HTTP request
     fixture.nativeElement.querySelectorAll('tbody tr')[0].click();
     fixture.detectChanges();
 
     httpTesting.expectNone(`${API_BASE_URL}/services/101`);
-    const expandedRow = fixture.nativeElement.querySelector('tr.bg-gray-50');
+    const expandedRow = fixture.nativeElement.querySelector('td[colspan="6"]');
     expect(expandedRow.textContent).toContain('Y → P1A');
   });
 
@@ -207,17 +214,20 @@ describe('ScheduleListComponent', () => {
     fixture.detectChanges();
 
     // Click Edit button
-    const editBtn = fixture.nativeElement.querySelector('button.bg-blue-600');
+    const editBtn = fixture.nativeElement.querySelector('button[title="Edit"]');
     editBtn.click();
     fixture.detectChanges();
 
     expect(fixture.componentInstance.expandedServiceId()).toBeNull();
     expect(navigateSpy).toHaveBeenCalled();
 
-    // Click Delete button (cancel the confirm)
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
-    const deleteBtn = fixture.nativeElement.querySelector('button.bg-red-600');
+    // Click Delete button (dismiss the dialog without confirming)
+    const deleteBtn = fixture.nativeElement.querySelector('button[title="Delete"]');
     deleteBtn.click();
+    fixture.detectChanges();
+
+    // Dismiss dialog without confirming
+    dialog.openDialogs[0].close(false);
     fixture.detectChanges();
 
     expect(fixture.componentInstance.expandedServiceId()).toBeNull();

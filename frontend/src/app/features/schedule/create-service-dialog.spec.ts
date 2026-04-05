@@ -50,7 +50,7 @@ describe('CreateServiceDialogComponent', () => {
     form.dispatchEvent(new Event('submit'));
     fixture.detectChanges();
 
-    const errors = fixture.nativeElement.querySelectorAll('.text-red-500');
+    const errors = fixture.nativeElement.querySelectorAll('.text-signal-danger');
     expect(errors.length).toBeGreaterThan(0);
   });
 

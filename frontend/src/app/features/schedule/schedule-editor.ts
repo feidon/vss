@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal, viewChild } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
+import { switchMap } from 'rxjs';
 import { ServiceService } from '../../core/services/service.service';
 import { ServiceDetailResponse, ConflictResponse } from '../../shared/models';
 import { ErrorAlertComponent } from '../../shared/components/error-alert';
@@ -83,7 +84,6 @@ import { TrackMapEditorComponent, MapStopEvent } from './track-map-editor';
               [service]="service()!"
               [graph]="service()!.graph"
               (submitted)="onRouteSubmitted($event)"
-              (back)="onBack()"
               (stopsChanged)="onStopsChanged($event)"
             />
           </div>
@@ -101,7 +101,6 @@ import { TrackMapEditorComponent, MapStopEvent } from './track-map-editor';
 })
 export class ScheduleEditorComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   private readonly serviceService = inject(ServiceService);
 
   private readonly routeEditor = viewChild(RouteEditorComponent);
@@ -113,7 +112,11 @@ export class ScheduleEditorComponent implements OnInit {
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
-    this.serviceService.getService(id).subscribe((s) => this.service.set(s));
+    this.serviceService.getService(id).subscribe({
+      next: (s) => this.service.set(s),
+      error: (err: HttpErrorResponse) =>
+        this.errorMessage.set(extractErrorMessage(err, 'Failed to load service.')),
+    });
   }
 
   onMapStopAdded(event: MapStopEvent): void {
@@ -131,25 +134,26 @@ export class ScheduleEditorComponent implements OnInit {
     const id = this.service()!.id;
     this.conflicts.set(null);
     this.errorMessage.set(null);
-    this.serviceService.updateRoute(id, request).subscribe({
-      next: () => {
-        this.serviceService.getService(id).subscribe((s) => this.service.set(s));
-      },
-      error: (err: HttpErrorResponse) => {
-        if (err.status === 409) {
-          const body = err.error;
-          const detail = body?.detail ?? body;
-          this.conflicts.set(detail as ConflictResponse);
-        } else {
-          this.errorMessage.set(
-            extractErrorMessage(err, 'Failed to update route. Please try again.'),
-          );
-        }
-      },
-    });
-  }
-
-  onBack(): void {
-    this.router.navigate(['/schedule']);
+    this.serviceService
+      .updateRoute(id, request)
+      .pipe(switchMap(() => this.serviceService.getService(id)))
+      .subscribe({
+        next: (s) => this.service.set(s),
+        error: (err: HttpErrorResponse) => {
+          if (err.status === 409) {
+            const body = err.error;
+            const detail = body?.detail ?? body;
+            if (detail && 'vehicle_conflicts' in detail && 'block_conflicts' in detail) {
+              this.conflicts.set(detail as ConflictResponse);
+            } else {
+              this.errorMessage.set('Conflict detected but response format was unexpected.');
+            }
+          } else {
+            this.errorMessage.set(
+              extractErrorMessage(err, 'Failed to update route. Please try again.'),
+            );
+          }
+        },
+      });
   }
 }

@@ -52,7 +52,7 @@ import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
                 <li class="flex items-start gap-2 text-signal-danger/70">
                   <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-signal-danger/50"></span>
                   <span class="font-display">
-                    {{ vehicleName(c.vehicle_id) }} — S{{ c.service_a_id }} &amp; S{{
+                    {{ vehicleName(c.vehicle_id) }} - S{{ c.service_a_id }} &amp; S{{
                       c.service_b_id
                     }}:
                     {{ c.reason }}
@@ -75,7 +75,7 @@ import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
                 <li class="flex items-start gap-2 text-signal-danger/70">
                   <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-signal-danger/50"></span>
                   <span class="font-display">
-                    {{ nodeName(c.block_id) }} — S{{ c.service_a_id }} &amp; S{{ c.service_b_id }}
+                    {{ nodeName(c.block_id) }} - S{{ c.service_a_id }} &amp; S{{ c.service_b_id }}
                     <span class="font-mono text-sm"
                       >({{ c.overlap_start | epochTime }} – {{ c.overlap_end | epochTime }})</span
                     >
@@ -98,7 +98,7 @@ import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
                 <li class="flex items-start gap-2 text-signal-danger/70">
                   <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-signal-danger/50"></span>
                   <span class="font-display">
-                    Group {{ c.group }} — {{ nodeName(c.block_a_id) }} &amp;
+                    Group {{ c.group }} - {{ nodeName(c.block_a_id) }} &amp;
                     {{ nodeName(c.block_b_id) }}, S{{ c.service_a_id }} &amp; S{{ c.service_b_id }}
                     <span class="font-mono text-sm"
                       >({{ c.overlap_start | epochTime }} – {{ c.overlap_end | epochTime }})</span
@@ -121,7 +121,7 @@ import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
               <li class="flex items-start gap-2 text-signal-caution/70">
                 <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-signal-caution/50"></span>
                 <span class="font-display">
-                  S{{ c.service_id }} —
+                  S{{ c.service_id }} -
                   {{
                     c.type === 'low_battery'
                       ? 'insufficient battery to complete the route'

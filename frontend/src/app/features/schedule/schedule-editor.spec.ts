@@ -110,7 +110,7 @@ describe('ScheduleEditorComponent', () => {
       .expectOne(`${API_BASE_URL}/services/101/route`)
       .flush('Internal Server Error', { status: 500, statusText: 'Internal Server Error' });
 
-    expect(component.errorMessage()).toBe('Failed to update route. Please try again.');
+    expect(component.errorMessage()).toBe('Something went wrong. Please try again later.');
     expect(component.conflicts()).toBeNull();
   });
 

@@ -1,10 +1,12 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { Dialog } from '@angular/cdk/dialog';
 import { ServiceService } from '../../core/services/service.service';
 import { ServiceDetailResponse, ServiceResponse } from '../../shared/models';
 import { ErrorAlertComponent } from '../../shared/components/error-alert';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../shared/components/confirm-dialog';
 import { extractErrorMessage } from '../../shared/utils/error-utils';
 import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
 import { CreateServiceDialogComponent, CreateServiceDialogResult } from './create-service-dialog';
@@ -76,10 +78,10 @@ import { CreateServiceDialogComponent, CreateServiceDialogResult } from './creat
                   </span>
                 </td>
                 <td class="font-mono text-sm">
-                  {{ service.start_time ? (service.start_time | epochTime) : '—' }}
+                  {{ service.start_time ? (service.start_time | epochTime) : '-' }}
                 </td>
-                <td>{{ service.origin_name ?? '—' }}</td>
-                <td>{{ service.destination_name ?? '—' }}</td>
+                <td>{{ service.origin_name ?? '-' }}</td>
+                <td>{{ service.destination_name ?? '-' }}</td>
                 <td class="text-right">
                   <div class="flex items-center justify-end gap-1.5">
                     <button
@@ -145,6 +147,7 @@ export class ScheduleListComponent implements OnInit {
   private readonly serviceService = inject(ServiceService);
   private readonly router = inject(Router);
   private readonly dialog = inject(Dialog);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly services = signal<readonly ServiceResponse[]>([]);
   readonly errorMessage = signal<string | null>(null);
@@ -157,7 +160,7 @@ export class ScheduleListComponent implements OnInit {
 
   onCreateService(): void {
     const ref = this.dialog.open<CreateServiceDialogResult>(CreateServiceDialogComponent);
-    ref.closed.subscribe((result) => {
+    ref.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
       if (result) {
         this.router.navigate(['/schedule', result.serviceId, 'edit']);
       }
@@ -169,11 +172,16 @@ export class ScheduleListComponent implements OnInit {
   }
 
   onDelete(service: ServiceResponse): void {
-    if (!window.confirm(`Delete service "${service.name}"?`)) return;
-    this.serviceService.deleteService(service.id).subscribe({
-      next: () => this.loadServices(),
-      error: (err: HttpErrorResponse) =>
-        this.errorMessage.set(extractErrorMessage(err, 'Failed to delete service.')),
+    const ref = this.dialog.open<boolean, ConfirmDialogData>(ConfirmDialogComponent, {
+      data: { message: `Delete service "${service.name}"?` },
+    });
+    ref.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((confirmed) => {
+      if (!confirmed) return;
+      this.serviceService.deleteService(service.id).subscribe({
+        next: () => this.loadServices(),
+        error: (err: HttpErrorResponse) =>
+          this.errorMessage.set(extractErrorMessage(err, 'Failed to delete service.')),
+      });
     });
   }
 

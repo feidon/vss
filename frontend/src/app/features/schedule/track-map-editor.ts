@@ -1,6 +1,7 @@
 import { Component, ElementRef, computed, effect, input, output, viewChild } from '@angular/core';
 import * as d3 from 'd3';
 import { GraphResponse, Station, Node, Edge, Junction } from '../../shared/models';
+import { THEME } from '../../shared/theme-constants';
 
 interface Position {
   readonly x: number;
@@ -96,7 +97,7 @@ export class TrackMapEditorComponent {
       .attr('width', svgWidth)
       .attr('height', svgHeight)
       .attr('class', 'select-none')
-      .style('background', '#05080f');
+      .style('background', THEME.panelBase);
 
     const queuedSet = new Set(queuedIds);
     const queuedOrder = new Map<string, number>();
@@ -115,7 +116,7 @@ export class TrackMapEditorComponent {
       .attr('orient', 'auto')
       .append('path')
       .attr('d', 'M 0 0 L 10 5 L 0 10 Z')
-      .attr('fill', '#6b7f99');
+      .attr('fill', THEME.inkMuted);
 
     // Draw station indicator rectangles (behind everything else)
     const stationPadding = 30;
@@ -159,8 +160,8 @@ export class TrackMapEditorComponent {
       .attr('height', (d) => d.h)
       .attr('rx', 8)
       .attr('ry', 8)
-      .attr('fill', '#0b1121')
-      .attr('stroke', '#1a2744')
+      .attr('fill', THEME.panel)
+      .attr('stroke', THEME.edge)
       .attr('stroke-width', 1);
 
     stationGroups
@@ -173,7 +174,7 @@ export class TrackMapEditorComponent {
       .attr('font-size', '14px')
       .attr('font-weight', '700')
       .attr('letter-spacing', '0.05em')
-      .attr('fill', '#94a3b8')
+      .attr('fill', THEME.inkMuted)
       .text((d) => d.station.name);
 
     // Build node ID set for radius lookup (nodes=12, junctions=4)
@@ -207,7 +208,7 @@ export class TrackMapEditorComponent {
       .attr('y1', (d: Edge) => yScale(posMap.get(d.from_id)?.y ?? 0))
       .attr('x2', (d: Edge) => shortenedEnd(d).x)
       .attr('y2', (d: Edge) => shortenedEnd(d).y)
-      .attr('stroke', '#263a5c')
+      .attr('stroke', THEME.edgeBright)
       .attr('stroke-width', 2)
       .attr('marker-end', 'url(#arrowhead)');
 
@@ -245,7 +246,7 @@ export class TrackMapEditorComponent {
       .attr('text-anchor', 'middle')
       .attr('font-family', 'Azeret Mono, monospace')
       .attr('font-size', '10px')
-      .attr('fill', '#6b7f99')
+      .attr('fill', THEME.inkMuted)
       .text((d: Edge) => d.name);
 
     // Draw junction dots (small non-interactive)
@@ -258,8 +259,8 @@ export class TrackMapEditorComponent {
       .attr('cx', (d: Junction) => xScale(d.x))
       .attr('cy', (d: Junction) => yScale(d.y))
       .attr('r', 4)
-      .attr('fill', '#1a2744')
-      .attr('stroke', '#263a5c')
+      .attr('fill', THEME.edge)
+      .attr('stroke', THEME.edgeBright)
       .attr('stroke-width', 1);
 
     // Draw clickable nodes (platforms + yards)
@@ -295,10 +296,18 @@ export class TrackMapEditorComponent {
       .append('circle')
       .attr('r', 12)
       .attr('fill', (d: Node) =>
-        queuedSet.has(d.id) ? '#22c55e' : d.type === 'yard' ? '#eab308' : '#38bdf8',
+        queuedSet.has(d.id)
+          ? THEME.signalClear
+          : d.type === 'yard'
+            ? THEME.signalCaution
+            : THEME.signalInfo,
       )
       .attr('stroke', (d: Node) =>
-        queuedSet.has(d.id) ? '#16a34a' : d.type === 'yard' ? '#ca8a04' : '#0ea5e9',
+        queuedSet.has(d.id)
+          ? THEME.signalClearDim
+          : d.type === 'yard'
+            ? THEME.signalCautionDim
+            : THEME.signalInfoDim,
       )
       .attr('stroke-width', 2)
       .attr('filter', (d: Node) => (queuedSet.has(d.id) ? 'url(#node-glow)' : null));
@@ -322,7 +331,7 @@ export class TrackMapEditorComponent {
       .attr('font-family', 'Rajdhani, sans-serif')
       .attr('font-size', '13px')
       .attr('font-weight', '700')
-      .attr('fill', '#c8d1de')
+      .attr('fill', THEME.ink)
       .text((d: Node) => d.name);
 
     if (interactive) {
