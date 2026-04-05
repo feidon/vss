@@ -1,14 +1,23 @@
 import { Component, inject, OnInit, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ServiceService } from '../../core/services/service.service';
 import { ServiceDetailResponse, ConflictResponse } from '../../shared/models';
+import { ErrorAlertComponent } from '../../shared/components/error-alert';
+import { extractErrorMessage } from '../../shared/utils/error-utils';
 import { RouteEditorComponent } from './route-editor';
 import { ConflictAlertComponent } from './conflict-alert';
 import { TrackMapEditorComponent, MapStopEvent } from './track-map-editor';
 
 @Component({
   selector: 'app-schedule-editor',
-  imports: [RouterLink, RouteEditorComponent, ConflictAlertComponent, TrackMapEditorComponent],
+  imports: [
+    RouterLink,
+    RouteEditorComponent,
+    ConflictAlertComponent,
+    TrackMapEditorComponent,
+    ErrorAlertComponent,
+  ],
   template: `
     @if (service()) {
       <div class="mb-4">
@@ -27,17 +36,7 @@ import { TrackMapEditorComponent, MapStopEvent } from './track-map-editor';
       }
 
       @if (errorMessage()) {
-        <div
-          class="mb-4 flex items-center justify-between rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800"
-        >
-          <span>{{ errorMessage() }}</span>
-          <button
-            class="ml-4 font-medium text-red-600 hover:text-red-800"
-            (click)="errorMessage.set(null)"
-          >
-            Dismiss
-          </button>
-        </div>
+        <app-error-alert [message]="errorMessage()!" (dismiss)="errorMessage.set(null)" />
       }
 
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -99,13 +98,15 @@ export class ScheduleEditorComponent implements OnInit {
       next: () => {
         this.serviceService.getService(id).subscribe((s) => this.service.set(s));
       },
-      error: (err) => {
+      error: (err: HttpErrorResponse) => {
         if (err.status === 409) {
           const body = err.error;
           const detail = body?.detail ?? body;
           this.conflicts.set(detail as ConflictResponse);
         } else {
-          this.errorMessage.set('Failed to update route. Please try again.');
+          this.errorMessage.set(
+            extractErrorMessage(err, 'Failed to update route. Please try again.'),
+          );
         }
       },
     });

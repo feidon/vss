@@ -1,9 +1,12 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { DialogRef } from '@angular/cdk/dialog';
 import { VehicleService } from '../../core/services/vehicle.service';
 import { ServiceService } from '../../core/services/service.service';
 import { Vehicle } from '../../shared/models';
+import { ErrorAlertComponent } from '../../shared/components/error-alert';
+import { extractErrorMessage } from '../../shared/utils/error-utils';
 
 export interface CreateServiceDialogResult {
   readonly serviceId: number;
@@ -11,14 +14,18 @@ export interface CreateServiceDialogResult {
 
 @Component({
   selector: 'app-create-service-dialog',
-  imports: [FormsModule],
+  imports: [FormsModule, ErrorAlertComponent],
   template: `
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
         <h3 class="mb-4 text-lg font-semibold">Create Service</h3>
 
         @if (loadError()) {
-          <p class="mb-4 text-sm text-red-600">{{ loadError() }}</p>
+          <app-error-alert [message]="loadError()!" (dismiss)="loadError.set(null)" />
+        }
+
+        @if (createError()) {
+          <app-error-alert [message]="createError()!" (dismiss)="createError.set(null)" />
         }
 
         <form (ngSubmit)="onSubmit()">
@@ -91,6 +98,7 @@ export class CreateServiceDialogComponent implements OnInit {
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly loadError = signal<string | null>(null);
+  readonly createError = signal<string | null>(null);
   readonly submitted = signal(false);
 
   readonly name = signal('');
@@ -116,11 +124,13 @@ export class CreateServiceDialogComponent implements OnInit {
     if (!n || !vid) return;
 
     this.saving.set(true);
+    this.createError.set(null);
     this.serviceService.createService({ name: n, vehicle_id: vid }).subscribe({
       next: (res) => {
         this.dialogRef.close({ serviceId: res.id });
       },
-      error: () => {
+      error: (err: HttpErrorResponse) => {
+        this.createError.set(extractErrorMessage(err, 'Failed to create service.'));
         this.saving.set(false);
       },
     });

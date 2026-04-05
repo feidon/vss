@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { BlockService } from '../../core/services/block.service';
 import { BlockResponse } from '../../shared/models';
+import { ErrorAlertComponent } from '../../shared/components/error-alert';
 
 interface BlockGroup {
   readonly group: number;
@@ -19,11 +20,12 @@ interface BlockGroup {
 
 @Component({
   selector: 'app-block-config',
+  imports: [ErrorAlertComponent],
   template: `
     <h2 class="mb-4 text-xl font-semibold">Block Configuration</h2>
 
     @if (error()) {
-      <p class="mb-4 text-red-600">{{ error() }}</p>
+      <app-error-alert [message]="error()!" (dismiss)="error.set(null)" />
     }
 
     <table class="w-full border-collapse text-sm">

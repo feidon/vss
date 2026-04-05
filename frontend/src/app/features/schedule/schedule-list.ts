@@ -1,14 +1,17 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Dialog } from '@angular/cdk/dialog';
 import { ServiceService } from '../../core/services/service.service';
 import { ServiceDetailResponse, ServiceResponse } from '../../shared/models';
+import { ErrorAlertComponent } from '../../shared/components/error-alert';
+import { extractErrorMessage } from '../../shared/utils/error-utils';
 import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
 import { CreateServiceDialogComponent, CreateServiceDialogResult } from './create-service-dialog';
 
 @Component({
   selector: 'app-schedule-list',
-  imports: [EpochTimePipe],
+  imports: [EpochTimePipe, ErrorAlertComponent],
   template: `
     <div class="mb-4 flex items-center justify-between">
       <h2 class="text-xl font-semibold">Schedule</h2>
@@ -19,6 +22,10 @@ import { CreateServiceDialogComponent, CreateServiceDialogResult } from './creat
         + Create Service
       </button>
     </div>
+
+    @if (errorMessage()) {
+      <app-error-alert [message]="errorMessage()!" (dismiss)="errorMessage.set(null)" />
+    }
 
     @if (services().length === 0) {
       <p class="py-4 text-gray-500">No services created yet.</p>
@@ -84,6 +91,7 @@ export class ScheduleListComponent implements OnInit {
   private readonly dialog = inject(Dialog);
 
   readonly services = signal<readonly ServiceResponse[]>([]);
+  readonly errorMessage = signal<string | null>(null);
   readonly expandedServiceId = signal<number | null>(null);
   readonly detailCache = signal<ReadonlyMap<number, ServiceDetailResponse>>(new Map());
 
@@ -106,7 +114,11 @@ export class ScheduleListComponent implements OnInit {
 
   onDelete(service: ServiceResponse): void {
     if (!window.confirm(`Delete service "${service.name}"?`)) return;
-    this.serviceService.deleteService(service.id).subscribe(() => this.loadServices());
+    this.serviceService.deleteService(service.id).subscribe({
+      next: () => this.loadServices(),
+      error: (err: HttpErrorResponse) =>
+        this.errorMessage.set(extractErrorMessage(err, 'Failed to delete service.')),
+    });
   }
 
   toggleExpand(service: ServiceResponse): void {
@@ -116,10 +128,14 @@ export class ScheduleListComponent implements OnInit {
     }
     this.expandedServiceId.set(service.id);
     if (!this.detailCache().has(service.id)) {
-      this.serviceService.getService(service.id).subscribe((detail) => {
-        const updated = new Map(this.detailCache());
-        updated.set(service.id, detail);
-        this.detailCache.set(updated);
+      this.serviceService.getService(service.id).subscribe({
+        next: (detail) => {
+          const updated = new Map(this.detailCache());
+          updated.set(service.id, detail);
+          this.detailCache.set(updated);
+        },
+        error: (err: HttpErrorResponse) =>
+          this.errorMessage.set(extractErrorMessage(err, 'Failed to load service details.')),
       });
     }
   }
@@ -131,10 +147,14 @@ export class ScheduleListComponent implements OnInit {
   }
 
   private loadServices(): void {
-    this.serviceService.getServices().subscribe((s) => {
-      this.services.set(s);
-      this.expandedServiceId.set(null);
-      this.detailCache.set(new Map());
+    this.serviceService.getServices().subscribe({
+      next: (s) => {
+        this.services.set(s);
+        this.expandedServiceId.set(null);
+        this.detailCache.set(new Map());
+      },
+      error: (err: HttpErrorResponse) =>
+        this.errorMessage.set(extractErrorMessage(err, 'Failed to load services.')),
     });
   }
 }
