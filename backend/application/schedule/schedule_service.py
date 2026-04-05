@@ -65,10 +65,8 @@ class ScheduleAppService:
         num_vehicles = math.ceil(effective_cycle / req.interval_seconds) + 1
 
         if num_vehicles > len(vehicles):
-            raise DomainError(
-                ErrorCode.VALIDATION,
-                f"Need {num_vehicles} vehicles but only {len(vehicles)} available",
-            )
+            await self._vehicle_repo.add_by_number(num_vehicles - len(vehicles))
+            vehicles = await self._vehicle_repo.find_all()
 
         used_vehicles = vehicles[:num_vehicles]
         trips_per_vehicle = max(
@@ -100,7 +98,7 @@ class ScheduleAppService:
         # 7. If infeasible
         if result is None:
             raise DomainError(
-                ErrorCode.CONFLICT,
+                ErrorCode.SCHEDULE_INFEASIBLE,
                 "Schedule is infeasible: solver could not find a valid assignment",
             )
 
@@ -172,16 +170,16 @@ class ScheduleAppService:
     def _validate_request(req: GenerateScheduleRequest) -> None:
         if req.interval_seconds <= 0:
             raise DomainError(
-                ErrorCode.VALIDATION,
+                ErrorCode.INVALID_INTERVAL,
                 "interval_seconds must be positive",
             )
         if req.dwell_time_seconds <= 0:
             raise DomainError(
-                ErrorCode.VALIDATION,
+                ErrorCode.INVALID_DWELL_TIME,
                 "dwell_time_seconds must be positive",
             )
         if req.end_time <= req.start_time:
             raise DomainError(
-                ErrorCode.VALIDATION,
+                ErrorCode.INVALID_TIME_RANGE,
                 "end_time must be greater than start_time",
             )

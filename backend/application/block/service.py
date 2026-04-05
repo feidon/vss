@@ -17,6 +17,10 @@ class BlockAppService:
     async def update_block(self, id: UUID, traversal_time_seconds: int) -> None:
         block = await self._block_repo.find_by_id(id)
         if block is None:
-            raise DomainError(ErrorCode.NOT_FOUND, f"Block {id} not found")
+            raise DomainError(
+                ErrorCode.BLOCK_NOT_FOUND,
+                f"Block {id} not found",
+                {"block_id": str(id)},
+            )
         block.update_traversal_time(traversal_time_seconds)
         await self._block_repo.update(block)

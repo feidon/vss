@@ -1,17 +1,53 @@
 from __future__ import annotations
 
 from enum import Enum
+from typing import Any
 
 
 class ErrorCode(Enum):
-    NOT_FOUND = "NOT_FOUND"
-    VALIDATION = "VALIDATION"
-    CONFLICT = "CONFLICT"
-    NO_ROUTE = "NO_ROUTE"
+    # 404 — Not Found
+    SERVICE_NOT_FOUND = "SERVICE_NOT_FOUND"
+    BLOCK_NOT_FOUND = "BLOCK_NOT_FOUND"
+
+    # 400 — Validation
+    EMPTY_SERVICE_NAME = "EMPTY_SERVICE_NAME"
+    VEHICLE_NOT_FOUND = "VEHICLE_NOT_FOUND"
+    STOP_NOT_FOUND = "STOP_NOT_FOUND"
+    SAME_ORIGIN_DESTINATION = "SAME_ORIGIN_DESTINATION"
+    INSUFFICIENT_STOPS = "INSUFFICIENT_STOPS"
+    UNKNOWN_NODE = "UNKNOWN_NODE"
+    ENTRY_NODE_NOT_IN_ROUTE = "ENTRY_NODE_NOT_IN_ROUTE"
+    PLATFORM_NOT_FOUND = "PLATFORM_NOT_FOUND"
+    NOT_A_YARD = "NOT_A_YARD"
+    DUPLICATE_PLATFORM = "DUPLICATE_PLATFORM"
+    DUPLICATE_ENTRY_ORDERS = "DUPLICATE_ENTRY_ORDERS"
+    ENTRIES_NOT_ASCENDING = "ENTRIES_NOT_ASCENDING"
+    ENTRIES_NOT_CONTINUOUS = "ENTRIES_NOT_CONTINUOUS"
+    EMPTY_ROUTE = "EMPTY_ROUTE"
+    ROUTE_NOT_CONNECTED = "ROUTE_NOT_CONNECTED"
+    ARRIVAL_AFTER_DEPARTURE = "ARRIVAL_AFTER_DEPARTURE"
+    INVALID_TRAVERSAL_TIME = "INVALID_TRAVERSAL_TIME"
+    INSUFFICIENT_VEHICLES = "INSUFFICIENT_VEHICLES"
+    INVALID_INTERVAL = "INVALID_INTERVAL"
+    INVALID_DWELL_TIME = "INVALID_DWELL_TIME"
+    INVALID_TIME_RANGE = "INVALID_TIME_RANGE"
+
+    # 422 — No Route
+    NO_ROUTE_BETWEEN_STOPS = "NO_ROUTE_BETWEEN_STOPS"
+
+    # 409 — Conflict
+    SCHEDULING_CONFLICT = "SCHEDULING_CONFLICT"
+    SCHEDULE_INFEASIBLE = "SCHEDULE_INFEASIBLE"
 
 
 class DomainError(Exception):
-    def __init__(self, code: ErrorCode, message: str) -> None:
+    def __init__(
+        self,
+        code: ErrorCode,
+        message: str,
+        context: dict[str, Any] | None = None,
+    ) -> None:
         self.code = code
         self.message = message
+        self.context = context
         super().__init__(message)

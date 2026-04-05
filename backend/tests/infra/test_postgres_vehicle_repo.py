@@ -32,3 +32,19 @@ class TestPostgresVehicleRepository:
 
     async def test_find_by_id_returns_none(self, repo):
         assert await repo.find_by_id(uuid7()) is None
+
+    async def test_add_by_number_persists_vehicles(self, repo):
+        await repo.add_by_number(2)
+        vehicles = await repo.find_all()
+        assert len(vehicles) == 2
+        names = sorted(v.name for v in vehicles)
+        assert names == ["V0", "V1"]
+
+    async def test_add_by_number_continues_naming(self, repo, pg_session):
+        await insert_vehicle(pg_session, uuid7(), "V0")
+        await insert_vehicle(pg_session, uuid7(), "V1")
+        await repo.add_by_number(2)
+        vehicles = await repo.find_all()
+        assert len(vehicles) == 4
+        names = sorted(v.name for v in vehicles)
+        assert names == ["V0", "V1", "V2", "V3"]

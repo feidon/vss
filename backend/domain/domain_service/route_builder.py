@@ -46,7 +46,11 @@ def _validate_stops(
     valid_ids = set(platform_dict.keys()) | set(yard_dict.keys())
     for stop_id in stop_ids:
         if stop_id not in valid_ids:
-            raise DomainError(ErrorCode.VALIDATION, f"Stop {stop_id} not found")
+            raise DomainError(
+                ErrorCode.STOP_NOT_FOUND,
+                f"Stop {stop_id} not found",
+                {"stop_id": str(stop_id)},
+            )
 
 
 def _resolve_nodes(
@@ -64,7 +68,11 @@ def _resolve_nodes(
         elif nid in yard_dict:
             nodes.append(yard_dict[nid].to_node())
         else:
-            raise DomainError(ErrorCode.VALIDATION, f"Unknown node {nid} in path")
+            raise DomainError(
+                ErrorCode.UNKNOWN_NODE,
+                f"Unknown node {nid} in path",
+                {"node_id": str(nid)},
+            )
     return nodes
 
 
@@ -92,7 +100,9 @@ def _compute_timetable(
             entry = yard_dict[node.id].to_timetable_entry(order, current_time, dwell)
         else:
             raise DomainError(
-                ErrorCode.VALIDATION, f"Unknown node {node.id} in timetable"
+                ErrorCode.UNKNOWN_NODE,
+                f"Unknown node {node.id} in timetable",
+                {"node_id": str(node.id)},
             )
         entries.append(entry)
         current_time = entry.departure

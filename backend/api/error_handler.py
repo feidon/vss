@@ -11,11 +11,15 @@ from starlette.status import (
     HTTP_422_UNPROCESSABLE_CONTENT,
 )
 
-STATUS_MAP = {
-    ErrorCode.NOT_FOUND: HTTP_404_NOT_FOUND,
-    ErrorCode.VALIDATION: HTTP_400_BAD_REQUEST,
-    ErrorCode.CONFLICT: HTTP_409_CONFLICT,
-    ErrorCode.NO_ROUTE: HTTP_422_UNPROCESSABLE_CONTENT,
+STATUS_MAP: dict[ErrorCode, int] = {
+    # 404
+    ErrorCode.SERVICE_NOT_FOUND: HTTP_404_NOT_FOUND,
+    ErrorCode.BLOCK_NOT_FOUND: HTTP_404_NOT_FOUND,
+    # 422
+    ErrorCode.NO_ROUTE_BETWEEN_STOPS: HTTP_422_UNPROCESSABLE_CONTENT,
+    # 409
+    ErrorCode.SCHEDULING_CONFLICT: HTTP_409_CONFLICT,
+    ErrorCode.SCHEDULE_INFEASIBLE: HTTP_409_CONFLICT,
 }
 
 
@@ -25,7 +29,11 @@ async def domain_error_handler(request: Request, exc: Exception) -> JSONResponse
     if isinstance(exc, ConflictError):
         detail = _build_conflict_detail(exc)
     else:
-        detail = exc.message
+        detail = {
+            "error_code": exc.code.value,
+            "message": exc.message,
+            "context": exc.context or {},
+        }
     return JSONResponse(status_code=status, content={"detail": detail})
 
 

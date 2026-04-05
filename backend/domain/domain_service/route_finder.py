@@ -21,8 +21,9 @@ class RouteFinder:
         """
         if from_id == to_id:
             raise DomainError(
-                ErrorCode.VALIDATION,
+                ErrorCode.SAME_ORIGIN_DESTINATION,
                 "Origin and destination must be different",
+                {"stop_id": str(from_id)},
             )
 
         adjacency: dict[UUID, list[UUID]] = {}
@@ -48,7 +49,11 @@ class RouteFinder:
                     visited.add(neighbor)
                     queue.append((neighbor, path + [neighbor]))
 
-        raise DomainError(ErrorCode.NO_ROUTE, "No route in your selected stops")
+        raise DomainError(
+            ErrorCode.NO_ROUTE_BETWEEN_STOPS,
+            "No route in your selected stops",
+            {"from_stop_id": str(from_id), "to_stop_id": str(to_id)},
+        )
 
     @classmethod
     def build_full_path(
@@ -62,7 +67,10 @@ class RouteFinder:
         Example: [P1A, P2A, P3A] -> [P1A, B3, B5, P2A, B6, B7, P3A]
         """
         if len(stop_ids) < 2:
-            raise DomainError(ErrorCode.VALIDATION, "At least two stops are required")
+            raise DomainError(
+                ErrorCode.INSUFFICIENT_STOPS,
+                "At least two stops are required",
+            )
 
         result: list[UUID] = [stop_ids[0]]
         for i in range(len(stop_ids) - 1):

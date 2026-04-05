@@ -44,5 +44,6 @@ class Block:
     def _validate_traversal_time(value: int) -> None:
         if value <= 0:
             raise DomainError(
-                ErrorCode.VALIDATION, "traversal_time_seconds must be positive"
+                ErrorCode.INVALID_TRAVERSAL_TIME,
+                "traversal_time_seconds must be positive",
             )

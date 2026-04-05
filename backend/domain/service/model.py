@@ -46,15 +46,17 @@ class Service:
     def _validate_entry_ordering(entries: list[TimetableEntry]) -> None:
         orders = [e.order for e in entries]
         if len(orders) != len(set(orders)):
-            raise DomainError(ErrorCode.VALIDATION, "Duplicate entry orders")
+            raise DomainError(
+                ErrorCode.DUPLICATE_ENTRY_ORDERS, "Duplicate entry orders"
+            )
         if orders != sorted(orders):
             raise DomainError(
-                ErrorCode.VALIDATION, "Entries must be in ascending order"
+                ErrorCode.ENTRIES_NOT_ASCENDING, "Entries must be in ascending order"
             )
         for i in range(1, len(entries)):
             if entries[i].arrival != entries[i - 1].departure:
                 raise DomainError(
-                    ErrorCode.VALIDATION,
+                    ErrorCode.ENTRIES_NOT_CONTINUOUS,
                     "Entries must be continuous: departure must equal next arrival",
                 )
 
@@ -66,8 +68,9 @@ class Service:
         for entry in entries:
             if entry.node_id not in node_ids:
                 raise DomainError(
-                    ErrorCode.VALIDATION,
+                    ErrorCode.ENTRY_NODE_NOT_IN_ROUTE,
                     f"Entry references node {entry.node_id} not in route",
+                    {"node_id": str(entry.node_id)},
                 )
 
     @staticmethod
@@ -76,13 +79,13 @@ class Service:
     ) -> None:
         if not route:
             raise DomainError(
-                ErrorCode.VALIDATION, "Route must contain at least one node"
+                ErrorCode.EMPTY_ROUTE, "Route must contain at least one node"
             )
         for i in range(len(route) - 1):
             link = NodeConnection(from_id=route[i].id, to_id=route[i + 1].id)
             if link not in connections:
                 raise DomainError(
-                    ErrorCode.VALIDATION,
+                    ErrorCode.ROUTE_NOT_CONNECTED,
                     f"No connection: {route[i].id} -> {route[i + 1].id}",
                 )
 
@@ -97,6 +100,6 @@ class TimetableEntry:
     def __post_init__(self) -> None:
         if self.arrival > self.departure:
             raise DomainError(
-                ErrorCode.VALIDATION,
+                ErrorCode.ARRIVAL_AFTER_DEPARTURE,
                 f"Arrival ({self.arrival}) must be <= departure ({self.departure})",
             )

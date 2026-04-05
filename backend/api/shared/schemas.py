@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -61,8 +61,14 @@ class TimetableEntrySchema(BaseModel):
 # --- Error response schemas (for OpenAPI documentation) ---
 
 
+class ErrorDetail(BaseModel):
+    error_code: str
+    message: str
+    context: dict[str, Any]
+
+
 class ErrorResponse(BaseModel):
-    detail: str
+    detail: ErrorDetail
 
 
 class VehicleConflictSchema(BaseModel):

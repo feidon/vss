@@ -10,6 +10,7 @@ from api.schedule.schemas import (
     GenerateScheduleRequestSchema,
     GenerateScheduleResponseSchema,
 )
+from api.shared.schemas import VALIDATION_RESPONSE
 
 router = APIRouter(prefix="/schedules", tags=["schedules"])
 
@@ -18,6 +19,7 @@ router = APIRouter(prefix="/schedules", tags=["schedules"])
     "/generate",
     response_model=GenerateScheduleResponseSchema,
     status_code=HTTP_200_OK,
+    responses={**VALIDATION_RESPONSE},
 )
 async def generate_schedule(
     body: GenerateScheduleRequestSchema,

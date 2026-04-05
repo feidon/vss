@@ -38,11 +38,17 @@ class ServiceAppService:
 
     async def create_service(self, name: str, vehicle_id: UUID) -> Service:
         if not name or not name.strip():
-            raise DomainError(ErrorCode.VALIDATION, "Service name must not be empty")
+            raise DomainError(
+                ErrorCode.EMPTY_SERVICE_NAME, "Service name must not be empty"
+            )
 
         vehicle = await self._vehicle_repo.find_by_id(vehicle_id)
         if vehicle is None:
-            raise DomainError(ErrorCode.VALIDATION, f"Vehicle {vehicle_id} not found")
+            raise DomainError(
+                ErrorCode.VEHICLE_NOT_FOUND,
+                f"Vehicle {vehicle_id} not found",
+                {"vehicle_id": str(vehicle_id)},
+            )
 
         service = Service(
             name=name,
@@ -57,7 +63,11 @@ class ServiceAppService:
         service = await self._service_repo.find_by_id(id)
 
         if service is None:
-            raise DomainError(ErrorCode.NOT_FOUND, f"Service {id} not found")
+            raise DomainError(
+                ErrorCode.SERVICE_NOT_FOUND,
+                f"Service {id} not found",
+                {"service_id": id},
+            )
 
         return service
 
@@ -102,7 +112,11 @@ class ServiceAppService:
     ) -> RouteValidationResult:
         vehicle = await self._vehicle_repo.find_by_id(vehicle_id)
         if vehicle is None:
-            raise DomainError(ErrorCode.VALIDATION, f"Vehicle {vehicle_id} not found")
+            raise DomainError(
+                ErrorCode.VEHICLE_NOT_FOUND,
+                f"Vehicle {vehicle_id} not found",
+                {"vehicle_id": str(vehicle_id)},
+            )
 
         connections = await self._connection_repo.find_all()
         all_stations = await self._station_repo.find_all()

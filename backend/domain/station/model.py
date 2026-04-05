@@ -47,7 +47,7 @@ class Station:
     def to_node(self) -> Node:
         if not self.is_yard:
             raise DomainError(
-                ErrorCode.VALIDATION, "Only yards can be converted to nodes"
+                ErrorCode.NOT_A_YARD, "Only yards can be converted to nodes"
             )
         return Node(id=self.id, type=NodeType.YARD)
 
@@ -59,7 +59,7 @@ class Station:
     ) -> TimetableEntry:
         if not self.is_yard:
             raise DomainError(
-                ErrorCode.VALIDATION, "Only yards can be converted to timetable entries"
+                ErrorCode.NOT_A_YARD, "Only yards can be converted to timetable entries"
             )
         return TimetableEntry(
             order=order,
@@ -71,7 +71,7 @@ class Station:
     def add_platform(self, platform: Platform) -> None:
         if any(p.id == platform.id for p in self.platforms):
             raise DomainError(
-                ErrorCode.VALIDATION, f"Platform {platform.id} already exists"
+                ErrorCode.DUPLICATE_PLATFORM, f"Platform {platform.id} already exists"
             )
         self.platforms.append(platform)
 
@@ -79,7 +79,11 @@ class Station:
         original_len = len(self.platforms)
         self.platforms = [p for p in self.platforms if p.id != platform_id]
         if len(self.platforms) == original_len:
-            raise DomainError(ErrorCode.VALIDATION, f"Platform {platform_id} not found")
+            raise DomainError(
+                ErrorCode.PLATFORM_NOT_FOUND,
+                f"Platform {platform_id} not found",
+                {"platform_id": str(platform_id)},
+            )
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Station) and self.id == other.id

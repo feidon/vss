@@ -12,3 +12,6 @@ class VehicleRepository(ABC):
 
     @abstractmethod
     async def find_by_id(self, id: UUID) -> Vehicle | None: ...
+
+    @abstractmethod
+    async def add_by_number(self, number: int) -> None: ...

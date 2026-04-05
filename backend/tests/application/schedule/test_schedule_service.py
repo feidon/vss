@@ -192,3 +192,75 @@ class TestScheduleAppService:
                 assert yard_dwell >= min_dwell, (
                     f"Yard dwell {yard_dwell}s < min {min_dwell}s for {num_blocks} blocks"
                 )
+
+
+def _make_app_with_vehicles(num_vehicles: int):
+    """Build ScheduleAppService seeding exactly `num_vehicles` vehicles."""
+    block_repo = InMemoryBlockRepository()
+    for b in create_blocks():
+        block_repo._store[b.id] = b
+
+    station_repo = InMemoryStationRepository()
+    for s in create_stations():
+        station_repo._store[s.id] = s
+
+    connection_repo = InMemoryConnectionRepository(create_connections())
+
+    vehicle_repo = InMemoryVehicleRepository()
+    for v in create_vehicles()[:num_vehicles]:
+        vehicle_repo._store[v.id] = v
+
+    service_repo = InMemoryServiceRepository()
+
+    app = ScheduleAppService(
+        service_repo=service_repo,
+        block_repo=block_repo,
+        connection_repo=connection_repo,
+        vehicle_repo=vehicle_repo,
+        station_repo=station_repo,
+    )
+    return app, service_repo, vehicle_repo
+
+
+class TestScheduleAutoGeneratesVehicles:
+    """Tests for vehicle auto-generation when insufficient vehicles exist."""
+
+    async def test_generates_vehicles_when_none_exist(self):
+        app, service_repo, vehicle_repo = _make_app_with_vehicles(0)
+        req = GenerateScheduleRequest(
+            interval_seconds=360,
+            start_time=0,
+            end_time=3600,
+            dwell_time_seconds=30,
+        )
+        result = await app.generate_schedule(req)
+        assert result.services_created > 0
+        vehicles_after = await vehicle_repo.find_all()
+        assert len(vehicles_after) == len(result.vehicles_used)
+
+    async def test_generates_deficit_when_not_enough(self):
+        app, service_repo, vehicle_repo = _make_app_with_vehicles(1)
+        req = GenerateScheduleRequest(
+            interval_seconds=360,
+            start_time=0,
+            end_time=3600,
+            dwell_time_seconds=30,
+        )
+        vehicles_before = await vehicle_repo.find_all()
+        result = await app.generate_schedule(req)
+        vehicles_after = await vehicle_repo.find_all()
+        assert len(vehicles_after) > len(vehicles_before)
+        assert len(vehicles_after) >= len(result.vehicles_used)
+
+    async def test_no_new_vehicles_when_sufficient(self):
+        app, service_repo, vehicle_repo = _make_app_with_vehicles(3)
+        req = GenerateScheduleRequest(
+            interval_seconds=360,
+            start_time=0,
+            end_time=3600,
+            dwell_time_seconds=30,
+        )
+        vehicles_before = await vehicle_repo.find_all()
+        await app.generate_schedule(req)
+        vehicles_after = await vehicle_repo.find_all()
+        assert len(vehicles_after) == len(vehicles_before)
