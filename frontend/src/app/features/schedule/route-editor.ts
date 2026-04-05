@@ -1,3 +1,4 @@
+import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList } from '@angular/cdk/drag-drop';
 import { Component, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ServiceDetailResponse, GraphResponse, TimetableEntry } from '../../shared/models';
@@ -12,7 +13,30 @@ interface StopEntry {
 
 @Component({
   selector: 'app-route-editor',
-  imports: [FormsModule, EpochTimePipe],
+  imports: [FormsModule, EpochTimePipe, CdkDropList, CdkDrag, CdkDragHandle],
+  styles: `
+    .cdk-drag-placeholder {
+      border-radius: 0.5rem;
+      border: 2px dashed color-mix(in srgb, var(--color-signal-info) 40%, transparent);
+      background: color-mix(in srgb, var(--color-signal-info) 5%, transparent);
+      min-height: 2.5rem;
+    }
+    .cdk-drag-preview {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      border-radius: 0.5rem;
+      background: var(--color-panel-raised);
+      padding: 0.5rem 0.75rem;
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    }
+    .cdk-drag-animating {
+      transition: transform 200ms ease;
+    }
+    .cdk-drop-list-dragging .cdk-drag:not(.cdk-drag-placeholder) {
+      transition: transform 200ms ease;
+    }
+  `,
   template: `
     <!-- Stop list -->
     <div class="mb-5">
@@ -21,11 +45,26 @@ interface StopEntry {
       </h4>
 
       @if (stops().length > 0) {
-        <div class="space-y-1">
+        <div class="space-y-1" cdkDropList (cdkDropListDropped)="onDrop($event)">
           @for (stop of stops(); track $index; let i = $index) {
             <div
+              cdkDrag
               class="flex items-center gap-3 rounded-lg bg-panel-raised/60 px-3 py-2 ring-1 ring-edge/50 transition-colors hover:ring-edge-bright/50"
             >
+              <button
+                cdkDragHandle
+                class="cursor-grab rounded p-0.5 text-ink-muted/60 transition-colors hover:text-ink-muted active:cursor-grabbing"
+                title="Drag to reorder"
+              >
+                <svg class="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
+                  <circle cx="5.5" cy="3.5" r="1.5" />
+                  <circle cx="10.5" cy="3.5" r="1.5" />
+                  <circle cx="5.5" cy="8" r="1.5" />
+                  <circle cx="10.5" cy="8" r="1.5" />
+                  <circle cx="5.5" cy="12.5" r="1.5" />
+                  <circle cx="10.5" cy="12.5" r="1.5" />
+                </svg>
+              </button>
               <span
                 class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-signal-info/15 font-mono text-sm font-medium text-signal-info"
               >
@@ -154,6 +193,16 @@ export class RouteEditorComponent {
       this.graph().edges.find((e) => e.id === nodeId)?.name ??
       nodeId
     );
+  }
+
+  onDrop(event: CdkDragDrop<readonly StopEntry[]>): void {
+    if (event.previousIndex === event.currentIndex) return;
+    this.stops.update((s) => {
+      const reordered = [...s];
+      const [moved] = reordered.splice(event.previousIndex, 1);
+      reordered.splice(event.currentIndex, 0, moved);
+      return reordered;
+    });
   }
 
   removeStop(index: number): void {
