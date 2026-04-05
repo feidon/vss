@@ -151,3 +151,138 @@ class TestGreedySolver:
             assert a1.depart_time == a2.depart_time
             assert a1.variant_index == a2.variant_index
             assert a1.vehicle_index == a2.vehicle_index
+
+
+def _collect_station_arrivals(
+    inp: SolverInput,
+    result,
+) -> dict[str, list[int]]:
+    """Collect absolute arrival times at each station from solver output."""
+    arrivals: dict[str, list[int]] = defaultdict(list)
+    for a in result.assignments:
+        var = inp.variants[a.variant_index]
+        for sa in var.station_arrivals:
+            arrivals[sa.station_name].append(a.depart_time + sa.arrival_offset)
+    for times in arrivals.values():
+        times.sort()
+    return arrivals
+
+
+def _max_station_gap(inp: SolverInput, result) -> int:
+    """Return the largest gap between consecutive arrivals across all stations."""
+    arrivals = _collect_station_arrivals(inp, result)
+    max_gap = 0
+    for times in arrivals.values():
+        for i in range(len(times) - 1):
+            max_gap = max(max_gap, times[i + 1] - times[i])
+    return max_gap
+
+
+class TestStationFrequency:
+    """Verify the core user requirement: a passenger at any station can
+    board a vehicle within the specified interval."""
+
+    def test_5min_interval_10h_range(self):
+        """Standard case: 5-minute interval, 08:00-18:00."""
+        start = 8 * 3600  # 08:00
+        end = 18 * 3600  # 18:00
+        interval = 300  # 5 minutes
+        inp = _build_input(
+            interval=interval,
+            num_vehicles=3,
+            dwell=15,
+            start_time=start,
+            end_time=end,
+        )
+        result = solve_schedule(inp)
+
+        assert len(result.assignments) > 0
+        arrivals = _collect_station_arrivals(inp, result)
+        for sname, times in arrivals.items():
+            for i in range(len(times) - 1):
+                gap = times[i + 1] - times[i]
+                assert gap <= interval, (
+                    f"Station {sname}: gap {gap}s > {interval}s "
+                    f"between t={times[i]} and t={times[i + 1]}"
+                )
+
+    def test_5min_interval_covers_all_stations(self):
+        """Every station (S1, S2, S3) is visited multiple times."""
+        start = 8 * 3600
+        end = 18 * 3600
+        inp = _build_input(
+            interval=300,
+            num_vehicles=3,
+            dwell=15,
+            start_time=start,
+            end_time=end,
+        )
+        result = solve_schedule(inp)
+        arrivals = _collect_station_arrivals(inp, result)
+
+        for sname in ["S1", "S2", "S3"]:
+            assert sname in arrivals, f"Station {sname} never visited"
+            assert len(arrivals[sname]) > 10, (
+                f"Station {sname} only visited {len(arrivals[sname])} times in 10h"
+            )
+
+    def test_2min_interval_produces_trips_despite_bottleneck(self):
+        """Tight interval (120s) was infeasible with CP-SAT. Greedy produces
+        the best achievable schedule, but the yard interlocking physically
+        limits throughput — gaps at S3 may reach the cycle time."""
+        interval = 120
+        inp = _build_input(
+            interval=interval,
+            num_vehicles=6,
+            dwell=15,
+            start_time=0,
+            end_time=3600,
+        )
+        result = solve_schedule(inp)
+        assert len(result.assignments) > 10  # should get ~14 trips in 1h
+
+        max_gap = _max_station_gap(inp, result)
+        max_cycle = max(v.cycle_time for v in inp.variants)
+        assert max_gap <= max_cycle, (
+            f"Max station gap {max_gap}s exceeds cycle time {max_cycle}s"
+        )
+
+    def test_3min_interval_mostly_within_target(self):
+        """3-minute interval over 2 hours. The yard interlocking may force
+        occasional gaps slightly above 180s (by ~15s) when a returning
+        vehicle blocks the next departure."""
+        interval = 180
+        inp = _build_input(
+            interval=interval,
+            num_vehicles=4,
+            dwell=15,
+            start_time=0,
+            end_time=7200,
+        )
+        result = solve_schedule(inp)
+        assert len(result.assignments) > 0
+
+        max_gap = _max_station_gap(inp, result)
+        # Allow up to one block traversal time (30s) of slack
+        # beyond the target interval for yard bottleneck shifts
+        assert max_gap <= interval + 30, (
+            f"Max station gap {max_gap}s exceeds {interval + 30}s"
+        )
+
+    def test_all_vehicles_used_over_long_range(self):
+        """Over a 10h range, all provisioned vehicles should serve trips."""
+        start = 8 * 3600
+        end = 18 * 3600
+        inp = _build_input(
+            interval=300,
+            num_vehicles=3,
+            dwell=15,
+            start_time=start,
+            end_time=end,
+        )
+        result = solve_schedule(inp)
+
+        vehicles_used = {a.vehicle_index for a in result.assignments}
+        assert vehicles_used == set(range(inp.num_vehicles)), (
+            f"Expected vehicles {set(range(inp.num_vehicles))}, got {vehicles_used}"
+        )
