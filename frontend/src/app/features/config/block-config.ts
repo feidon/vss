@@ -69,7 +69,10 @@ interface BlockGroup {
                       {{ block.group }}
                     </span>
                   } @else {
-                    <span class="text-ink-muted">-</span>
+                    <span
+                      class="inline-flex items-center rounded-md bg-ink-muted/10 px-2 py-0.5 font-mono text-sm font-medium text-ink-muted ring-1 ring-ink-muted/20"
+                      >-</span
+                    >
                   }
                 </td>
                 <td>
