@@ -32,3 +32,7 @@ class InMemoryServiceRepository(ServiceRepository):
 
     async def delete(self, id: int) -> None:
         self._store.pop(id, None)
+
+    async def delete_all(self) -> None:
+        self._store.clear()
+        self._counter = 0

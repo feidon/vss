@@ -57,6 +57,10 @@ class PostgresServiceRepository(ServiceRepository):
         )
         await self._session.commit()
 
+    async def delete_all(self) -> None:
+        await self._session.execute(delete(services_table))
+        await self._session.commit()
+
     @staticmethod
     def _to_entity(row) -> Service:
         route = [Node(id=UUID(n["id"]), type=NodeType(n["type"])) for n in row["route"]]

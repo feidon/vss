@@ -24,3 +24,6 @@ class ServiceRepository(ABC):
 
     @abstractmethod
     async def delete(self, id: int) -> None: ...
+
+    @abstractmethod
+    async def delete_all(self) -> None: ...
