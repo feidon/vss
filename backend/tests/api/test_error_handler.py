@@ -4,7 +4,7 @@ import json
 from uuid import UUID
 
 from api.error_handler import domain_error_handler
-from api.shared.schemas import ConflictDetailResponse, ErrorResponse
+from api.shared.schemas import ErrorResponse
 from application.service.errors import ConflictError
 from domain.domain_service.conflict.model import (
     BatteryConflict,
@@ -17,7 +17,7 @@ from domain.domain_service.conflict.model import (
 from domain.error import DomainError, ErrorCode
 
 
-async def test_not_found_returns_404_with_structured_detail():
+async def test_not_found_returns_404_with_error_code_and_context():
     exc = DomainError(
         ErrorCode.SERVICE_NOT_FOUND,
         "Service 1 not found",
@@ -28,11 +28,11 @@ async def test_not_found_returns_404_with_structured_detail():
     assert resp.status_code == 404
     body = json.loads(resp.body)
     assert body["detail"]["error_code"] == "SERVICE_NOT_FOUND"
-    assert body["detail"]["message"] == "Service 1 not found"
     assert body["detail"]["context"] == {"service_id": 1}
+    assert "message" not in body["detail"]
 
 
-async def test_validation_returns_400_with_structured_detail():
+async def test_validation_returns_400_with_error_code_and_context():
     exc = DomainError(
         ErrorCode.STOP_NOT_FOUND,
         "Stop abc not found",
@@ -43,8 +43,8 @@ async def test_validation_returns_400_with_structured_detail():
     assert resp.status_code == 400
     body = json.loads(resp.body)
     assert body["detail"]["error_code"] == "STOP_NOT_FOUND"
-    assert body["detail"]["message"] == "Stop abc not found"
     assert body["detail"]["context"] == {"stop_id": "abc"}
+    assert "message" not in body["detail"]
 
 
 async def test_validation_without_context_returns_empty_context():
@@ -55,9 +55,10 @@ async def test_validation_without_context_returns_empty_context():
     body = json.loads(resp.body)
     assert body["detail"]["error_code"] == "EMPTY_SERVICE_NAME"
     assert body["detail"]["context"] == {}
+    assert "message" not in body["detail"]
 
 
-async def test_no_route_returns_422_with_structured_detail():
+async def test_no_route_returns_422_with_error_code_and_context():
     exc = DomainError(
         ErrorCode.NO_ROUTE_BETWEEN_STOPS,
         "No route between stops",
@@ -70,9 +71,10 @@ async def test_no_route_returns_422_with_structured_detail():
     assert body["detail"]["error_code"] == "NO_ROUTE_BETWEEN_STOPS"
     assert body["detail"]["context"]["from_stop_id"] == "abc"
     assert body["detail"]["context"]["to_stop_id"] == "def"
+    assert "message" not in body["detail"]
 
 
-async def test_conflict_error_returns_409_with_structured_detail():
+async def test_conflict_error_returns_409_with_conflicts_in_context():
     conflicts = ServiceConflicts(
         vehicle_conflicts=[
             VehicleConflict(
@@ -110,18 +112,19 @@ async def test_conflict_error_returns_409_with_structured_detail():
     resp = await domain_error_handler(None, exc)
 
     assert resp.status_code == 409
-    import json
-
-    detail = json.loads(resp.body)["detail"]
-    assert detail["message"] == "Service has scheduling conflicts"
-    assert len(detail["vehicle_conflicts"]) == 1
-    assert detail["vehicle_conflicts"][0]["reason"] == "same vehicle"
-    assert len(detail["block_conflicts"]) == 1
-    assert detail["block_conflicts"][0]["overlap_start"] == 100
-    assert len(detail["interlocking_conflicts"]) == 1
-    assert detail["interlocking_conflicts"][0]["group"] == 1
-    assert len(detail["battery_conflicts"]) == 1
-    assert detail["battery_conflicts"][0]["type"] == "LOWBATTERY"
+    body = json.loads(resp.body)
+    detail = body["detail"]
+    assert detail["error_code"] == "SCHEDULING_CONFLICT"
+    assert "message" not in detail
+    ctx = detail["context"]
+    assert len(ctx["vehicle_conflicts"]) == 1
+    assert ctx["vehicle_conflicts"][0]["reason"] == "same vehicle"
+    assert len(ctx["block_conflicts"]) == 1
+    assert ctx["block_conflicts"][0]["overlap_start"] == 100
+    assert len(ctx["interlocking_conflicts"]) == 1
+    assert ctx["interlocking_conflicts"][0]["group"] == 1
+    assert len(ctx["battery_conflicts"]) == 1
+    assert ctx["battery_conflicts"][0]["type"] == "LOWBATTERY"
 
 
 async def test_conflict_error_with_empty_lists():
@@ -135,13 +138,12 @@ async def test_conflict_error_with_empty_lists():
     resp = await domain_error_handler(None, exc)
 
     assert resp.status_code == 409
-    import json
-
-    detail = json.loads(resp.body)["detail"]
-    assert detail["vehicle_conflicts"] == []
-    assert detail["block_conflicts"] == []
-    assert detail["interlocking_conflicts"] == []
-    assert detail["battery_conflicts"] == []
+    body = json.loads(resp.body)
+    ctx = body["detail"]["context"]
+    assert ctx["vehicle_conflicts"] == []
+    assert ctx["block_conflicts"] == []
+    assert ctx["interlocking_conflicts"] == []
+    assert ctx["battery_conflicts"] == []
 
 
 async def test_unmapped_error_code_defaults_to_400():
@@ -151,7 +153,7 @@ async def test_unmapped_error_code_defaults_to_400():
     assert resp.status_code == 400
 
 
-async def test_error_response_schema_matches_structured_output():
+async def test_error_response_schema_matches_handler_output():
     exc = DomainError(
         ErrorCode.SERVICE_NOT_FOUND,
         "Service 1 not found",
@@ -161,11 +163,10 @@ async def test_error_response_schema_matches_structured_output():
     body = json.loads(resp.body)
     validated = ErrorResponse.model_validate(body)
     assert validated.detail.error_code == "SERVICE_NOT_FOUND"
-    assert validated.detail.message == "Service 1 not found"
     assert validated.detail.context == {"service_id": 1}
 
 
-async def test_conflict_detail_response_schema_matches_conflict_output():
+async def test_conflict_response_schema_matches_unified_output():
     conflicts = ServiceConflicts(
         vehicle_conflicts=[
             VehicleConflict(
@@ -202,12 +203,12 @@ async def test_conflict_detail_response_schema_matches_conflict_output():
     exc = ConflictError(conflicts)
     resp = await domain_error_handler(None, exc)
     body = json.loads(resp.body)
-    validated = ConflictDetailResponse.model_validate(body)
-    assert validated.detail.message == "Service has scheduling conflicts"
-    assert len(validated.detail.vehicle_conflicts) == 1
-    assert len(validated.detail.block_conflicts) == 1
-    assert len(validated.detail.interlocking_conflicts) == 1
-    assert len(validated.detail.battery_conflicts) == 1
+    validated = ErrorResponse.model_validate(body)
+    assert validated.detail.error_code == "SCHEDULING_CONFLICT"
+    assert len(validated.detail.context["vehicle_conflicts"]) == 1
+    assert len(validated.detail.context["block_conflicts"]) == 1
+    assert len(validated.detail.context["interlocking_conflicts"]) == 1
+    assert len(validated.detail.context["battery_conflicts"]) == 1
 
 
 def test_openapi_schema_includes_error_responses():

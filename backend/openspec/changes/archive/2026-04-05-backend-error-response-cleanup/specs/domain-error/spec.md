@@ -1,32 +1,4 @@
-## ADDED Requirements
-
-### Requirement: DomainError with ErrorCode enum
-The system SHALL define a single `DomainError` exception class in `domain/error.py` with an `ErrorCode` enum. All domain and application layer errors that represent business rule violations or entity lookup failures SHALL raise `DomainError` with the appropriate code.
-
-Error codes:
-- `NOT_FOUND` — entity does not exist
-- `VALIDATION` — invalid input or business rule violation
-- `CONFLICT` — scheduling conflict detected
-- `NO_ROUTE` — no path exists between stops
-
-#### Scenario: Domain model raises DomainError for validation failure
-- **WHEN** a domain entity or value object receives invalid input (e.g., negative traversal time, empty service name)
-- **THEN** a `DomainError` with `ErrorCode.VALIDATION` SHALL be raised with a descriptive message
-
-#### Scenario: Application service raises DomainError for not found
-- **WHEN** an application service cannot find a requested entity (service, block, vehicle, stop)
-- **THEN** a `DomainError` with `ErrorCode.NOT_FOUND` SHALL be raised
-
-#### Scenario: Domain service raises DomainError for no route
-- **WHEN** the route finder cannot find a path between two stops
-- **THEN** a `DomainError` with `ErrorCode.NO_ROUTE` SHALL be raised
-
-### Requirement: ConflictError as DomainError subclass
-`ConflictError` SHALL be a subclass of `DomainError` with `ErrorCode.CONFLICT` and SHALL carry the `ServiceConflicts` domain object as structured detail.
-
-#### Scenario: Conflict detection raises ConflictError
-- **WHEN** `update_service_route` detects scheduling conflicts
-- **THEN** a `ConflictError` SHALL be raised containing the `ServiceConflicts` object
+## MODIFIED Requirements
 
 ### Requirement: Unified FastAPI exception handler
 The system SHALL register a single `DomainError` exception handler in FastAPI that maps error codes to HTTP status codes:

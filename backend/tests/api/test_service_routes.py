@@ -225,8 +225,7 @@ class TestServiceRouteUpdate:
         )
         assert resp.status_code == HTTP_409_CONFLICT
         detail = resp.json()["detail"]
-        assert (
-            len(detail["vehicle_conflicts"]) > 0 or len(detail["block_conflicts"]) > 0
-        )
-        # Battery conflict fields present in response
-        assert "battery_conflicts" in detail
+        assert detail["error_code"] == "SCHEDULING_CONFLICT"
+        ctx = detail["context"]
+        assert len(ctx["vehicle_conflicts"]) > 0 or len(ctx["block_conflicts"]) > 0
+        assert "battery_conflicts" in ctx

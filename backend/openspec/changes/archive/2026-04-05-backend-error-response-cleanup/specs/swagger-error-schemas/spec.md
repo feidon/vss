@@ -1,3 +1,5 @@
+## MODIFIED Requirements
+
 ### Requirement: Error response Pydantic models
 The system SHALL define Pydantic response models in `api/shared/schemas.py` for all error response shapes returned by the domain error handler.
 
@@ -6,6 +8,7 @@ The system SHALL define Pydantic response models in `api/shared/schemas.py` for 
   - `context: dict[str, Any]` — additional context for the error (defaults to empty dict)
   - The model SHALL NOT have a `message` field.
 - `ErrorResponse`: SHALL have a single field `detail: ErrorDetail`.
+- The following models SHALL be removed: `ConflictDetail`, `ConflictDetailResponse`, `VehicleConflictSchema`, `BlockConflictSchema`, `InterlockingConflictSchema`, `ConflictBatterySchema`.
 
 #### Scenario: ErrorDetail model matches standard error handler output
 - **WHEN** the domain error handler returns `{"detail": {"error_code": "STOP_NOT_FOUND", "context": {"stop_id": "uuid-123"}}}`
@@ -14,6 +17,14 @@ The system SHALL define Pydantic response models in `api/shared/schemas.py` for 
 #### Scenario: ErrorDetail model matches conflict error handler output
 - **WHEN** the domain error handler returns `{"detail": {"error_code": "SCHEDULING_CONFLICT", "context": {"vehicle_conflicts": [...], "block_conflicts": [...]}}}`
 - **THEN** the `ErrorDetail` model SHALL validate that output successfully
+
+## REMOVED Requirements
+
+### Requirement: ConflictDetailResponse as separate model
+**Reason**: All errors now use the unified `ErrorResponse` shape. Conflict data is carried in the `context` field of `ErrorDetail`.
+**Migration**: Use `ErrorResponse` for 409 responses. Frontend reads conflict lists from `detail.context` instead of `detail`.
+
+## MODIFIED Requirements
 
 ### Requirement: Reusable error response constants
 The system SHALL define response dict constants in `api/shared/schemas.py` for each error category:
@@ -32,20 +43,7 @@ All constants SHALL use `ErrorResponse` as the model — there is no separate `C
 - **THEN** Swagger SHALL display 404 and 409 as documented response statuses with `ErrorResponse` as the body schema
 
 ### Requirement: All routes declare error responses
-Every API route that can produce a `DomainError` SHALL declare the applicable error responses via the `responses` parameter on its route decorator.
-
-The mapping SHALL be:
-
-| Route | Error Responses |
-|-------|----------------|
-| `PATCH /api/blocks/{id}` | 404 |
-| `POST /api/services` | 400 |
-| `GET /api/services/{id}` | 404 |
-| `PATCH /api/services/{id}/route` | 404, 400, 409, 422 |
-| `DELETE /api/services/{id}` | 404 |
-| `POST /api/routes/validate` | 400, 422 |
-
-Routes that only return success (e.g., `GET /api/blocks`, `GET /api/services`, `GET /api/vehicles`) SHALL NOT declare error responses beyond FastAPI defaults.
+Every API route that can produce a `DomainError` SHALL declare the applicable error responses via the `responses` parameter on its route decorator. This requirement is unchanged.
 
 #### Scenario: Swagger shows unified ErrorDetail schema for all errors
 - **WHEN** a developer opens Swagger UI for any error-producing route

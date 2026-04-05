@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from application.service.errors import ConflictError
 from domain.error import DomainError, ErrorCode
 from fastapi import Request
@@ -10,6 +12,8 @@ from starlette.status import (
     HTTP_409_CONFLICT,
     HTTP_422_UNPROCESSABLE_CONTENT,
 )
+
+logger = logging.getLogger(__name__)
 
 STATUS_MAP: dict[ErrorCode, int] = {
     # 404
@@ -26,21 +30,28 @@ STATUS_MAP: dict[ErrorCode, int] = {
 async def domain_error_handler(request: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, DomainError)
     status = STATUS_MAP.get(exc.code, HTTP_400_BAD_REQUEST)
+
     if isinstance(exc, ConflictError):
-        detail = _build_conflict_detail(exc)
+        context = _build_conflict_context(exc)
     else:
-        detail = {
-            "error_code": exc.code.value,
-            "message": exc.message,
-            "context": exc.context or {},
-        }
+        context = exc.context or {}
+
+    logger.warning(
+        "Domain error: %s",
+        exc.message,
+        extra={"error_code": exc.code.value, "context": context},
+    )
+
+    detail = {
+        "error_code": exc.code.value,
+        "context": context,
+    }
     return JSONResponse(status_code=status, content={"detail": detail})
 
 
-def _build_conflict_detail(e: ConflictError) -> dict:
+def _build_conflict_context(e: ConflictError) -> dict:
     c = e.conflicts
     return {
-        "message": e.message,
         "vehicle_conflicts": [
             {
                 "vehicle_id": str(vc.vehicle_id),
