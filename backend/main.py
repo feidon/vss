@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from api.block.routes import router as block_router
 from api.error_handler import domain_error_handler
 from api.route.routes import router as route_router
+from api.schedule.routes import router as schedule_router
 from api.service.routes import router as service_router
 from api.vehicle.routes import router as vehicle_router
 from domain.error import DomainError
@@ -25,6 +26,7 @@ app.add_middleware(
 )
 API_PREFIX = "/api"
 app.include_router(block_router, prefix=API_PREFIX)
+app.include_router(schedule_router, prefix=API_PREFIX)
 app.include_router(service_router, prefix=API_PREFIX)
 app.include_router(route_router, prefix=API_PREFIX)
 app.include_router(vehicle_router, prefix=API_PREFIX)

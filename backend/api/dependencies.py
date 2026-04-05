@@ -1,5 +1,6 @@
 from application.block.service import BlockAppService
 from application.graph.service import GraphAppService
+from application.schedule.schedule_service import ScheduleAppService
 from application.service.service import ServiceAppService
 from application.vehicle.service import VehicleAppService
 from domain.block.repository import BlockRepository
@@ -69,6 +70,18 @@ def get_service_app_service(
     station_repo: StationRepository = Depends(get_station_repo),
 ) -> ServiceAppService:
     return ServiceAppService(
+        service_repo, block_repo, connection_repo, vehicle_repo, station_repo
+    )
+
+
+def get_schedule_app_service(
+    service_repo: ServiceRepository = Depends(get_service_repo),
+    block_repo: BlockRepository = Depends(get_block_repo),
+    connection_repo: ConnectionRepository = Depends(get_connection_repo),
+    vehicle_repo: VehicleRepository = Depends(get_vehicle_repo),
+    station_repo: StationRepository = Depends(get_station_repo),
+) -> ScheduleAppService:
+    return ScheduleAppService(
         service_repo, block_repo, connection_repo, vehicle_repo, station_repo
     )
 
