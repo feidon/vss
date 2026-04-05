@@ -1,3 +1,4 @@
+import math
 from collections import defaultdict
 from uuid import UUID
 
@@ -5,20 +6,20 @@ from application.schedule.model import SolverInput
 from application.schedule.route_variant import compute_route_variants
 from application.schedule.solver import solve_schedule
 from infra.seed import (
-    VEHICLE_ID_BY_NAME,
     create_blocks,
     create_connections,
     create_stations,
+    create_vehicles,
 )
 
 
 def _build_input(
     interval: int = 360,
-    num_vehicles: int = 2,
     dwell: int = 30,
     start_time: int = 0,
     end_time: int = 3600,
 ) -> SolverInput:
+    """Build SolverInput with auto-computed num_vehicles (same formula as schedule service)."""
     blocks = create_blocks()
     variants = compute_route_variants(
         stations=create_stations(),
@@ -27,15 +28,27 @@ def _build_input(
         dwell_time_seconds=dwell,
     )
 
+    cycle_times = [v.cycle_time for v in variants]
+    min_yard_dwells = [v.num_blocks * 12 for v in variants]
+    max_turnaround = max(c + y for c, y in zip(cycle_times, min_yard_dwells))
+    num_vehicles = math.ceil(max_turnaround / interval) + 1
+
     interlocking_groups: dict[int, list] = {}
     for b in blocks:
         if b.group != 0:
             interlocking_groups.setdefault(b.group, []).append(b.id)
 
+    vehicle_ids = [v.id for v in create_vehicles()]
+    # Extend with generated IDs if we need more than seed provides
+    while len(vehicle_ids) < num_vehicles:
+        from uuid import uuid4
+
+        vehicle_ids.append(uuid4())
+
     return SolverInput(
         variants=variants,
         num_vehicles=num_vehicles,
-        vehicle_ids=list(VEHICLE_ID_BY_NAME.values())[:num_vehicles],
+        vehicle_ids=vehicle_ids[:num_vehicles],
         start_time=start_time,
         end_time=end_time,
         interval_seconds=interval,
@@ -45,12 +58,12 @@ def _build_input(
 
 class TestGreedySolver:
     def test_produces_assignments(self):
-        inp = _build_input(interval=360, num_vehicles=2)
+        inp = _build_input(interval=360)
         result = solve_schedule(inp)
         assert len(result.assignments) > 0
 
     def test_departures_within_time_range(self):
-        inp = _build_input(interval=360, num_vehicles=2)
+        inp = _build_input(interval=360)
         result = solve_schedule(inp)
         for a in result.assignments:
             assert a.depart_time >= inp.start_time
@@ -58,19 +71,19 @@ class TestGreedySolver:
             assert a.depart_time + variant.cycle_time <= inp.end_time
 
     def test_variant_indices_valid(self):
-        inp = _build_input(interval=360, num_vehicles=2)
+        inp = _build_input(interval=360)
         result = solve_schedule(inp)
         for a in result.assignments:
             assert 0 <= a.variant_index < len(inp.variants)
 
     def test_vehicle_indices_valid(self):
-        inp = _build_input(interval=360, num_vehicles=2)
+        inp = _build_input(interval=360)
         result = solve_schedule(inp)
         for a in result.assignments:
             assert 0 <= a.vehicle_index < inp.num_vehicles
 
     def test_no_block_overlaps(self):
-        inp = _build_input(interval=360, num_vehicles=2)
+        inp = _build_input(interval=360)
         result = solve_schedule(inp)
         block_intervals: dict[UUID, list[tuple[int, int]]] = defaultdict(list)
         for a in result.assignments:
@@ -88,7 +101,7 @@ class TestGreedySolver:
                 )
 
     def test_no_interlocking_overlaps(self):
-        inp = _build_input(interval=360, num_vehicles=2)
+        inp = _build_input(interval=360)
         result = solve_schedule(inp)
         block_intervals: dict[UUID, list[tuple[int, int]]] = defaultdict(list)
         for a in result.assignments:
@@ -110,18 +123,18 @@ class TestGreedySolver:
 
     def test_tight_interval_still_produces_result(self):
         """interval=120s was infeasible with CP-SAT cyclic solver."""
-        inp = _build_input(interval=120, num_vehicles=6, end_time=7200)
+        inp = _build_input(interval=120, end_time=7200)
         result = solve_schedule(inp)
         assert len(result.assignments) > 0
 
     def test_empty_when_time_range_too_short(self):
-        inp = _build_input(interval=360, num_vehicles=2, start_time=0, end_time=100)
+        inp = _build_input(interval=360, start_time=0, end_time=100)
         result = solve_schedule(inp)
         assert len(result.assignments) == 0
 
     def test_vehicle_recharge_respected(self):
         """Same vehicle's consecutive trips have enough yard dwell."""
-        inp = _build_input(interval=360, num_vehicles=2, end_time=7200)
+        inp = _build_input(interval=360, end_time=7200)
         result = solve_schedule(inp)
 
         by_vehicle: dict[int, list] = defaultdict(list)
@@ -143,7 +156,7 @@ class TestGreedySolver:
 
     def test_deterministic(self):
         """Same input produces same output."""
-        inp = _build_input(interval=300, num_vehicles=3, end_time=7200)
+        inp = _build_input(interval=300, end_time=7200)
         r1 = solve_schedule(inp)
         r2 = solve_schedule(inp)
         assert len(r1.assignments) == len(r2.assignments)
@@ -189,7 +202,6 @@ class TestStationFrequency:
         interval = 300  # 5 minutes
         inp = _build_input(
             interval=interval,
-            num_vehicles=3,
             dwell=15,
             start_time=start,
             end_time=end,
@@ -212,7 +224,6 @@ class TestStationFrequency:
         end = 18 * 3600
         inp = _build_input(
             interval=300,
-            num_vehicles=3,
             dwell=15,
             start_time=start,
             end_time=end,
@@ -233,7 +244,6 @@ class TestStationFrequency:
         interval = 150
         inp = _build_input(
             interval=interval,
-            num_vehicles=5,
             dwell=15,
             start_time=0,
             end_time=7200,
@@ -257,7 +267,6 @@ class TestStationFrequency:
         interval = 120
         inp = _build_input(
             interval=interval,
-            num_vehicles=6,
             dwell=15,
             start_time=0,
             end_time=3600,
@@ -278,7 +287,6 @@ class TestStationFrequency:
         interval = 180
         inp = _build_input(
             interval=interval,
-            num_vehicles=4,
             dwell=15,
             start_time=0,
             end_time=7200,
@@ -299,7 +307,6 @@ class TestStationFrequency:
         end = 18 * 3600
         inp = _build_input(
             interval=300,
-            num_vehicles=3,
             dwell=15,
             start_time=start,
             end_time=end,
