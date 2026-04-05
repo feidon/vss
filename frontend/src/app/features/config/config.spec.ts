@@ -19,12 +19,14 @@ describe('ConfigComponent', () => {
     httpTesting.verify();
   });
 
-  it('should render block config section', () => {
+  it('should render block config and vehicle list sections', () => {
     const fixture = TestBed.createComponent(ConfigComponent);
     fixture.detectChanges();
 
     httpTesting.expectOne((req) => req.url.endsWith('/blocks'));
+    httpTesting.expectOne((req) => req.url.endsWith('/vehicles'));
 
     expect(fixture.nativeElement.querySelector('app-block-config')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-vehicle-list')).toBeTruthy();
   });
 });

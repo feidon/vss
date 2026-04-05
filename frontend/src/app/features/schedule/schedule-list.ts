@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
@@ -91,7 +91,7 @@ import { AutoScheduleDialogComponent, AutoScheduleDialogResult } from './auto-sc
             </tr>
           </thead>
           <tbody>
-            @for (service of services(); track service.id) {
+            @for (service of sortedServices(); track service.id) {
               <tr class="cursor-pointer transition-colors" (click)="toggleExpand(service)">
                 <td class="font-display font-semibold text-ink">{{ service.name }}</td>
                 <td>
@@ -174,6 +174,14 @@ export class ScheduleListComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly services = signal<readonly ServiceResponse[]>([]);
+  readonly sortedServices = computed(() =>
+    [...this.services()].sort((a, b) => {
+      if (a.start_time === null && b.start_time === null) return 0;
+      if (a.start_time === null) return 1;
+      if (b.start_time === null) return -1;
+      return a.start_time - b.start_time;
+    }),
+  );
   readonly errorMessage = signal<string | null>(null);
   readonly expandedServiceId = signal<number | null>(null);
   readonly detailCache = signal<ReadonlyMap<number, ServiceDetailResponse>>(new Map());

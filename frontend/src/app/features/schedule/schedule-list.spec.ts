@@ -204,6 +204,114 @@ describe('ScheduleListComponent', () => {
     expect(expandedRow.textContent).toContain('Y → P1A');
   });
 
+  it('should display services sorted by start_time ascending', () => {
+    const fixture = TestBed.createComponent(ScheduleListComponent);
+    fixture.detectChanges();
+
+    const unsorted: ServiceResponse[] = [
+      {
+        id: 103,
+        name: 'S103',
+        vehicle_id: 'v3',
+        vehicle_name: 'V3',
+        start_time: 1700000060,
+        origin_name: 'P2A',
+        destination_name: 'P3A',
+      },
+      {
+        id: 101,
+        name: 'S101',
+        vehicle_id: 'v1',
+        vehicle_name: 'V1',
+        start_time: 1700000000,
+        origin_name: 'P1A',
+        destination_name: 'P2A',
+      },
+      {
+        id: 102,
+        name: 'S102',
+        vehicle_id: 'v2',
+        vehicle_name: 'V2',
+        start_time: 1700000030,
+        origin_name: 'P1A',
+        destination_name: 'P3A',
+      },
+    ];
+
+    httpTesting.expectOne(`${API_BASE_URL}/services`).flush(unsorted);
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('tbody tr');
+    expect(rows[0].textContent).toContain('S101');
+    expect(rows[1].textContent).toContain('S102');
+    expect(rows[2].textContent).toContain('S103');
+  });
+
+  it('should display services with null start_time after those with start_time', () => {
+    const fixture = TestBed.createComponent(ScheduleListComponent);
+    fixture.detectChanges();
+
+    const mixed: ServiceResponse[] = [
+      {
+        id: 102,
+        name: 'S102',
+        vehicle_id: 'v2',
+        vehicle_name: 'V2',
+        start_time: null,
+        origin_name: null,
+        destination_name: null,
+      },
+      {
+        id: 101,
+        name: 'S101',
+        vehicle_id: 'v1',
+        vehicle_name: 'V1',
+        start_time: 1700000000,
+        origin_name: 'P1A',
+        destination_name: 'P2A',
+      },
+    ];
+
+    httpTesting.expectOne(`${API_BASE_URL}/services`).flush(mixed);
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('tbody tr');
+    expect(rows[0].textContent).toContain('S101');
+    expect(rows[1].textContent).toContain('S102');
+  });
+
+  it('should render all-null start_time services without error', () => {
+    const fixture = TestBed.createComponent(ScheduleListComponent);
+    fixture.detectChanges();
+
+    const allNull: ServiceResponse[] = [
+      {
+        id: 101,
+        name: 'S101',
+        vehicle_id: 'v1',
+        vehicle_name: 'V1',
+        start_time: null,
+        origin_name: null,
+        destination_name: null,
+      },
+      {
+        id: 102,
+        name: 'S102',
+        vehicle_id: 'v2',
+        vehicle_name: 'V2',
+        start_time: null,
+        origin_name: null,
+        destination_name: null,
+      },
+    ];
+
+    httpTesting.expectOne(`${API_BASE_URL}/services`).flush(allNull);
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('tbody tr');
+    expect(rows.length).toBe(2);
+  });
+
   it('should not toggle expansion when Edit or Delete button is clicked', () => {
     const navigateSpy = vi.spyOn(router, 'navigate');
 
