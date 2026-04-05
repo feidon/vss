@@ -23,8 +23,8 @@ interface BlockGroup {
   imports: [ErrorAlertComponent],
   template: `
     <div class="mb-6 animate-fade-in">
-      <h2 class="font-display text-2xl font-bold tracking-wide text-ink">Block Configuration</h2>
-      <p class="mt-0.5 font-display text-sm text-ink-muted">Track section traversal times</p>
+      <h2 class="font-display text-3xl font-bold tracking-wide text-ink">Block Configuration</h2>
+      <p class="mt-0.5 font-display text-base text-ink-muted">Track section traversal times</p>
     </div>
 
     @if (error()) {
@@ -50,7 +50,7 @@ interface BlockGroup {
                     [class]="g.group === 0 ? 'bg-ink-muted' : 'bg-signal-caution'"
                   ></span>
                   <span
-                    class="font-display text-xs font-semibold uppercase tracking-wider text-ink-muted"
+                    class="font-display text-sm font-semibold uppercase tracking-wider text-ink-muted"
                   >
                     {{ g.group === 0 ? 'Ungrouped' : 'Interlocking Group ' + g.group }}
                   </span>
@@ -63,7 +63,7 @@ interface BlockGroup {
                 <td>
                   @if (block.group !== 0) {
                     <span
-                      class="inline-flex items-center rounded-md bg-signal-caution/10 px-2 py-0.5 font-mono text-xs font-medium text-signal-caution ring-1 ring-signal-caution/20"
+                      class="inline-flex items-center rounded-md bg-signal-caution/10 px-2 py-0.5 font-mono text-sm font-medium text-signal-caution ring-1 ring-signal-caution/20"
                     >
                       {{ block.group }}
                     </span>
@@ -84,7 +84,7 @@ interface BlockGroup {
                         (blur)="onBlur(block)"
                       />
                       @if (validationError()) {
-                        <span class="font-display text-xs text-signal-danger">{{
+                        <span class="font-display text-sm text-signal-danger">{{
                           validationError()
                         }}</span>
                       }

@@ -4,7 +4,7 @@ import { Component, input, output } from '@angular/core';
   selector: 'app-error-alert',
   template: `
     <div
-      class="animate-fade-in relative mb-4 flex items-start gap-3 rounded-lg border border-signal-danger/25 bg-signal-danger/5 p-4 text-sm text-signal-danger shadow-[0_0_16px_var(--color-glow-red)]"
+      class="animate-fade-in relative mb-4 flex items-start gap-3 rounded-lg border border-signal-danger/25 bg-signal-danger/5 p-4 text-base text-signal-danger shadow-[0_0_16px_var(--color-glow-red)]"
     >
       <svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="currentColor">
         <path

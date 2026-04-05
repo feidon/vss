@@ -23,7 +23,7 @@ import { TrackMapEditorComponent, MapStopEvent } from './track-map-editor';
       <div class="mb-6 animate-fade-in">
         <a
           routerLink="/schedule"
-          class="group mb-2 inline-flex items-center gap-1.5 font-display text-sm text-ink-muted transition-colors hover:text-signal-info"
+          class="group mb-2 inline-flex items-center gap-1.5 font-display text-base text-ink-muted transition-colors hover:text-signal-info"
         >
           <svg
             class="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5"
@@ -37,9 +37,10 @@ import { TrackMapEditorComponent, MapStopEvent } from './track-map-editor';
           </svg>
           Back to Schedule
         </a>
-        <h2 class="font-display text-2xl font-bold tracking-wide text-ink">
-          {{ service()!.name }}
+        <h2 class="font-display text-3xl font-bold tracking-wide text-ink">
+          Edit {{ service()!.name }}
         </h2>
+        <p class="mt-0.5 font-display text-base text-ink-muted">Route &amp; timetable editor</p>
       </div>
 
       @if (conflicts()) {
@@ -57,7 +58,9 @@ import { TrackMapEditorComponent, MapStopEvent } from './track-map-editor';
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div class="card overflow-hidden animate-fade-in delay-1">
           <div class="border-b border-edge px-4 py-3">
-            <h3 class="font-display text-sm font-semibold uppercase tracking-wider text-ink-muted">
+            <h3
+              class="font-display text-base font-semibold uppercase tracking-wider text-ink-muted"
+            >
               Track Map
             </h3>
           </div>
@@ -69,7 +72,9 @@ import { TrackMapEditorComponent, MapStopEvent } from './track-map-editor';
         </div>
         <div class="card overflow-hidden animate-fade-in delay-2">
           <div class="border-b border-edge px-4 py-3">
-            <h3 class="font-display text-sm font-semibold uppercase tracking-wider text-ink-muted">
+            <h3
+              class="font-display text-base font-semibold uppercase tracking-wider text-ink-muted"
+            >
               Route Editor
             </h3>
           </div>
@@ -89,7 +94,7 @@ import { TrackMapEditorComponent, MapStopEvent } from './track-map-editor';
         <span
           class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-ink-muted border-t-signal-info"
         ></span>
-        <span class="font-display text-sm text-ink-muted">Loading service...</span>
+        <span class="font-display text-base text-ink-muted">Loading service...</span>
       </div>
     }
   `,

@@ -16,7 +16,7 @@ interface StopEntry {
   template: `
     <!-- Stop list -->
     <div class="mb-5">
-      <h4 class="mb-2 font-display text-xs font-semibold uppercase tracking-wider text-ink-muted">
+      <h4 class="mb-2 font-display text-sm font-semibold uppercase tracking-wider text-ink-muted">
         Stops
       </h4>
 
@@ -27,22 +27,22 @@ interface StopEntry {
               class="flex items-center gap-3 rounded-lg bg-panel-raised/60 px-3 py-2 ring-1 ring-edge/50 transition-colors hover:ring-edge-bright/50"
             >
               <span
-                class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-signal-info/15 font-mono text-xs font-medium text-signal-info"
+                class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-signal-info/15 font-mono text-sm font-medium text-signal-info"
               >
                 {{ i + 1 }}
               </span>
-              <span class="flex-1 font-display text-sm font-medium text-ink">
+              <span class="flex-1 font-display text-base font-medium text-ink">
                 {{ stop.nodeName }}
               </span>
               <div class="flex items-center gap-1.5">
                 <input
                   type="number"
-                  class="h-7 w-16 rounded-md px-2 text-center font-mono text-xs"
+                  class="h-7 w-16 rounded-md px-2 text-center font-mono text-sm"
                   [ngModel]="stop.dwellTime"
                   (ngModelChange)="updateDwellTime(i, $event)"
                   min="0"
                 />
-                <span class="text-[0.65rem] text-ink-muted">s</span>
+                <span class="text-xs text-ink-muted">s</span>
               </div>
               <button
                 class="rounded-md p-1 text-ink-muted transition-colors hover:bg-signal-danger/10 hover:text-signal-danger"
@@ -60,7 +60,7 @@ interface StopEntry {
         </div>
       } @else {
         <p
-          class="rounded-lg border border-dashed border-edge py-6 text-center font-display text-xs text-ink-muted"
+          class="rounded-lg border border-dashed border-edge py-6 text-center font-display text-sm text-ink-muted"
         >
           Click stops on the track map to add them
         </p>
@@ -70,7 +70,7 @@ interface StopEntry {
     <!-- Start time -->
     <div class="mb-5">
       <label
-        class="mb-1.5 block font-display text-xs font-semibold uppercase tracking-wider text-ink-muted"
+        class="mb-1.5 block font-display text-sm font-semibold uppercase tracking-wider text-ink-muted"
         for="start-time"
       >
         Start Time
@@ -78,14 +78,14 @@ interface StopEntry {
       <input
         id="start-time"
         type="datetime-local"
-        class="h-9 w-full rounded-lg px-3 font-mono text-sm"
+        class="h-9 w-full rounded-lg px-3 font-mono text-base"
         [(ngModel)]="startTimeLocal"
       />
     </div>
 
     <!-- Submit -->
     <button
-      class="w-full rounded-lg bg-signal-clear/15 px-4 py-2.5 font-display text-sm font-semibold text-signal-clear ring-1 ring-signal-clear/25 transition-all hover:bg-signal-clear/25 hover:ring-signal-clear/40 hover:shadow-[0_0_16px_var(--color-glow-green)] disabled:opacity-30 disabled:hover:bg-signal-clear/15 disabled:hover:shadow-none"
+      class="w-full rounded-lg bg-signal-clear/15 px-4 py-2.5 font-display text-base font-semibold text-signal-clear ring-1 ring-signal-clear/25 transition-all hover:bg-signal-clear/25 hover:ring-signal-clear/40 hover:shadow-[0_0_16px_var(--color-glow-green)] disabled:opacity-30 disabled:hover:bg-signal-clear/15 disabled:hover:shadow-none"
       [disabled]="stops().length < 2 || !startTimeLocal()"
       (click)="onSubmit()"
     >
@@ -95,7 +95,7 @@ interface StopEntry {
     <!-- Timetable display -->
     @if (service().timetable.length > 0) {
       <div class="mt-6 border-t border-edge pt-5">
-        <h4 class="mb-3 font-display text-xs font-semibold uppercase tracking-wider text-ink-muted">
+        <h4 class="mb-3 font-display text-sm font-semibold uppercase tracking-wider text-ink-muted">
           Timetable
         </h4>
         <table class="data-table">
@@ -110,8 +110,8 @@ interface StopEntry {
             @for (entry of service().timetable; track entry.order) {
               <tr>
                 <td class="font-display font-medium text-ink">{{ nodeName(entry.node_id) }}</td>
-                <td class="font-mono text-xs text-signal-info">{{ entry.arrival | epochTime }}</td>
-                <td class="font-mono text-xs text-signal-info">
+                <td class="font-mono text-sm text-signal-info">{{ entry.arrival | epochTime }}</td>
+                <td class="font-mono text-sm text-signal-info">
                   {{ entry.departure | epochTime }}
                 </td>
               </tr>

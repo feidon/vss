@@ -15,11 +15,11 @@ import { CreateServiceDialogComponent, CreateServiceDialogResult } from './creat
   template: `
     <div class="mb-6 flex items-center justify-between animate-fade-in">
       <div>
-        <h2 class="font-display text-2xl font-bold tracking-wide text-ink">Schedule</h2>
-        <p class="mt-0.5 font-display text-sm text-ink-muted">Service route management</p>
+        <h2 class="font-display text-3xl font-bold tracking-wide text-ink">Schedule</h2>
+        <p class="mt-0.5 font-display text-base text-ink-muted">Service route management</p>
       </div>
       <button
-        class="flex items-center gap-2 rounded-lg bg-signal-clear/10 px-4 py-2.5 font-display text-sm font-semibold text-signal-clear ring-1 ring-signal-clear/25 transition-all hover:bg-signal-clear/20 hover:ring-signal-clear/40 hover:shadow-[0_0_16px_var(--color-glow-green)]"
+        class="flex items-center gap-2 rounded-lg bg-signal-clear/10 px-4 py-2.5 font-display text-base font-semibold text-signal-clear ring-1 ring-signal-clear/25 transition-all hover:bg-signal-clear/20 hover:ring-signal-clear/40 hover:shadow-[0_0_16px_var(--color-glow-green)]"
         (click)="onCreateService()"
       >
         <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
@@ -48,8 +48,8 @@ import { CreateServiceDialogComponent, CreateServiceDialogResult } from './creat
             <path d="M9 6h11M9 12h11M9 18h7M4 6h.01M4 12h.01M4 18h.01" stroke-linecap="round" />
           </svg>
         </div>
-        <p class="font-display text-sm text-ink-muted">No services created yet</p>
-        <p class="mt-1 text-xs text-ink-muted/60">Click "Create Service" to get started</p>
+        <p class="font-display text-base text-ink-muted">No services created yet</p>
+        <p class="mt-1 text-sm text-ink-muted/60">Click "Create Service" to get started</p>
       </div>
     } @else {
       <div class="card overflow-hidden animate-fade-in delay-1">
@@ -70,12 +70,12 @@ import { CreateServiceDialogComponent, CreateServiceDialogResult } from './creat
                 <td class="font-display font-semibold text-ink">{{ service.name }}</td>
                 <td>
                   <span
-                    class="inline-flex items-center gap-1.5 rounded-md bg-signal-info/10 px-2 py-0.5 text-xs font-medium text-signal-info ring-1 ring-signal-info/20"
+                    class="inline-flex items-center gap-1.5 rounded-md bg-signal-info/10 px-2 py-0.5 text-sm font-medium text-signal-info ring-1 ring-signal-info/20"
                   >
                     {{ service.vehicle_name }}
                   </span>
                 </td>
-                <td class="font-mono text-xs">
+                <td class="font-mono text-sm">
                   {{ service.start_time ? (service.start_time | epochTime) : '—' }}
                 </td>
                 <td>{{ service.origin_name ?? '—' }}</td>
@@ -110,7 +110,7 @@ import { CreateServiceDialogComponent, CreateServiceDialogResult } from './creat
               @if (expandedServiceId() === service.id) {
                 <tr>
                   <td colspan="6" class="!border-b-edge bg-panel-raised/50 px-6 py-3">
-                    <div class="flex items-center gap-2 font-mono text-xs text-ink-secondary">
+                    <div class="flex items-center gap-2 font-mono text-sm text-ink-secondary">
                       @if (!detailCache().has(service.id)) {
                         <span
                           class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-ink-muted border-t-signal-info"

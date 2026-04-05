@@ -8,19 +8,19 @@ import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
   template: `
     <div class="mb-6 flex items-center gap-4 animate-fade-in">
       <button
-        class="rounded-lg border border-edge px-3 py-2 font-display text-sm text-ink-secondary transition-colors hover:bg-panel-hover hover:text-ink"
+        class="rounded-lg border border-edge px-3 py-2 font-display text-base text-ink-secondary transition-colors hover:bg-panel-hover hover:text-ink"
         (click)="back.emit()"
       >
         &larr; Back
       </button>
       <div>
-        <h3 class="font-display text-lg font-bold text-ink">{{ service().name }}</h3>
-        <p class="font-display text-sm text-ink-muted">Vehicle: {{ vehicleName() }}</p>
+        <h3 class="font-display text-xl font-bold text-ink">{{ service().name }}</h3>
+        <p class="font-display text-base text-ink-muted">Vehicle: {{ vehicleName() }}</p>
       </div>
     </div>
 
     @if (service().timetable.length === 0) {
-      <p class="py-8 text-center font-display text-sm text-ink-muted">
+      <p class="py-8 text-center font-display text-base text-ink-muted">
         No timetable — route not yet configured.
       </p>
     } @else {
@@ -38,11 +38,11 @@ import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
           <tbody>
             @for (entry of sortedEntries(); track entry.order) {
               <tr [class.!bg-signal-info/5]="nodeType(entry.node_id) === 'platform'">
-                <td class="font-mono text-xs text-ink-muted">{{ entry.order + 1 }}</td>
+                <td class="font-mono text-sm text-ink-muted">{{ entry.order + 1 }}</td>
                 <td class="font-display font-semibold text-ink">{{ nodeName(entry.node_id) }}</td>
                 <td>
                   <span
-                    class="inline-flex rounded-md px-2 py-0.5 text-xs capitalize"
+                    class="inline-flex rounded-md px-2 py-0.5 text-sm capitalize"
                     [class]="
                       nodeType(entry.node_id) === 'platform'
                         ? 'bg-signal-info/10 text-signal-info ring-1 ring-signal-info/20'
@@ -53,8 +53,8 @@ import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
                     >{{ nodeType(entry.node_id) }}</span
                   >
                 </td>
-                <td class="font-mono text-xs text-signal-info">{{ entry.arrival | epochTime }}</td>
-                <td class="font-mono text-xs text-signal-info">
+                <td class="font-mono text-sm text-signal-info">{{ entry.arrival | epochTime }}</td>
+                <td class="font-mono text-sm text-signal-info">
                   {{ entry.departure | epochTime }}
                 </td>
               </tr>

@@ -17,14 +17,14 @@ export interface MapStopEvent {
   template: `
     <div class="relative overflow-auto bg-panel-base">
       @if (showHint()) {
-        <p class="border-b border-edge px-4 py-2 font-display text-xs text-ink-muted">
+        <p class="border-b border-edge px-4 py-2 font-display text-sm text-ink-muted">
           Click a platform or yard on the map to add a stop
         </p>
       }
       <svg #mapSvg></svg>
       <div
         #tooltip
-        class="pointer-events-none absolute z-10 hidden rounded-md bg-panel-raised px-2.5 py-1.5 font-display text-xs font-medium text-ink shadow-lg ring-1 ring-edge-bright"
+        class="pointer-events-none absolute z-10 hidden rounded-md bg-panel-raised px-2.5 py-1.5 font-display text-sm font-medium text-ink shadow-lg ring-1 ring-edge-bright"
       ></div>
     </div>
   `,
@@ -115,7 +115,7 @@ export class TrackMapEditorComponent {
       .attr('orient', 'auto')
       .append('path')
       .attr('d', 'M 0 0 L 10 5 L 0 10 Z')
-      .attr('fill', '#4a5c75');
+      .attr('fill', '#6b7f99');
 
     // Draw station indicator rectangles (behind everything else)
     const stationPadding = 30;
@@ -170,10 +170,10 @@ export class TrackMapEditorComponent {
       .attr('text-anchor', 'middle')
       .attr('dominant-baseline', 'central')
       .attr('font-family', 'Rajdhani, sans-serif')
-      .attr('font-size', '11px')
-      .attr('font-weight', '600')
+      .attr('font-size', '14px')
+      .attr('font-weight', '700')
       .attr('letter-spacing', '0.05em')
-      .attr('fill', '#4a5c75')
+      .attr('fill', '#94a3b8')
       .text((d) => d.station.name);
 
     // Build node ID set for radius lookup (nodes=12, junctions=4)
@@ -244,8 +244,8 @@ export class TrackMapEditorComponent {
       .attr('y', (d: Edge) => edgeLabelPos(d).y)
       .attr('text-anchor', 'middle')
       .attr('font-family', 'Azeret Mono, monospace')
-      .attr('font-size', '8px')
-      .attr('fill', '#3a4d6a')
+      .attr('font-size', '10px')
+      .attr('fill', '#6b7f99')
       .text((d: Edge) => d.name);
 
     // Draw junction dots (small non-interactive)
@@ -309,7 +309,7 @@ export class TrackMapEditorComponent {
       .append('text')
       .attr('text-anchor', 'middle')
       .attr('dy', '0.35em')
-      .attr('font-size', '10px')
+      .attr('font-size', '12px')
       .attr('font-weight', 'bold')
       .attr('fill', 'white')
       .text((d: Node) => String(queuedOrder.get(d.id) ?? ''));
@@ -320,9 +320,9 @@ export class TrackMapEditorComponent {
       .attr('dy', 22)
       .attr('text-anchor', 'middle')
       .attr('font-family', 'Rajdhani, sans-serif')
-      .attr('font-size', '11px')
-      .attr('font-weight', '600')
-      .attr('fill', '#8896ab')
+      .attr('font-size', '13px')
+      .attr('font-weight', '700')
+      .attr('fill', '#c8d1de')
       .text((d: Node) => d.name);
 
     if (interactive) {

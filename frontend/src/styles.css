@@ -31,8 +31,8 @@
 
   /* Text hierarchy */
   --color-ink: #e8edf5;
-  --color-ink-secondary: #8896ab;
-  --color-ink-muted: #4a5c75;
+  --color-ink-secondary: #94a3b8;
+  --color-ink-muted: #6b7f99;
 
   /* Glow effects */
   --color-glow-green: #22c55e40;
@@ -160,7 +160,7 @@ select:focus {
 }
 
 input::placeholder {
-  color: #4a5c75;
+  color: #6b7f99;
 }
 
 select option {
@@ -193,17 +193,17 @@ select option {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 0.875rem;
+  font-size: 1rem;
 }
 
 .data-table thead th {
   padding: 0.625rem 0.75rem;
   font-family: 'Rajdhani', sans-serif;
   font-weight: 600;
-  font-size: 0.7rem;
+  font-size: 0.8125rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #4a5c75;
+  color: #6b7f99;
   border-bottom: 1px solid #1a2744;
   text-align: left;
 }
@@ -211,7 +211,7 @@ select option {
 .data-table tbody td {
   padding: 0.625rem 0.75rem;
   border-bottom: 1px solid #111a2e;
-  color: #8896ab;
+  color: #94a3b8;
 }
 
 .data-table tbody tr {

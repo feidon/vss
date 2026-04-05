@@ -20,7 +20,7 @@ export interface CreateServiceDialogResult {
       <div
         class="animate-modal w-full max-w-md rounded-xl bg-panel border border-edge p-6 shadow-2xl shadow-black/40"
       >
-        <h3 class="mb-5 font-display text-lg font-bold text-ink">Create Service</h3>
+        <h3 class="mb-5 font-display text-xl font-bold text-ink">Create Service</h3>
 
         @if (loadError()) {
           <app-error-alert [message]="loadError()!" (dismiss)="loadError.set(null)" />
@@ -33,34 +33,34 @@ export interface CreateServiceDialogResult {
         <form (ngSubmit)="onSubmit()">
           <div class="mb-4">
             <label
-              class="mb-1.5 block font-display text-xs font-semibold uppercase tracking-wider text-ink-muted"
+              class="mb-1.5 block font-display text-sm font-semibold uppercase tracking-wider text-ink-muted"
               for="dlg-name"
             >
               Name
             </label>
             <input
               id="dlg-name"
-              class="h-10 w-full rounded-lg px-3 font-display text-sm"
+              class="h-10 w-full rounded-lg px-3 font-display text-base"
               [(ngModel)]="name"
               name="name"
               placeholder="e.g. S101"
               required
             />
             @if (submitted() && !name().trim()) {
-              <p class="mt-1.5 font-display text-xs text-signal-danger">Name is required</p>
+              <p class="mt-1.5 font-display text-sm text-signal-danger">Name is required</p>
             }
           </div>
 
           <div class="mb-6">
             <label
-              class="mb-1.5 block font-display text-xs font-semibold uppercase tracking-wider text-ink-muted"
+              class="mb-1.5 block font-display text-sm font-semibold uppercase tracking-wider text-ink-muted"
               for="dlg-vehicle"
             >
               Vehicle
             </label>
             <select
               id="dlg-vehicle"
-              class="h-10 w-full rounded-lg px-3 font-display text-sm"
+              class="h-10 w-full rounded-lg px-3 font-display text-base"
               [(ngModel)]="vehicleId"
               name="vehicleId"
               [disabled]="loading()"
@@ -72,21 +72,21 @@ export interface CreateServiceDialogResult {
               }
             </select>
             @if (submitted() && !vehicleId()) {
-              <p class="mt-1.5 font-display text-xs text-signal-danger">Vehicle is required</p>
+              <p class="mt-1.5 font-display text-sm text-signal-danger">Vehicle is required</p>
             }
           </div>
 
           <div class="flex justify-end gap-3">
             <button
               type="button"
-              class="rounded-lg border border-edge px-4 py-2.5 font-display text-sm font-medium text-ink-secondary transition-colors hover:bg-panel-hover hover:text-ink"
+              class="rounded-lg border border-edge px-4 py-2.5 font-display text-base font-medium text-ink-secondary transition-colors hover:bg-panel-hover hover:text-ink"
               (click)="onCancel()"
             >
               Cancel
             </button>
             <button
               type="submit"
-              class="rounded-lg bg-signal-clear/15 px-5 py-2.5 font-display text-sm font-semibold text-signal-clear ring-1 ring-signal-clear/25 transition-all hover:bg-signal-clear/25 hover:ring-signal-clear/40 hover:shadow-[0_0_16px_var(--color-glow-green)] disabled:opacity-30"
+              class="rounded-lg bg-signal-clear/15 px-5 py-2.5 font-display text-base font-semibold text-signal-clear ring-1 ring-signal-clear/25 transition-all hover:bg-signal-clear/25 hover:ring-signal-clear/40 hover:shadow-[0_0_16px_var(--color-glow-green)] disabled:opacity-30"
               [disabled]="loading() || saving()"
             >
               {{ saving() ? 'Creating...' : 'Create' }}

@@ -7,7 +7,7 @@ import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
   imports: [EpochTimePipe],
   template: `
     <div
-      class="animate-fade-in relative mb-4 overflow-hidden rounded-lg border border-signal-danger/25 bg-signal-danger/5 p-5 text-sm shadow-[0_0_24px_var(--color-glow-red)]"
+      class="animate-fade-in relative mb-4 overflow-hidden rounded-lg border border-signal-danger/25 bg-signal-danger/5 p-5 text-base shadow-[0_0_24px_var(--color-glow-red)]"
     >
       <!-- Animated scan line -->
       <div class="pointer-events-none absolute inset-x-0 top-0 h-px overflow-hidden">
@@ -43,7 +43,7 @@ import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
         @if (conflicts().vehicle_conflicts.length > 0) {
           <div>
             <h5
-              class="mb-1 font-display text-xs font-semibold uppercase tracking-wider text-signal-danger/80"
+              class="mb-1 font-display text-sm font-semibold uppercase tracking-wider text-signal-danger/80"
             >
               Vehicle Conflicts
             </h5>
@@ -66,7 +66,7 @@ import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
         @if (conflicts().block_conflicts.length > 0) {
           <div>
             <h5
-              class="mb-1 font-display text-xs font-semibold uppercase tracking-wider text-signal-danger/80"
+              class="mb-1 font-display text-sm font-semibold uppercase tracking-wider text-signal-danger/80"
             >
               Block Conflicts
             </h5>
@@ -76,7 +76,7 @@ import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
                   <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-signal-danger/50"></span>
                   <span class="font-display">
                     {{ nodeName(c.block_id) }} — S{{ c.service_a_id }} &amp; S{{ c.service_b_id }}
-                    <span class="font-mono text-xs"
+                    <span class="font-mono text-sm"
                       >({{ c.overlap_start | epochTime }} – {{ c.overlap_end | epochTime }})</span
                     >
                   </span>
@@ -89,7 +89,7 @@ import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
         @if (conflicts().interlocking_conflicts.length > 0) {
           <div>
             <h5
-              class="mb-1 font-display text-xs font-semibold uppercase tracking-wider text-signal-danger/80"
+              class="mb-1 font-display text-sm font-semibold uppercase tracking-wider text-signal-danger/80"
             >
               Interlocking Conflicts
             </h5>
@@ -100,7 +100,7 @@ import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
                   <span class="font-display">
                     Group {{ c.group }} — {{ nodeName(c.block_a_id) }} &amp;
                     {{ nodeName(c.block_b_id) }}, S{{ c.service_a_id }} &amp; S{{ c.service_b_id }}
-                    <span class="font-mono text-xs"
+                    <span class="font-mono text-sm"
                       >({{ c.overlap_start | epochTime }} – {{ c.overlap_end | epochTime }})</span
                     >
                   </span>
@@ -113,7 +113,7 @@ import { EpochTimePipe } from '../../shared/pipes/epoch-time.pipe';
         @for (c of conflicts().battery_conflicts; track $index) {
           <div>
             <h5
-              class="mb-1 font-display text-xs font-semibold uppercase tracking-wider text-signal-caution"
+              class="mb-1 font-display text-sm font-semibold uppercase tracking-wider text-signal-caution"
             >
               {{ c.type === 'low_battery' ? 'Low Battery' : 'Insufficient Charge' }}
             </h5>
