@@ -301,6 +301,33 @@ class TestStationFrequency:
             f"Max station gap {max_gap}s exceeds {interval + 30}s"
         )
 
+    def test_60s_interval(self):
+        """1-minute interval — very tight. Network can't sustain it,
+        but solver should produce trips without crashing."""
+        interval = 60
+        inp = _build_input(interval=interval, dwell=15, start_time=0, end_time=3600)
+        result = solve_schedule(inp)
+        assert len(result.assignments) > 0
+
+        max_gap = _max_station_gap(inp, result)
+        max_cycle = max(v.cycle_time for v in inp.variants)
+        assert max_gap <= max_cycle, (
+            f"Max station gap {max_gap}s exceeds cycle time {max_cycle}s"
+        )
+
+    def test_90s_interval(self):
+        """1.5-minute interval over 2 hours."""
+        interval = 90
+        inp = _build_input(interval=interval, dwell=15, start_time=0, end_time=7200)
+        result = solve_schedule(inp)
+        assert len(result.assignments) > 0
+
+        max_gap = _max_station_gap(inp, result)
+        max_cycle = max(v.cycle_time for v in inp.variants)
+        assert max_gap <= max_cycle, (
+            f"Max station gap {max_gap}s exceeds cycle time {max_cycle}s"
+        )
+
     def test_all_vehicles_used_over_long_range(self):
         """Over a 10h range, all provisioned vehicles should serve trips."""
         start = 8 * 3600
