@@ -37,7 +37,7 @@ interface BlockGroup {
         <thead>
           <tr>
             <th>Block</th>
-            <th class="text-center">Group</th>
+            <th>Group</th>
             <th>Traversal Time</th>
           </tr>
         </thead>
@@ -61,7 +61,7 @@ interface BlockGroup {
             @for (block of g.blocks; track block.id) {
               <tr class="h-10 transition-colors">
                 <td class="font-display font-semibold text-ink">{{ block.name }}</td>
-                <td class="text-center">
+                <td>
                   @if (block.group !== 0) {
                     <span
                       class="inline-flex items-center rounded-md bg-signal-caution/10 px-2 py-0.5 font-mono text-sm font-medium text-signal-caution ring-1 ring-signal-caution/20"

@@ -51,7 +51,12 @@
       "mcp__filesystem__search_files",
       "Bash(wc -l /home/feidon/Documents/vss/frontend/src/app/**/*.ts /home/feidon/Documents/vss/frontend/src/app/**/**/*.ts /home/feidon/Documents/vss/frontend/src/app/**/**/**/*.ts)",
       "Bash(ng test:*)",
-      "mcp__filesystem__list_directory_with_sizes"
+      "mcp__filesystem__list_directory_with_sizes",
+      "Bash(wc -l /home/feidon/Documents/vss/frontend/src/app/features/config/*.ts /home/feidon/Documents/vss/frontend/src/app/features/schedule/*.ts)",
+      "Bash(wc -l /home/feidon/Documents/vss/frontend/src/app/core/services/*.ts ! -name \"*.spec.ts\" /home/feidon/Documents/vss/frontend/src/app/shared/**/*.ts ! -name \"*.spec.ts\" /home/feidon/Documents/vss/frontend/src/app/app*.ts ! -name \"*.spec.ts\")",
+      "Bash(wc -l /home/feidon/Documents/vss/frontend/src/app/core/services/*.ts)",
+      "Bash(sort -k2)",
+      "Bash(wc -l /home/feidon/Documents/vss/frontend/src/app/app*.ts)"
     ]
   },
   "enabledMcpjsonServers": [
