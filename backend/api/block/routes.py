@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends
 
 from api.block.schemas import BlockIdResponse, BlockResponse, UpdateBlockRequest
 from api.dependencies import get_block_service
+from api.shared.schemas import NOT_FOUND_RESPONSE
 
 router = APIRouter(prefix="/blocks", tags=["blocks"])
 
@@ -17,7 +18,9 @@ async def list_blocks(block_service: BlockAppService = Depends(get_block_service
     return [BlockResponse.from_domain(b) for b in blocks]
 
 
-@router.patch("/{block_id}", response_model=BlockIdResponse)
+@router.patch(
+    "/{block_id}", response_model=BlockIdResponse, responses={**NOT_FOUND_RESPONSE}
+)
 async def update_block(
     block_id: UUID,
     request: UpdateBlockRequest,

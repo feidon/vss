@@ -9,11 +9,16 @@ from api.route.schemas import (
     ValidateRouteRequest,
     ValidateRouteResponse,
 )
+from api.shared.schemas import NO_ROUTE_RESPONSE, VALIDATION_RESPONSE
 
 router = APIRouter(prefix="/routes", tags=["routes"])
 
 
-@router.post("/validate", response_model=ValidateRouteResponse)
+@router.post(
+    "/validate",
+    response_model=ValidateRouteResponse,
+    responses={**VALIDATION_RESPONSE, **NO_ROUTE_RESPONSE},
+)
 async def validate_route(
     request: ValidateRouteRequest,
     service_app_service: ServiceAppService = Depends(get_service_app_service),

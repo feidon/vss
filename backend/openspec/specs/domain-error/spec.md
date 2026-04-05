@@ -38,6 +38,8 @@ The system SHALL register a single `DomainError` exception handler in FastAPI th
 | CONFLICT    | 409         |
 | NO_ROUTE    | 422         |
 
+The error handler's response shapes SHALL be documented in OpenAPI via Pydantic response models declared on route decorators. The `ErrorResponse` and `ConflictDetailResponse` models SHALL match the shapes produced by the handler.
+
 #### Scenario: NOT_FOUND error returns 404
 - **WHEN** a request triggers a `DomainError` with `ErrorCode.NOT_FOUND`
 - **THEN** the API SHALL return HTTP 404 with `{"detail": "<error message>"}`
@@ -48,11 +50,15 @@ The system SHALL register a single `DomainError` exception handler in FastAPI th
 
 #### Scenario: CONFLICT error returns 409 with structured detail
 - **WHEN** a request triggers a `ConflictError`
-- **THEN** the API SHALL return HTTP 409 with the existing structured conflict detail format (vehicle_conflicts, block_conflicts, interlocking_conflicts, low_battery_conflicts, insufficient_charge_conflicts)
+- **THEN** the API SHALL return HTTP 409 with the existing structured conflict detail format (vehicle_conflicts, block_conflicts, interlocking_conflicts, battery_conflicts)
 
 #### Scenario: NO_ROUTE error returns 422
 - **WHEN** a request triggers a `DomainError` with `ErrorCode.NO_ROUTE`
 - **THEN** the API SHALL return HTTP 422 with `{"detail": "<error message>"}`
+
+#### Scenario: Error response shapes are visible in Swagger
+- **WHEN** a developer opens Swagger UI
+- **THEN** all routes that can produce `DomainError` SHALL show the applicable error status codes with their response body schemas
 
 ### Requirement: Route handlers have no try/except
 API route handlers SHALL NOT contain try/except blocks for `DomainError` or `ValueError`. Error translation is handled exclusively by the exception handler middleware.

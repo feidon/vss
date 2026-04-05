@@ -20,11 +20,22 @@ from api.service.schemas import (
     ServiceResponse,
     UpdateRouteRequest,
 )
+from api.shared.schemas import (
+    CONFLICT_RESPONSE,
+    NO_ROUTE_RESPONSE,
+    NOT_FOUND_RESPONSE,
+    VALIDATION_RESPONSE,
+)
 
 router = APIRouter(prefix="/services", tags=["services"])
 
 
-@router.post("", response_model=ServiceIdResponse, status_code=HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=ServiceIdResponse,
+    status_code=HTTP_201_CREATED,
+    responses={**VALIDATION_RESPONSE},
+)
 async def create_service(
     request: CreateServiceRequest,
     service_app_service: ServiceAppService = Depends(get_service_app_service),
@@ -60,7 +71,11 @@ async def list_services(
     ]
 
 
-@router.get("/{service_id}", response_model=ServiceDetailResponse)
+@router.get(
+    "/{service_id}",
+    response_model=ServiceDetailResponse,
+    responses={**NOT_FOUND_RESPONSE},
+)
 async def get_service(
     service_id: int,
     service_app_service: ServiceAppService = Depends(get_service_app_service),
@@ -71,7 +86,16 @@ async def get_service(
     return ServiceDetailResponse.from_domain(service, graph_data)
 
 
-@router.patch("/{service_id}/route", response_model=ServiceIdResponse)
+@router.patch(
+    "/{service_id}/route",
+    response_model=ServiceIdResponse,
+    responses={
+        **NOT_FOUND_RESPONSE,
+        **VALIDATION_RESPONSE,
+        **CONFLICT_RESPONSE,
+        **NO_ROUTE_RESPONSE,
+    },
+)
 async def update_route(
     service_id: int,
     request: UpdateRouteRequest,
@@ -84,7 +108,9 @@ async def update_route(
     return ServiceIdResponse(id=service.id)
 
 
-@router.delete("/{service_id}", status_code=HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{service_id}", status_code=HTTP_204_NO_CONTENT, responses={**NOT_FOUND_RESPONSE}
+)
 async def delete_service(
     service_id: int,
     service_app_service: ServiceAppService = Depends(get_service_app_service),

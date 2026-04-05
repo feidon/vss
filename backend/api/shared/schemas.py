@@ -56,3 +56,69 @@ class TimetableEntrySchema(BaseModel):
     node_id: UUID
     arrival: int
     departure: int
+
+
+# --- Error response schemas (for OpenAPI documentation) ---
+
+
+class ErrorResponse(BaseModel):
+    detail: str
+
+
+class VehicleConflictSchema(BaseModel):
+    vehicle_id: str
+    service_a_id: int
+    service_b_id: int
+    reason: str
+
+
+class BlockConflictSchema(BaseModel):
+    block_id: str
+    service_a_id: int
+    service_b_id: int
+    overlap_start: int
+    overlap_end: int
+
+
+class InterlockingConflictSchema(BaseModel):
+    group: int
+    block_a_id: str
+    block_b_id: str
+    service_a_id: int
+    service_b_id: int
+    overlap_start: int
+    overlap_end: int
+
+
+class ConflictBatterySchema(BaseModel):
+    type: str
+    service_id: int
+
+
+class ConflictDetail(BaseModel):
+    message: str
+    vehicle_conflicts: list[VehicleConflictSchema]
+    block_conflicts: list[BlockConflictSchema]
+    interlocking_conflicts: list[InterlockingConflictSchema]
+    battery_conflicts: list[ConflictBatterySchema]
+
+
+class ConflictDetailResponse(BaseModel):
+    detail: ConflictDetail
+
+
+NOT_FOUND_RESPONSE = {
+    404: {"model": ErrorResponse, "description": "Resource not found"},
+}
+VALIDATION_RESPONSE = {
+    400: {"model": ErrorResponse, "description": "Validation error"},
+}
+CONFLICT_RESPONSE = {
+    409: {
+        "model": ConflictDetailResponse,
+        "description": "Scheduling conflicts detected",
+    },
+}
+NO_ROUTE_RESPONSE = {
+    422: {"model": ErrorResponse, "description": "No route between stops"},
+}

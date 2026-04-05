@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 from uuid import UUID
 
 from api.error_handler import domain_error_handler
+from api.shared.schemas import ConflictDetailResponse, ErrorResponse
 from application.service.errors import ConflictError
 from domain.domain_service.conflict.model import (
     BatteryConflict,
@@ -119,3 +121,91 @@ async def test_unknown_error_code_defaults_to_400():
     # by checking the existing mapping is correct.
     resp = await domain_error_handler(None, exc)
     assert resp.status_code == 409
+
+
+async def test_error_response_schema_matches_simple_error_output():
+    exc = DomainError(ErrorCode.NOT_FOUND, "Service 1 not found")
+    resp = await domain_error_handler(None, exc)
+    body = json.loads(resp.body)
+    validated = ErrorResponse.model_validate(body)
+    assert validated.detail == "Service 1 not found"
+
+
+async def test_conflict_detail_response_schema_matches_conflict_output():
+    conflicts = ServiceConflicts(
+        vehicle_conflicts=[
+            VehicleConflict(
+                vehicle_id=UUID("00000000-0000-0000-0000-000000000001"),
+                service_a_id=1,
+                service_b_id=2,
+                reason="same vehicle",
+            )
+        ],
+        block_conflicts=[
+            BlockConflict(
+                block_id=UUID("00000000-0000-0000-0000-000000000002"),
+                service_a_id=1,
+                service_b_id=2,
+                overlap_start=100,
+                overlap_end=200,
+            )
+        ],
+        interlocking_conflicts=[
+            InterlockingConflict(
+                group=1,
+                block_a_id=UUID("00000000-0000-0000-0000-000000000003"),
+                block_b_id=UUID("00000000-0000-0000-0000-000000000004"),
+                service_a_id=1,
+                service_b_id=2,
+                overlap_start=300,
+                overlap_end=400,
+            )
+        ],
+        battery_conflicts=[
+            BatteryConflict(type=BatteryConflictType.LOWBATTERY, service_id=1)
+        ],
+    )
+    exc = ConflictError(conflicts)
+    resp = await domain_error_handler(None, exc)
+    body = json.loads(resp.body)
+    validated = ConflictDetailResponse.model_validate(body)
+    assert validated.detail.message == "Service has scheduling conflicts"
+    assert len(validated.detail.vehicle_conflicts) == 1
+    assert len(validated.detail.block_conflicts) == 1
+    assert len(validated.detail.interlocking_conflicts) == 1
+    assert len(validated.detail.battery_conflicts) == 1
+
+
+def test_openapi_schema_includes_error_responses():
+    from main import app
+
+    schema = app.openapi()
+    paths = schema["paths"]
+
+    # PATCH /api/services/{service_id}/route should have 400, 404, 409, 422
+    route_update = paths["/api/services/{service_id}/route"]["patch"]["responses"]
+    assert "400" in route_update
+    assert "404" in route_update
+    assert "409" in route_update
+    assert "422" in route_update
+
+    # GET /api/services/{service_id} should have 404
+    get_service = paths["/api/services/{service_id}"]["get"]["responses"]
+    assert "404" in get_service
+
+    # POST /api/services should have 400
+    create_service = paths["/api/services"]["post"]["responses"]
+    assert "400" in create_service
+
+    # DELETE /api/services/{service_id} should have 404
+    delete_service = paths["/api/services/{service_id}"]["delete"]["responses"]
+    assert "404" in delete_service
+
+    # PATCH /api/blocks/{block_id} should have 404
+    update_block = paths["/api/blocks/{block_id}"]["patch"]["responses"]
+    assert "404" in update_block
+
+    # POST /api/routes/validate should have 400, 422
+    validate_route = paths["/api/routes/validate"]["post"]["responses"]
+    assert "400" in validate_route
+    assert "422" in validate_route
