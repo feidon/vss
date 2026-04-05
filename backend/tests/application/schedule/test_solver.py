@@ -226,6 +226,30 @@ class TestStationFrequency:
                 f"Station {sname} only visited {len(arrivals[sname])} times in 10h"
             )
 
+    def test_150s_interval_perfect_frequency(self):
+        """150s is the shortest interval that achieves perfect frequency
+        with default 30s block traversal times — no n*150 falls inside
+        any interlocking return window."""
+        interval = 150
+        inp = _build_input(
+            interval=interval,
+            num_vehicles=5,
+            dwell=15,
+            start_time=0,
+            end_time=7200,
+        )
+        result = solve_schedule(inp)
+        assert len(result.assignments) > 0
+
+        arrivals = _collect_station_arrivals(inp, result)
+        for sname, times in arrivals.items():
+            for i in range(len(times) - 1):
+                gap = times[i + 1] - times[i]
+                assert gap <= interval, (
+                    f"Station {sname}: gap {gap}s > {interval}s "
+                    f"between t={times[i]} and t={times[i + 1]}"
+                )
+
     def test_2min_interval_produces_trips_despite_bottleneck(self):
         """Tight interval (120s) was infeasible with CP-SAT. Greedy produces
         the best achievable schedule, but the yard interlocking physically
