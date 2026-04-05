@@ -35,7 +35,7 @@ import { AutoScheduleDialogComponent, AutoScheduleDialogResult } from './auto-sc
           >
             <path d="M2 8h3l2-5 3 10 2-5h3" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-          Auto Schedule
+          Auto-Generate Schedule
         </button>
         <button
           class="flex items-center gap-2 rounded-lg bg-signal-clear/10 px-4 py-2.5 font-display text-base font-semibold text-signal-clear ring-1 ring-signal-clear/25 transition-all hover:bg-signal-clear/20 hover:ring-signal-clear/40 hover:shadow-[0_0_16px_var(--color-glow-green)]"
