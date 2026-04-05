@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from collections import defaultdict
 
 from domain.block.repository import BlockRepository
 from domain.domain_service.conflict.block import detect_block_conflicts
@@ -57,11 +58,11 @@ class ScheduleAppService:
             stations, blocks, connections, req.dwell_time_seconds
         )
 
-        # 4. Compute tile_period and num_vehicles
+        # 4. Compute num_vehicles
         cycle_times = [v.cycle_time for v in variants]
         min_yard_dwells = [v.num_blocks * 12 for v in variants]
-        tile_period = max(c + y for c, y in zip(cycle_times, min_yard_dwells))
-        num_vehicles = math.ceil(tile_period / req.interval_seconds) + 1
+        max_turnaround = max(c + y for c, y in zip(cycle_times, min_yard_dwells))
+        num_vehicles = math.ceil(max_turnaround / req.interval_seconds) + 1
 
         if num_vehicles > len(vehicles):
             await self._vehicle_repo.add_by_number(num_vehicles - len(vehicles))
@@ -75,72 +76,55 @@ class ScheduleAppService:
             if b.group != 0:
                 interlocking_groups.setdefault(b.group, []).append(b.id)
 
-        # 6. Solve one cycle
+        # 6. Solve
         solver_input = SolverInput(
             variants=variants,
             num_vehicles=num_vehicles,
             vehicle_ids=[v.id for v in used_vehicles],
-            tile_period=tile_period,
+            start_time=req.start_time,
+            end_time=req.end_time,
             interval_seconds=req.interval_seconds,
-            min_yard_dwells=min_yard_dwells,
-            cycle_times=cycle_times,
             interlocking_groups=interlocking_groups,
         )
 
         result = solve_schedule(solver_input)
 
-        if result is None:
-            raise DomainError(
-                ErrorCode.SCHEDULE_INFEASIBLE,
-                "Schedule is infeasible: solver could not find a valid assignment",
-            )
-
         # 7. Delete all existing services
         await self._service_repo.delete_all()
 
-        # 8. Tile across [start_time, end_time], only emit complete tiles
-        #    A tile is "complete" when every trip finishes before end_time.
-        #    Partial tiles would break the station frequency guarantee.
-        max_cycle = max(cycle_times)
-        cycle_end = max(
-            a.depart_time + variants[a.variant_index].cycle_time
-            for a in result.assignments
-        )
+        # 8. Create services from solver output (absolute departure times)
         yard = next(s for s in stations if s.is_yard)
         services: list[Service] = []
-        tile = 0
-        while True:
-            tile_start = req.start_time + tile * tile_period
-            if tile_start + cycle_end > req.end_time:
-                break
-            for assignment in result.assignments:
-                depart_abs = tile_start + assignment.depart_time
-                variant = variants[assignment.variant_index]
-                vehicle = used_vehicles[assignment.vehicle_index]
+        for assignment in result.assignments:
+            variant = variants[assignment.variant_index]
+            vehicle = used_vehicles[assignment.vehicle_index]
 
-                dwell_by_stop = {
-                    sid: req.dwell_time_seconds for sid in variant.stop_ids
-                }
-                dwell_by_stop[yard.id] = 0
+            dwell_by_stop = {sid: req.dwell_time_seconds for sid in variant.stop_ids}
+            dwell_by_stop[yard.id] = 0
 
-                route, timetable = build_full_route(
-                    variant.stop_ids,
-                    dwell_by_stop,
-                    depart_abs,
-                    connections,
-                    stations,
-                    blocks,
-                )
+            route, timetable = build_full_route(
+                variant.stop_ids,
+                dwell_by_stop,
+                assignment.depart_time,
+                connections,
+                stations,
+                blocks,
+            )
 
-                service = Service(
-                    name=f"Auto-V{assignment.vehicle_index + 1}-T{tile + 1}",
-                    vehicle_id=vehicle.id,
-                    route=route,
-                    timetable=timetable,
-                )
-                created = await self._service_repo.create(service)
-                services.append(created)
-            tile += 1
+            trip_num = sum(
+                1
+                for a in result.assignments
+                if a.vehicle_index == assignment.vehicle_index
+                and a.depart_time <= assignment.depart_time
+            )
+            service = Service(
+                name=f"Auto-V{assignment.vehicle_index + 1}-T{trip_num}",
+                vehicle_id=vehicle.id,
+                route=route,
+                timetable=timetable,
+            )
+            created = await self._service_repo.create(service)
+            services.append(created)
 
         # 9. Sanity check: run conflict detection on all generated services
         block_occ, group_occ = build_occupancies(services, blocks)
@@ -168,11 +152,34 @@ class ScheduleAppService:
                 f"BUG: Generated schedule has conflicts: {', '.join(conflict_details)}"
             )
 
-        # 10. Return response
+        # 10. Station frequency assertion
+        platform_to_station = {p.id: s.name for s in stations for p in s.platforms}
+        arrivals_by_station: dict[str, list[int]] = defaultdict(list)
+        for svc in services:
+            for entry in svc.timetable:
+                sname = platform_to_station.get(entry.node_id)
+                if sname:
+                    arrivals_by_station[sname].append(entry.arrival)
+        for sname, times in arrivals_by_station.items():
+            times.sort()
+            for i in range(len(times) - 1):
+                gap = times[i + 1] - times[i]
+                if gap > req.interval_seconds:
+                    import logging
+
+                    logging.getLogger(__name__).warning(
+                        "Station %s: gap %ds > interval %ds (at t=%d)",
+                        sname,
+                        gap,
+                        req.interval_seconds,
+                        times[i],
+                    )
+
+        # 11. Return response
         return GenerateScheduleResponse(
             services_created=len(services),
             vehicles_used=[v.id for v in used_vehicles],
-            cycle_time_seconds=max_cycle,
+            cycle_time_seconds=max(cycle_times),
         )
 
     @staticmethod
