@@ -21,7 +21,8 @@
       "mcp__plugin_discord_discord__reply",
       "Bash(DATABASE_URL=postgresql+asyncpg://vss:vss@localhost:5432/vss uv run:*)",
       "Bash(docker run hello-world:*)",
-      "Bash(npx openspec:*)"
+      "Bash(npx openspec:*)",
+      "WebSearch"
     ]
   },
   "enabledMcpjsonServers": [
