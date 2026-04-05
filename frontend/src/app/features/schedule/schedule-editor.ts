@@ -149,9 +149,9 @@ export class ScheduleEditorComponent implements OnInit {
         next: (s) => this.service.set(s),
         error: (err: HttpErrorResponse) => {
           if (err.status === 409) {
-            const detail = err.error?.detail;
-            if (detail && 'vehicle_conflicts' in detail && 'block_conflicts' in detail) {
-              this.conflicts.set(detail as ConflictResponse);
+            const context = err.error?.detail?.context;
+            if (context && 'vehicle_conflicts' in context && 'block_conflicts' in context) {
+              this.conflicts.set(context as ConflictResponse);
             } else {
               this.errorMessage.set('Conflict detected but response format was unexpected.');
             }

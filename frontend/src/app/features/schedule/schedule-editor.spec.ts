@@ -212,18 +212,20 @@ describe('ScheduleEditorComponent', () => {
 
     const conflictBody = {
       detail: {
-        message: 'Conflicts detected',
-        vehicle_conflicts: [
-          {
-            vehicle_id: 'v1',
-            service_a_id: 101,
-            service_b_id: 102,
-            reason: 'Overlapping time windows',
-          },
-        ],
-        block_conflicts: [],
-        interlocking_conflicts: [],
-        battery_conflicts: [],
+        error_code: 'SCHEDULING_CONFLICT',
+        context: {
+          vehicle_conflicts: [
+            {
+              vehicle_id: 'v1',
+              service_a_id: 101,
+              service_b_id: 102,
+              reason: 'Overlapping time windows',
+            },
+          ],
+          block_conflicts: [],
+          interlocking_conflicts: [],
+          battery_conflicts: [],
+        },
       },
     };
 
