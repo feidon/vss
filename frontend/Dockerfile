@@ -1,8 +1,8 @@
 FROM node:22-slim AS build
 WORKDIR /build
-COPY frontend/package.json frontend/package-lock.json ./
+COPY package.json package-lock.json ./
 RUN npm ci
-COPY frontend/ .
+COPY . .
 RUN npm run build
 
 FROM nginx:alpine

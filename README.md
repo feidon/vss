@@ -345,12 +345,10 @@ Conflict response includes structured details (block IDs, overlap windows, reaso
 ```
 vss/
 ├── docker-compose.yml
-├── Dockerfile               # Backend: Python 3.14 + uv, runs Alembic + uvicorn
-├── Dockerfile.frontend      # Frontend: Node build → nginx alpine
-├── nginx.conf               # Proxies /api/* to backend, SPA fallback
 ├── requirement.md
 │
 ├── backend/
+│   ├── Dockerfile               # Python 3.14 + uv, runs Alembic + uvicorn
 │   ├── main.py                  # FastAPI app, CORS, error handler, /api prefix
 │   ├── pyproject.toml           # Python 3.14, uv, import-linter contracts
 │   ├── alembic.ini              # Alembic migration configuration
@@ -366,6 +364,8 @@ vss/
 │       └── fakes/               # In-memory repository implementations
 │
 └── frontend/
+    ├── Dockerfile               # Node build → nginx alpine
+    ├── nginx.conf               # Proxies /api/* to backend, SPA fallback
     ├── angular.json
     └── src/app/
         ├── core/services/       # API client services

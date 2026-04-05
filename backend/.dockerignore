@@ -4,4 +4,3 @@ __pycache__
 tests
 docs
 .claude
-*.pyc
