@@ -1,15 +1,13 @@
-"""CP-SAT constraint solver for automatic schedule generation.
+"""Greedy sequential dispatch solver for automatic schedule generation.
 
-Pure function - no I/O, no async, no domain objects.
-Takes SolverInput, returns SolverOutput or None (infeasible).
+Pure function — no I/O, no async, no domain objects.
+Takes SolverInput, returns SolverOutput (possibly with empty assignments).
 """
 
 from __future__ import annotations
 
 from collections import defaultdict
 from uuid import UUID
-
-from ortools.sat.python import cp_model
 
 from application.schedule.model import (
     SolverInput,
@@ -18,196 +16,115 @@ from application.schedule.model import (
 )
 
 
-def solve_schedule(
-    inp: SolverInput,
-    *,
-    timeout_seconds: int = 60,
-) -> SolverOutput | None:
-    """Solve one cycle of the vehicle scheduling problem using CP-SAT.
+def solve_schedule(inp: SolverInput) -> SolverOutput:
+    """Place trips one at a time in temporal order.
 
-    Produces exactly num_vehicles trip assignments (one per vehicle).
-    Departures are 0-based offsets within [0, tile_period).
-    Ghost intervals shifted by +tile_period enforce wraparound safety
-    so the solution can be tiled without conflicts.
-
-    Constraints:
-        C1 - Block occupancy (no overlap on same block, incl. wraparound ghosts)
-        C2 - Interlocking (no overlap in same group, incl. wraparound ghosts)
-        C5 - Station frequency (consecutive arrivals within interval + wraparound)
-        C6 - Departures within [0, tile_period)
+    For each departure slot, pick the first available vehicle
+    (tie-break: lowest index) and the first route variant (index
+    order 0-7) that has no block or interlocking conflicts with
+    already-placed trips.
     """
-    model = cp_model.CpModel()
-    num_trips = inp.num_vehicles
-    P = inp.tile_period
+    occupancies: dict[UUID, list[tuple[int, int]]] = defaultdict(list)
+    vehicle_available = {i: inp.start_time for i in range(inp.num_vehicles)}
+    assignments: list[TripAssignment] = []
 
-    # -- Decision variables --------------------------------------------------
+    group_for_block = _build_group_lookup(inp.interlocking_groups)
+    min_cycle = min(v.cycle_time for v in inp.variants)
 
-    depart: list[cp_model.IntVar] = []
-    variant_idx: list[cp_model.IntVar] = []
-    is_variant: list[list[cp_model.IntVar]] = []
+    next_desired = inp.start_time
+    while next_desired + min_cycle <= inp.end_time:
+        vehicle = min(vehicle_available, key=lambda v: (vehicle_available[v], v))
+        depart = max(vehicle_available[vehicle], next_desired)
 
-    for s in range(num_trips):
-        d = model.new_int_var(0, P - 1, f"depart_{s}")
-        depart.append(d)
-
-        b_s1_out = model.new_bool_var(f"s1_out_{s}")
-        b_s3 = model.new_bool_var(f"s3_{s}")
-        b_s1_ret = model.new_bool_var(f"s1_ret_{s}")
-
-        vi = model.new_int_var(0, 7, f"variant_{s}")
-        model.add(vi == b_s1_out * 4 + b_s3 * 2 + b_s1_ret)
-        variant_idx.append(vi)
-
-        bools = [model.new_bool_var(f"is_v{v}_t{s}") for v in range(8)]
-        for v in range(8):
-            model.add(vi == v).only_enforce_if(bools[v])
-            model.add(vi != v).only_enforce_if(~bools[v])
-        is_variant.append(bools)
-
-    # -- Block-to-variant timing lookup --------------------------------------
-
-    block_occurrences: dict[UUID, list[tuple[int, int, int]]] = defaultdict(list)
-    for var in inp.variants:
-        for bt in var.block_timings:
-            block_occurrences[bt.block_id].append(
-                (var.index, bt.enter_offset, bt.exit_offset)
+        placed = False
+        earliest_conflict_end = next_desired
+        for variant in inp.variants:
+            if depart + variant.cycle_time > inp.end_time:
+                continue
+            conflict_end = _find_conflict(
+                depart, variant, occupancies, inp.interlocking_groups, group_for_block
             )
-
-    group_block_set: set[UUID] = set()
-    for gblocks in inp.interlocking_groups.values():
-        group_block_set.update(gblocks)
-
-    # -- Interval helpers ----------------------------------------------------
-
-    def _make_interval(
-        s: int,
-        var_i: int,
-        enter_off: int,
-        exit_off: int,
-        prefix: str,
-        shift: int = 0,
-    ) -> cp_model.IntervalVar:
-        """Create optional interval at depart[s] + shift + enter_off."""
-        lit = is_variant[s][var_i]
-        duration = exit_off - enter_off
-        lo = shift + enter_off
-        hi = P - 1 + shift + enter_off
-        start = model.new_int_var(lo, hi, f"{prefix}_st_t{s}_v{var_i}")
-        model.add(start == depart[s] + shift + enter_off).only_enforce_if(lit)
-        return model.new_optional_fixed_size_interval_var(
-            start, duration, lit, f"{prefix}_iv_t{s}_v{var_i}"
-        )
-
-    def _block_intervals(
-        bid: UUID,
-        occs: list[tuple[int, int, int]],
-        prefix: str,
-    ) -> list[cp_model.IntervalVar]:
-        """Real + ghost intervals for one block across all trips."""
-        intervals: list[cp_model.IntervalVar] = []
-        for s in range(num_trips):
-            for var_i, enter_off, exit_off in occs:
-                intervals.append(_make_interval(s, var_i, enter_off, exit_off, prefix))
-                intervals.append(
-                    _make_interval(
-                        s, var_i, enter_off, exit_off, f"g_{prefix}", shift=P
+            if conflict_end is None:
+                _record_occupancies(depart, variant, occupancies)
+                yard_dwell = variant.num_blocks * 12
+                vehicle_available[vehicle] = depart + variant.cycle_time + yard_dwell
+                assignments.append(
+                    TripAssignment(
+                        vehicle_index=vehicle,
+                        depart_time=depart,
+                        variant_index=variant.index,
                     )
                 )
-        return intervals
+                next_desired = depart + inp.interval_seconds
+                placed = True
+                break
+            earliest_conflict_end = max(earliest_conflict_end, conflict_end)
 
-    # -- C1: Block occupancy (non-interlocking) + wraparound -----------------
-
-    for bid, occs in block_occurrences.items():
-        if bid in group_block_set:
-            continue
-        intervals = _block_intervals(bid, occs, f"b_{bid}")
-        if len(intervals) > 1:
-            model.add_no_overlap(intervals)
-
-    # -- C2: Interlocking groups + wraparound --------------------------------
-
-    for group_id, group_block_ids in inp.interlocking_groups.items():
-        group_intervals: list[cp_model.IntervalVar] = []
-        for bid in group_block_ids:
-            occs = block_occurrences.get(bid, [])
-            group_intervals.extend(_block_intervals(bid, occs, f"g{group_id}_{bid}"))
-        if len(group_intervals) > 1:
-            model.add_no_overlap(group_intervals)
-
-    # -- C5: Station frequency + wraparound ----------------------------------
-
-    station_names = ["S1", "S2", "S3"]
-    for sname in station_names:
-        visits_per_variant: list[list[int]] = []
-        for var in inp.variants:
-            hits = [sa for sa in var.station_arrivals if sa.station_name == sname]
-            visits_per_variant.append([h.arrival_offset for h in hits])
-
-        num_visits = len(visits_per_variant[0])
-        time_horizon = 2 * P + max(
-            off for offsets in visits_per_variant for off in offsets
-        )
-
-        arrivals: list[cp_model.IntVar] = []
-        for visit_idx in range(num_visits):
-            offsets = [visits_per_variant[v][visit_idx] for v in range(8)]
-            for s in range(num_trips):
-                off_var = model.new_int_var(
-                    min(offsets),
-                    max(offsets),
-                    f"off_{sname}_v{visit_idx}_t{s}",
-                )
-                model.add_element(variant_idx[s], offsets, off_var)
-                arr = model.new_int_var(
-                    0,
-                    time_horizon,
-                    f"arr_{sname}_v{visit_idx}_t{s}",
-                )
-                model.add(arr == depart[s] + off_var)
-                arrivals.append(arr)
-
-        n = len(arrivals)
-        if n <= 1:
-            continue
-
-        sorted_arr = [
-            model.new_int_var(0, time_horizon, f"sorted_{sname}_{k}") for k in range(n)
-        ]
-        pos = [model.new_int_var(0, n - 1, f"pos_{sname}_{i}") for i in range(n)]
-        model.add_all_different(pos)
-
-        for i in range(n):
-            model.add_element(pos[i], sorted_arr, arrivals[i])
-
-        for k in range(n - 1):
-            model.add(sorted_arr[k] <= sorted_arr[k + 1])
-            model.add(sorted_arr[k + 1] - sorted_arr[k] <= inp.interval_seconds)
-
-        # Wraparound: gap from last arrival to first arrival of next tile
-        # (first_of_next_tile) - last_of_this_tile <= interval
-        # (sorted_arr[0] + P) - sorted_arr[n-1] <= interval
-        model.add(sorted_arr[0] + P - sorted_arr[n - 1] <= inp.interval_seconds)
-
-    # -- Solve ---------------------------------------------------------------
-
-    solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = timeout_seconds
-    solver.parameters.num_workers = 8
-
-    status = solver.solve(model)
-
-    if status not in (cp_model.FEASIBLE, cp_model.OPTIMAL):
-        return None
-
-    assignments: list[TripAssignment] = []
-    for s in range(num_trips):
-        assignments.append(
-            TripAssignment(
-                vehicle_index=s,
-                trip_index=0,
-                depart_time=solver.value(depart[s]),
-                variant_index=solver.value(variant_idx[s]),
-            )
-        )
+        if not placed:
+            if earliest_conflict_end <= next_desired:
+                break  # stuck — no progress possible
+            next_desired = earliest_conflict_end
 
     return SolverOutput(assignments=assignments)
+
+
+def _build_group_lookup(
+    interlocking_groups: dict[int, list[UUID]],
+) -> dict[UUID, int]:
+    """Map each block_id to its interlocking group_id (0 if none)."""
+    lookup: dict[UUID, int] = {}
+    for group_id, block_ids in interlocking_groups.items():
+        for bid in block_ids:
+            lookup[bid] = group_id
+    return lookup
+
+
+def _find_conflict(
+    depart: int,
+    variant,
+    occupancies: dict[UUID, list[tuple[int, int]]],
+    interlocking_groups: dict[int, list[UUID]],
+    group_for_block: dict[UUID, int],
+) -> int | None:
+    """Return the exit time of the first conflicting occupancy, or None."""
+    for bt in variant.block_timings:
+        enter = depart + bt.enter_offset
+        exit_ = depart + bt.exit_offset
+
+        # Check same block
+        conflict_end = _check_overlap(enter, exit_, occupancies.get(bt.block_id, []))
+        if conflict_end is not None:
+            return conflict_end
+
+        # Check interlocking group peers
+        group_id = group_for_block.get(bt.block_id)
+        if group_id is not None:
+            for peer_bid in interlocking_groups[group_id]:
+                if peer_bid == bt.block_id:
+                    continue
+                conflict_end = _check_overlap(
+                    enter, exit_, occupancies.get(peer_bid, [])
+                )
+                if conflict_end is not None:
+                    return conflict_end
+
+    return None
+
+
+def _check_overlap(
+    enter: int, exit_: int, existing: list[tuple[int, int]]
+) -> int | None:
+    """Return the exit time of the first overlapping occupancy, or None."""
+    for ex_enter, ex_exit in existing:
+        if enter < ex_exit and exit_ > ex_enter:
+            return ex_exit
+    return None
+
+
+def _record_occupancies(
+    depart: int, variant, occupancies: dict[UUID, list[tuple[int, int]]]
+) -> None:
+    for bt in variant.block_timings:
+        occupancies[bt.block_id].append(
+            (depart + bt.enter_offset, depart + bt.exit_offset)
+        )
