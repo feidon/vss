@@ -48,7 +48,9 @@
       "Read(//tmp/**)",
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k: d[k] for k in ['instruction','template','rules']}, indent=2\\)\\)\")",
       "Bash(npx tsc:*)",
-      "mcp__filesystem__search_files"
+      "mcp__filesystem__search_files",
+      "Bash(wc -l /home/feidon/Documents/vss/frontend/src/app/**/*.ts /home/feidon/Documents/vss/frontend/src/app/**/**/*.ts /home/feidon/Documents/vss/frontend/src/app/**/**/**/*.ts)",
+      "Bash(ng test:*)"
     ]
   },
   "enabledMcpjsonServers": [
