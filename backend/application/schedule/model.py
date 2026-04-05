@@ -41,15 +41,14 @@ class RouteVariant:
 
 @dataclass(frozen=True)
 class SolverInput:
-    """Everything the CP-SAT solver needs - no domain objects."""
+    """Everything the solver needs - no domain objects."""
 
     variants: list[RouteVariant]
     num_vehicles: int
     vehicle_ids: list[UUID]
-    tile_period: int  # seconds; max(cycle_time + yard_dwell) across variants
+    start_time: int  # epoch seconds
+    end_time: int  # epoch seconds
     interval_seconds: int
-    min_yard_dwells: list[int]  # per variant index
-    cycle_times: list[int]  # per variant index
     interlocking_groups: dict[int, list[UUID]]  # group_id -> block_ids
 
 
@@ -58,8 +57,7 @@ class TripAssignment:
     """Solver output for one trip."""
 
     vehicle_index: int
-    trip_index: int
-    depart_time: EpochSeconds
+    depart_time: EpochSeconds  # absolute epoch seconds
     variant_index: int
 
 
