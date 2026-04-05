@@ -21,16 +21,16 @@ def compute_route_variants(
     dwell_time_seconds: int,
 ) -> list[RouteVariant]:
     yard = next(s for s in stations if s.is_yard)
-    platform_by_name = {p.name: p for s in stations for p in s.platforms}
-    station_by_platform_id = {p.id: s for s in stations for p in s.platforms}
+    platform_by_name_dict = {p.name: p for s in stations for p in s.platforms}
+    station_by_platform_id_dict = {p.id: s for s in stations for p in s.platforms}
     variants: list[RouteVariant] = []
 
     for index, (s1_out, s3_choice, s1_ret) in enumerate(product(range(2), repeat=3)):
-        out_p1 = platform_by_name["P1B" if s1_out else "P1A"]
-        p2a = platform_by_name["P2A"]
-        s3_plat = platform_by_name["P3B" if s3_choice else "P3A"]
-        p2b = platform_by_name["P2B"]
-        ret_p1 = platform_by_name["P1B" if s1_ret else "P1A"]
+        out_p1 = platform_by_name_dict["P1B" if s1_out else "P1A"]
+        p2a = platform_by_name_dict["P2A"]
+        s3_plat = platform_by_name_dict["P3B" if s3_choice else "P3A"]
+        p2b = platform_by_name_dict["P2B"]
+        ret_p1 = platform_by_name_dict["P1B" if s1_ret else "P1A"]
 
         stop_ids = [yard.id, out_p1.id, p2a.id, s3_plat.id, p2b.id, ret_p1.id, yard.id]
         dwell_by_stop = {sid: dwell_time_seconds for sid in stop_ids}
@@ -55,7 +55,7 @@ def compute_route_variants(
                 )
                 num_blocks += 1
             elif node.type == NodeType.PLATFORM:
-                station = station_by_platform_id[node.id]
+                station = station_by_platform_id_dict[node.id]
                 station_arrivals.append(
                     StationArrival(
                         station_name=station.name,

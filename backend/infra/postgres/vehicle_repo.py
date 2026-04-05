@@ -28,7 +28,7 @@ class PostgresVehicleRepository(VehicleRepository):
     async def add_by_number(self, number: int) -> None:
         current_number = len(await self.find_all())
         for i in range(number):
-            new_vehicle = Vehicle(id=uuid7(), name=f"V{current_number + i}")
+            new_vehicle = Vehicle(id=uuid7(), name=f"V{current_number + i + 1}")
             await self._session.execute(
                 insert(vehicles_table).values(**self._to_table(new_vehicle))
             )
