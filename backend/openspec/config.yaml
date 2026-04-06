@@ -42,7 +42,6 @@ context: |
   ## API Endpoints (all under /api prefix)
   - GET /api/blocks, PATCH /api/blocks/{id}
   - POST /api/services, GET /api/services (includes start_time, origin_name, destination_name), GET /api/services/{id} (includes graph), PATCH /api/services/{id}/route, DELETE /api/services/{id}
-  - POST /api/routes/validate
   - GET /api/vehicles
   - Route update returns 409 with structured conflict details
 

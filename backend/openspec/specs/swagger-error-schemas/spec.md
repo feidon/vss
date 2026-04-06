@@ -43,7 +43,6 @@ The mapping SHALL be:
 | `GET /api/services/{id}` | 404 |
 | `PATCH /api/services/{id}/route` | 404, 400, 409, 422 |
 | `DELETE /api/services/{id}` | 404 |
-| `POST /api/routes/validate` | 400, 422 |
 
 Routes that only return success (e.g., `GET /api/blocks`, `GET /api/services`, `GET /api/vehicles`) SHALL NOT declare error responses beyond FastAPI defaults.
 

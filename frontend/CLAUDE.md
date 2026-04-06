@@ -75,7 +75,6 @@ Base URL: configured via environment files (`src/environments/`).
 | GET    | `/api/services/{id}`       | Get service detail (incl. graph)   |
 | PATCH  | `/api/services/{id}/route` | Update service route               |
 | DELETE | `/api/services/{id}`       | Delete service                     |
-| POST   | `/api/routes/validate`     | Validate route for conflicts       |
 
 ### Key Response Schemas
 
@@ -118,16 +117,6 @@ Blocks additionally include: `group`, `traversal_time_seconds`
 }
 ```
 `battery_conflicts[].type` is `"low_battery"` or `"insufficient_charge"`.
-
-**Route Validation Request** (POST `/api/routes/validate`):
-```json
-{ "vehicle_id": "uuid", "stops": [{ "node_id": "uuid", "dwell_time": 30 }], "start_time": 1700000000 }
-```
-
-**Route Validation Response**:
-```json
-{ "route": ["uuid", "uuid", "..."], "battery_conflicts": [{ "type": "low_battery", "service_id": 1 }] }
-```
 
 ## Running
 

@@ -4,10 +4,6 @@ from uuid import UUID
 
 from domain.block.repository import BlockRepository
 from domain.domain_service.conflict import detect_conflicts
-from domain.domain_service.conflict.battery import (
-    build_battery_steps,
-    detect_battery_conflicts,
-)
 from domain.domain_service.route_builder import build_full_route
 from domain.error import DomainError, ErrorCode
 from domain.network.repository import ConnectionRepository
@@ -17,7 +13,7 @@ from domain.shared.types import EpochSeconds
 from domain.station.repository import StationRepository
 from domain.vehicle.repository import VehicleRepository
 
-from application.service.dto import RouteStop, RouteValidationResult
+from application.service.dto import RouteStop
 from application.service.errors import ConflictError
 
 
@@ -103,46 +99,6 @@ class ServiceAppService:
 
         await self._service_repo.update(service)
         return service
-
-    async def validate_route(
-        self,
-        vehicle_id: UUID,
-        stops: list[RouteStop],
-        start_time: EpochSeconds,
-    ) -> RouteValidationResult:
-        vehicle = await self._vehicle_repo.find_by_id(vehicle_id)
-        if vehicle is None:
-            raise DomainError(
-                ErrorCode.VEHICLE_NOT_FOUND,
-                f"Vehicle {vehicle_id} not found",
-                {"vehicle_id": str(vehicle_id)},
-            )
-
-        connections = await self._connection_repo.find_all()
-        all_stations = await self._station_repo.find_all()
-        all_blocks = await self._block_repo.find_all()
-
-        stop_ids = [s.node_id for s in stops]
-        dwell_by_stop = {s.node_id: s.dwell_time for s in stops}
-        full_route, timetable = build_full_route(
-            stop_ids, dwell_by_stop, start_time, connections, all_stations, all_blocks
-        )
-
-        temp_service = Service(
-            id=0,
-            name="_validation",
-            vehicle_id=vehicle_id,
-            route=full_route,
-            timetable=timetable,
-        )
-
-        steps = build_battery_steps(vehicle_id, [temp_service])
-        battery_conflicts = detect_battery_conflicts(vehicle, steps)
-
-        return RouteValidationResult(
-            route=full_route,
-            battery_conflicts=battery_conflicts,
-        )
 
     async def delete_service(self, id: int) -> None:
         await self._service_repo.delete(id)

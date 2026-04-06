@@ -240,11 +240,6 @@ def test_openapi_schema_includes_error_responses():
     update_block = paths["/api/blocks/{block_id}"]["patch"]["responses"]
     assert "404" in update_block
 
-    # POST /api/routes/validate should have 400, 422
-    validate_route = paths["/api/routes/validate"]["post"]["responses"]
-    assert "400" in validate_route
-    assert "422" in validate_route
-
     # POST /api/schedules/generate should have 400
     generate_schedule = paths["/api/schedules/generate"]["post"]["responses"]
     assert "400" in generate_schedule

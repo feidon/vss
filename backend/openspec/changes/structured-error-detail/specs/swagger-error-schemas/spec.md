@@ -39,7 +39,6 @@ Every API route that can produce a `DomainError` SHALL declare the applicable er
 | `GET /api/services/{id}` | 404 |
 | `PATCH /api/services/{id}/route` | 404, 400, 409, 422 |
 | `DELETE /api/services/{id}` | 404 |
-| `POST /api/routes/validate` | 400, 422 |
 | `POST /api/schedules/generate` | 400 |
 
 #### Scenario: Swagger shows error responses for PATCH /api/services/{id}/route

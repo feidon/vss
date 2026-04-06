@@ -76,7 +76,7 @@ Station (1) ---- (*) Platform
 Vehicle ---- battery, charge/drain logic
 
 Service ---- name, vehicle_id
-   ├── path: [Node]                (ordered: platforms + blocks + yard)
+   ├── route: [Node]               (ordered: platforms + blocks + yard)
    └── timetable: [TimetableEntry] (arrival/departure per node)
 
 Block ---- traversal_time_seconds, group (interlocking)
@@ -91,8 +91,8 @@ NodeConnection ---- from_id -> to_id (directed graph edges)
 | **Station**  | id, name, is_yard, platforms[]            | 4 stations: Y (yard), S1, S2, S3            |
 | **Platform** | id, name                                  | 6 platforms: P1A, P1B, P2A, P2B, P3A, P3B   |
 | **Block**    | id, name, group, traversal_time_seconds   | 14 blocks (B1-B14), group 0 = no interlocking |
-| **Vehicle**  | id, name, battery                         | 3 vehicles: V1, V2, V3                      |
-| **Service**  | id, name, vehicle_id, path[], timetable[] | A scheduled vehicle run                     |
+| **Vehicle**  | id, name, battery                         | Seeded with V1, V2, V3; schedule generator adds more as needed |
+| **Service**  | id, name, vehicle_id, route[], timetable[] | A scheduled vehicle run                    |
 
 ### How Route Building Works
 
@@ -103,7 +103,7 @@ User input:  stops = [P1A (dwell 60s), P2A (dwell 45s)], start_time = T
 
     --> BFS finds intermediate blocks
 
-Full path:   P1A -> B3 -> B5 -> P2A
+Full route:  P1A -> B3 -> B5 -> P2A
 
 Timetable:   P1A  arr=T       dep=T+60    (60s dwell)
              B3   arr=T+60    dep=T+90    (30s traversal)
@@ -115,7 +115,7 @@ Timetable:   P1A  arr=T       dep=T+60    (60s dwell)
 
 The domain follows **DDD with rich entities** -- entities encapsulate behavior, not just data. For example, `Vehicle` manages its own battery state (`charge()`, `traverse_block()`, `can_depart()`), and `Service` enforces route invariants on update.
 
-**Why JSONB for path/timetable?** A service is always loaded and saved as a whole -- path and timetable are never queried independently. JSONB keeps it as single-row operations and avoids N+1 joins. Cross-service queries (conflict detection) already load all services into memory anyway.
+**Why JSONB for route/timetable?** A service is always loaded and saved as a whole -- route and timetable are never queried independently. JSONB keeps it as single-row operations and avoids N+1 joins. Cross-service queries (conflict detection) already load all services into memory anyway.
 
 ### Database Schema
 
@@ -125,9 +125,10 @@ The domain follows **DDD with rich entities** -- entities encapsulate behavior, 
 | `platforms`        | UUID        | name, station_id (FK)               |
 | `blocks`           | UUID        | name, group, traversal_time_seconds |
 | `vehicles`         | UUID        | name                                |
-| `services`         | int (auto)  | name, vehicle_id (FK), path (JSONB), timetable (JSONB) |
+| `services`         | int (auto)  | name, vehicle_id (FK), route (JSONB), timetable (JSONB) |
 | `node_connections` | (from, to)  | Directed graph edges                |
 | `node_layouts`     | UUID        | x, y coordinates for visualization  |
+| `junction_blocks`  | (from_block, to_block) | junction_id (FK to node_layouts) — maps block pairs to the visual junction between them |
 
 Schema managed by Alembic. Reference data (stations, blocks, vehicles, connections) is seeded in the migration.
 
@@ -144,26 +145,16 @@ All endpoints are under `/api`. In Docker: `http://localhost/api`. Local dev: `h
 | GET    | `/api/services/{id}`         | Get service detail with route, timetable, graph |
 | PATCH  | `/api/services/{id}/route`   | Update route (validates + detects conflicts) |
 | DELETE | `/api/services/{id}`         | Delete a service                         |
-| POST   | `/api/routes/validate`       | Validate route without saving            |
 | GET    | `/api/blocks`                | List all blocks with traversal times     |
 | PATCH  | `/api/blocks/{id}`           | Update a block's traversal time          |
 | GET    | `/api/vehicles`              | List all vehicles                        |
-| POST   | `/api/schedules/generate`    | Auto-generate a conflict-free schedule   |
+| POST   | `/api/schedules/generate`    | Replace all services with an auto-generated, conflict-free schedule (adds vehicles if needed) |
 
 ### Service Lifecycle
 
 1. **Create** -- `POST /api/services` with name + vehicle_id. Returns a service with empty route.
 2. **Define route** -- `PATCH /api/services/{id}/route` with stops (platform/yard UUIDs), dwell times, and start time. The backend validates connectivity, computes the timetable via BFS, runs conflict detection against all other services, and either persists (200) or returns conflicts (409).
 3. **Delete** -- `DELETE /api/services/{id}`.
-
-### Two-Phase Validation
-
-| Phase              | Endpoint                    | Checks                                        |
-|--------------------|-----------------------------|------------------------------------------------|
-| During editing     | `POST /api/routes/validate` | Route connectivity + single-service battery    |
-| On save            | `PATCH /api/services/{id}/route` | Full cross-service conflicts (vehicle, block, interlocking, battery) |
-
-Why split? A half-built route during editing will almost always conflict with something. Scoping validation to what's useful at each phase gives relevant feedback without noise.
 
 ### Conflict Detection (409 Response)
 
@@ -234,19 +225,19 @@ FastAPI `Depends()` wires PostgreSQL at runtime. Tests inject in-memory repos di
 
 ### 3. JSONB Aggregate Storage vs Normalized Join Tables
 
-**Chose:** Store service `path` and `timetable` as JSONB arrays on the service row.
+**Chose:** Store service `route` and `timetable` as JSONB arrays on the service row.
 
 **Why:** A service is always loaded/saved as a whole. JSONB avoids N+1 queries and simplifies the repository. Conflict detection already loads all services anyway.
 
 **Trade-off:** Cross-service queries on individual nodes require JSONB scanning. Acceptable at this scale.
 
-### 4. Dual Repository Strategy
+### 4. In-Memory Fakes vs Mocks for Application Tests
 
-**Chose:** Every repository interface has both in-memory and PostgreSQL implementations.
+**Chose:** Hand-written in-memory fakes for every repository interface, living in `tests/fakes/` and used only by application-layer tests. Production DI (`api/dependencies.py`) unconditionally wires PostgreSQL — fakes never leak into production code.
 
-**Why:** In-memory repos enable sub-millisecond application tests without DB setup. PostgreSQL repos are verified by dedicated integration tests.
+**Why:** Fakes hold real state and implement the full interface, so tests exercise actual behavior (ID assignment, filtering, delete semantics) in sub-milliseconds with zero DB setup. Method-level mocks would couple tests to call signatures without catching state bugs. Postgres repos get their own contract tests at `tests/infra/` (`@pytest.mark.postgres`) to catch drift between fake and real.
 
-**Trade-off:** Two implementations to maintain. Mitigated by narrow interfaces (5 methods or fewer).
+**Trade-off:** Each interface needs a fake kept in sync with the Postgres implementation. Narrow interfaces (most ≤ 4 methods; `ServiceRepository` is the widest at 7) keep the cost small.
 
 ---
 
@@ -254,14 +245,12 @@ FastAPI `Depends()` wires PostgreSQL at runtime. Tests inject in-memory repos di
 
 ### Domain
 
-- **Fixed track topology** -- 14 blocks, 4 stations, 6 platforms are seeded and immutable.
-- **Fixed vehicle fleet** -- V1, V2, V3 only. No API to add/remove.
-- **Battery parameters are constants** -- Initial 80, max 100, cost 1/block, low threshold 30, charge rate 12s/unit, departure requires 80.
-- **Vehicles only dwell at platforms/yard** -- blocks are pass-through with fixed traversal time.
-- **Single valid path between most stops** -- BFS picks shortest; the track map has at most one path per pair.
-- **Services are independent** -- no chaining into a daily schedule.
-- **Traversal time changes don't retroactively update timetables** -- re-save a route to pick up new times.
-- **Fleet sizing includes a 1-vehicle tolerance buffer** -- `num_vehicles = ceil(max_turnaround / interval) + 1`. The `+1` absorbs rounding and timing slack so the scheduler never leaves a departure slot empty due to a fractionally-unavailable vehicle. Defined as `FLEET_BUFFER` in `backend/application/schedule/network_layout.py`.
+- **Fixed track topology** -- 14 blocks, 4 stations, 6 platforms are seeded and immutable; between any two consecutive stops there is at most one valid block chain, so BFS (over blocks only) returns a unique path. Only a block's `traversal_time_seconds` is editable; the graph itself is not.
+- **Battery parameters are constants** -- initial 80, max 100, cost 1/block, low threshold 30, charge rate 12s/unit, departure requires 80.
+- **Vehicles only dwell at platforms/yard** -- blocks are pass-through with fixed traversal time; there is no "stop at block" support.
+- **Services are independent** -- no chaining into a daily schedule; each trip is a standalone `Service` record.
+- **Traversal time changes don't retroactively update timetables** -- `PATCH /api/blocks/{id}` only updates the block row; re-save any affected route to recompute its timetable.
+- **Vehicle fleet auto-grows** -- seeded with V1, V2, V3 and has no direct CRUD API. `POST /api/schedules/generate` sizes the fleet as `ceil(max_turnaround / (interval + dwell)) + 1` and calls `VehicleRepository.add_by_number()` to create any deficit. The `+1` (`FLEET_BUFFER` in `backend/application/schedule/network_layout.py`) absorbs rounding and timing slack so the scheduler never leaves a departure slot empty due to a fractionally-unavailable vehicle.
 
 ### Scope
 
@@ -325,7 +314,9 @@ vss/
 │   ├── api/                     # Routes, schemas, DI
 │   ├── application/             # App services, DTOs
 │   ├── domain/                  # Entities, domain services, repo interfaces
-│   ├── infra/postgres/          # PostgreSQL repos, Alembic migrations, seed data
+│   ├── infra/
+│   │   ├── seed.py              # Reference data seed (invoked by Alembic migration)
+│   │   └── postgres/            # PostgreSQL repos, tables, Alembic migrations
 │   └── tests/
 │       ├── domain/              # Pure unit tests
 │       ├── application/         # Integration with in-memory repos

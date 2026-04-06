@@ -17,7 +17,6 @@ All frontend components referencing a service's ordered list of nodes SHALL use 
 The frontend `CLAUDE.md` SHALL accurately list the available backend endpoints:
 - Remove `GET /graph` and `GET /blocks/{id}` (do not exist)
 - Add `GET /vehicles` (list all vehicles)
-- Add `POST /routes/validate` (validate a route for battery conflicts)
 - Update `ServiceResponse` and route update request schemas to match actual backend
 
 #### Scenario: CLAUDE.md reflects current API

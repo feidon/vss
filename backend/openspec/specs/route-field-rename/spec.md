@@ -28,24 +28,12 @@ Domain validation error messages SHALL reference "route" instead of "path".
 - **WHEN** consecutive nodes in the route have no connection
 - **THEN** the error message SHALL read "No connection: {from_id} -> {to_id}"
 
-### Requirement: Application DTO uses `route` field
-The `RouteValidationResult` DTO SHALL use `route` as its field name for the list of Nodes.
-
-#### Scenario: Route validation returns result with route field
-- **WHEN** the application service validates a route
-- **THEN** the result SHALL have a `route` field containing the list of Nodes
-- **AND** there SHALL be no `path` field on `RouteValidationResult`
-
 ### Requirement: API responses use `route` field
 All API response schemas SHALL use `route` instead of `path` for the service's traversal sequence.
 
 #### Scenario: Service detail response contains route field
 - **WHEN** `GET /services/{id}` returns a service detail
 - **THEN** the JSON response SHALL contain a `route` key (not `path`) with the list of nodes
-
-#### Scenario: Route validation response contains route field
-- **WHEN** `POST /routes/validate` returns a validation result
-- **THEN** the JSON response SHALL contain a `route` key (not `path`) with the list of node UUIDs
 
 ### Requirement: Database column named `route`
 The services table in PostgreSQL SHALL store the traversal sequence in a JSONB column named `route`.

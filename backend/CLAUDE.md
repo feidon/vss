@@ -48,15 +48,9 @@ All routes are under the `/api` prefix.
 | GET    | `/api/services/{id}`       | Get service detail + graph |
 | PATCH  | `/api/services/{id}/route` | Update service route       |
 | DELETE | `/api/services/{id}`       | Delete service             |
-| POST   | `/api/routes/validate`     | Validate route stops       |
 | GET    | `/api/vehicles`            | List all vehicles          |
 
-Route update returns 409 with conflict details when scheduling conflicts are detected.
-
-### Validation Scope Split
-
-- **`POST /api/routes/validate` (during editing):** Route connectivity + single-service battery only. No cross-service conflict checks — the route isn't final during editing.
-- **`PATCH /api/services/{id}/route` (save):** Full cross-service conflict detection (vehicle, block, interlocking, battery) against all existing services.
+`PATCH /api/services/{id}/route` performs full validation: route connectivity, timetable computation via BFS, and cross-service conflict detection (vehicle, block, interlocking, battery). Returns 409 with structured conflict details when conflicts are detected.
 
 ## Running
 
