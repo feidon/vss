@@ -26,14 +26,14 @@ class TestGraphAppService:
                 Platform(id=uuid7(), name="P1A"),
             ],
         )
-        repo._store[s.id] = s
+        repo.seed(s)
         return repo
 
     @pytest.fixture
     def block_repo(self):
         repo = InMemoryBlockRepository()
         b = Block(id=uuid7(), name="B1", group=1, traversal_time_seconds=30)
-        repo._store[b.id] = b
+        repo.seed(b)
         return repo
 
     @pytest.fixture
@@ -50,7 +50,7 @@ class TestGraphAppService:
     def vehicle_repo(self):
         repo = InMemoryVehicleRepository()
         v = Vehicle(id=uuid7(), name="V1")
-        repo._store[v.id] = v
+        repo.seed(v)
         return repo
 
     @pytest.fixture
@@ -102,8 +102,8 @@ class TestGraphAppService:
         repo = InMemoryStationRepository()
         yard = Station(id=uuid7(), name="Y", is_yard=True, platforms=[])
         non_yard = Station(id=uuid7(), name="S1", is_yard=False, platforms=[])
-        repo._store[yard.id] = yard
-        repo._store[non_yard.id] = non_yard
+        repo.seed(yard)
+        repo.seed(non_yard)
 
         svc = GraphAppService(
             station_repo=repo,

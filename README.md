@@ -1,6 +1,6 @@
 # Vehicle Scheduling System (VSS)
 
-A vehicle scheduling system for managing transit services on a fixed track network. Operators create services (scheduled vehicle runs), define routes by selecting stops (platforms or yard), and the system auto-fills intermediate blocks, computes timetables, and detects scheduling conflicts.
+A vehicle scheduling system for managing transit services on a fixed track network. Operators create services (scheduled vehicle runs), define routes by selecting stops, and the system auto-fills intermediate blocks, computes timetables, and detects scheduling conflicts.
 
 ## Quick Start
 
@@ -8,21 +8,24 @@ A vehicle scheduling system for managing transit services on a fixed track netwo
 docker compose up
 ```
 
-Open **http://localhost** once all services are ready.
+Open **http://localhost** once all services are ready. That's it.
 
 ### Prerequisites
 
 - Docker & Docker Compose
 
-### Services
+### What Happens on Startup
 
-| Service    | Internal Port | Exposed Port | Description                                   |
-|------------|---------------|--------------|-----------------------------------------------|
-| `postgres` | 5432          | 5432         | PostgreSQL 17 database                        |
-| `backend`  | 8000          | —            | Python 3.14 + FastAPI API server              |
-| `frontend` | 80            | 80           | Angular 21 SPA served by nginx                |
+1. PostgreSQL initializes
+2. Backend runs Alembic migrations (creates schema + seeds reference data)
+3. Backend starts FastAPI on port 8000
+4. Frontend (nginx) serves the Angular SPA on port 80 and proxies `/api/*` to the backend
 
-Nginx serves the Angular SPA and proxies `/api/*` requests to the backend. The database schema and seed data (stations, platforms, blocks, vehicles, connections) are created automatically on startup via Alembic migrations.
+| Service    | Port (internal) | Port (exposed) | Description                |
+|------------|-----------------|----------------|----------------------------|
+| `postgres` | 5432            | 5432           | PostgreSQL 17              |
+| `backend`  | 8000            | --             | Python 3.14 + FastAPI      |
+| `frontend` | 80              | 80             | Angular 21 SPA via nginx   |
 
 ### Local Development (without Docker)
 
@@ -31,8 +34,8 @@ Nginx serves the Angular SPA and proxies `/api/*` requests to the backend. The d
 ```bash
 cd backend
 uv sync
-# PostgreSQL must be running (see docker compose up -d)
-uv run uvicorn main:app --reload
+# Start PostgreSQL: docker compose up -d postgres
+uv run uvicorn main:app --reload    # http://localhost:8000/api
 ```
 
 **Frontend:**
@@ -40,88 +43,24 @@ uv run uvicorn main:app --reload
 ```bash
 cd frontend
 npm install
-ng serve    # http://localhost:4200, API calls go to http://localhost:8000/api
+ng serve    # http://localhost:4200, proxies API to localhost:8000
 ```
 
 **Tests:**
 
 ```bash
+# Backend
 cd backend
 uv run pytest              # unit tests (no DB needed)
 uv run pytest -m postgres  # integration tests (needs PostgreSQL)
 uv run pytest -m ''        # all tests
-uv run lint-imports        # verify architectural layer dependencies
+uv run lint-imports        # verify architecture layer constraints
+
+# Frontend
+cd frontend
+ng test                    # Vitest unit tests
+ng lint                    # ESLint
 ```
-
----
-
-## Architecture
-
-### DDD + Hexagonal Architecture
-
-The backend follows **Domain-Driven Design** with **Hexagonal Architecture** (Ports & Adapters):
-
-```
-  api/ ──→ application/ ──→ domain/ ←── infra/
-  (inbound)  (use cases)     (core)    (outbound)
-```
-
-Dependencies point inward — `api/` imports `application/` and `domain/`; `application/` imports `domain/`; `infra/` imports only `domain/` (implements its ports). Nothing inside depends on the outside.
-
-| Layer            | Role                          | Contents                                              |
-|------------------|-------------------------------|-------------------------------------------------------|
-| **`domain/`**    | Core business rules           | Entities, value objects, repository interfaces (ports), domain services |
-| **`application/`** | Use-case orchestration     | Coordinates domain objects and repos; enforces workflow (build route → detect conflicts → persist) |
-| **`api/`**       | Inbound adapter               | FastAPI routes, Pydantic schemas, dependency injection |
-| **`infra/`**     | Outbound adapter              | PostgreSQL repositories, Alembic migrations, seed data |
-
-This is enforced at CI time via [`import-linter`](https://github.com/seddonym/import-linter).
-
-### Rich Domain Model
-
-Entities encapsulate behavior, not just data:
-
-| Entity      | Key Behavior                                                                 |
-|-------------|------------------------------------------------------------------------------|
-| **Block**   | Validates `traversal_time_seconds > 0`; converts itself to `Node` and `TimetableEntry` |
-| **Vehicle** | Manages battery: `charge()`, `traverse_block()`, `can_depart()`, `is_battery_critical()` |
-| **Service** | Enforces route invariants on `update_route()`: timetable ordering, time continuity, path connectivity |
-| **Station** | Owns platforms; guards duplicate IDs; only yards produce `Node` representations |
-
-Domain services handle cross-aggregate logic:
-
-| Service                      | Responsibility                                                              |
-|------------------------------|-----------------------------------------------------------------------------|
-| **ConflictDetectionService** | Detects vehicle, block, interlocking, and battery conflicts (sweep-line + simulation) |
-| **RouteFinder**              | BFS pathfinding to infer intermediate blocks between stops                  |
-
-Both are pure functions — no repository access, no state.
-
-### Repository Pattern
-
-Each aggregate root defines an abstract repository interface (port) in `domain/`:
-
-```python
-# domain/block/repository.py
-class BlockRepository(ABC):
-    async def find_all(self) -> list[Block]: ...
-    async def find_by_id(self, id: UUID) -> Block | None: ...
-    async def save(self, block: Block) -> None: ...
-```
-
-Two concrete implementations exist:
-
-```python
-# infra/postgres/block_repo.py     — PostgreSQL adapter (production)
-class PostgresBlockRepository(BlockRepository): ...
-
-# tests/fakes/block_repo.py        — dict-backed, no I/O (test double)
-class InMemoryBlockRepository(BlockRepository): ...
-```
-
-The domain declares **what** it needs; adapters decide **how**. Application services and domain logic depend only on the interface, never on a concrete implementation. FastAPI's `Depends()` wires PostgreSQL repositories at runtime. In-memory repositories are used exclusively as test doubles in application-level tests.
-
-This is the Ports & Adapters pattern in action: the repository interface is the **port**, and each implementation is an **adapter**. See [Trade-off #4](#4-dual-repository-strategy-in-memory--postgresql) for the dual-implementation rationale and [Trade-off #5](#5-sqlalchemy-core--manual-mapper-vs-orm) for the persistence technology choice.
 
 ---
 
@@ -130,213 +69,244 @@ This is the Ports & Adapters pattern in action: the repository interface is the 
 ### Entity Relationship
 
 ```
-Station (1) ──── (*) Platform
-   │
-   └── is_yard: bool (Y is the depot)
+Station (1) ---- (*) Platform
+   |
+   └── is_yard: bool (Y = depot)
 
-Vehicle ──── battery, charge/drain logic
+Vehicle ---- battery, charge/drain logic
 
-Service ──── name, vehicle_id
-   ├── path: [Node]              (ordered: platforms + blocks + yard)
-   └── timetable: [TimetableEntry]  (arrival/departure per node)
+Service ---- name, vehicle_id
+   ├── path: [Node]                (ordered: platforms + blocks + yard)
+   └── timetable: [TimetableEntry] (arrival/departure per node)
 
-Block ──── traversal_time_seconds, group (interlocking)
+Block ---- traversal_time_seconds, group (interlocking)
 
-NodeConnection ──── from_id → to_id (directed graph edges)
+NodeConnection ---- from_id -> to_id (directed graph edges)
 ```
 
 ### Core Entities
 
-| Entity       | Key Fields                                   | Notes                                        |
-|--------------|----------------------------------------------|----------------------------------------------|
-| **Station**  | id, name, is_yard, platforms[]               | 4 stations: Y (yard), S1, S2, S3             |
-| **Platform** | id, name                                     | 6 platforms: P1A, P1B, P2A, P2B, P3A, P3B    |
-| **Block**    | id, name, group, traversal_time_seconds      | 14 blocks (B1-B14), group 0 = no interlocking |
-| **Vehicle**  | id, name, battery                            | 3 vehicles: V1, V2, V3                       |
-| **Service**  | id, name, vehicle_id, path[], timetable[]    | A scheduled vehicle run                      |
+| Entity       | Key Fields                                | Notes                                       |
+|--------------|-------------------------------------------|---------------------------------------------|
+| **Station**  | id, name, is_yard, platforms[]            | 4 stations: Y (yard), S1, S2, S3            |
+| **Platform** | id, name                                  | 6 platforms: P1A, P1B, P2A, P2B, P3A, P3B   |
+| **Block**    | id, name, group, traversal_time_seconds   | 14 blocks (B1-B14), group 0 = no interlocking |
+| **Vehicle**  | id, name, battery                         | 3 vehicles: V1, V2, V3                      |
+| **Service**  | id, name, vehicle_id, path[], timetable[] | A scheduled vehicle run                     |
 
-### Service Path & Timetable
+### How Route Building Works
 
-A **service** represents a single vehicle run. The user selects stops (platforms or yard) and dwell times; the system uses BFS to find intermediate blocks and computes the full timetable:
+Users select stops (platforms or yard) and dwell times. The system fills in the rest:
 
 ```
-User input:  stops = [P1A (dwell 60s), P2A (dwell 45s)]
-                              ↓ RouteFinder (BFS)
-Full path:   [P1A, B3, B5, P2A]
-Timetable:   P1A  arr=T+0    dep=T+60    (60s dwell)
-             B3   arr=T+60   dep=T+90    (30s traversal)
-             B5   arr=T+90   dep=T+120   (30s traversal)
-             P2A  arr=T+120  dep=T+165   (45s dwell)
+User input:  stops = [P1A (dwell 60s), P2A (dwell 45s)], start_time = T
+
+    --> BFS finds intermediate blocks
+
+Full path:   P1A -> B3 -> B5 -> P2A
+
+Timetable:   P1A  arr=T       dep=T+60    (60s dwell)
+             B3   arr=T+60    dep=T+90    (30s traversal)
+             B5   arr=T+90    dep=T+120   (30s traversal)
+             P2A  arr=T+120   dep=T+165   (45s dwell)
 ```
 
-Each timetable entry's departure equals the next entry's arrival (continuous time). Block durations come from the configurable `traversal_time_seconds`.
+### Design Rationale
+
+The domain follows **DDD with rich entities** -- entities encapsulate behavior, not just data. For example, `Vehicle` manages its own battery state (`charge()`, `traverse_block()`, `can_depart()`), and `Service` enforces route invariants on update.
+
+**Why JSONB for path/timetable?** A service is always loaded and saved as a whole -- path and timetable are never queried independently. JSONB keeps it as single-row operations and avoids N+1 joins. Cross-service queries (conflict detection) already load all services into memory anyway.
 
 ### Database Schema
 
-PostgreSQL with SQLAlchemy Core tables (no ORM):
+| Table              | PK          | Notable Columns                     |
+|--------------------|-------------|-------------------------------------|
+| `stations`         | UUID        | name, is_yard                       |
+| `platforms`        | UUID        | name, station_id (FK)               |
+| `blocks`           | UUID        | name, group, traversal_time_seconds |
+| `vehicles`         | UUID        | name                                |
+| `services`         | int (auto)  | name, vehicle_id (FK), path (JSONB), timetable (JSONB) |
+| `node_connections` | (from, to)  | Directed graph edges                |
+| `node_layouts`     | UUID        | x, y coordinates for visualization  |
 
-| Table              | PK        | Notable Columns                        |
-|--------------------|-----------|----------------------------------------|
-| `stations`         | UUID      | name, is_yard                          |
-| `platforms`        | UUID      | name, station_id (FK)                  |
-| `blocks`           | UUID      | name, group, traversal_time_seconds    |
-| `vehicles`         | UUID      | name                                   |
-| `services`         | int (auto)| name, vehicle_id (FK), path (JSONB), timetable (JSONB) |
-| `node_connections` | (from, to)| Directed edges of the track graph      |
-| `node_layouts`     | UUID      | x, y coordinates for visualization     |
-
-Schema managed by Alembic (`infra/postgres/alembic/`).
+Schema managed by Alembic. Reference data (stations, blocks, vehicles, connections) is seeded in the migration.
 
 ---
 
 ## API Design
 
-All endpoints are under the `/api` prefix.
-
-- Local development: `http://localhost:8000/api`
-- Docker: `http://localhost/api` (nginx proxies to backend)
-
-### Endpoints
+All endpoints are under `/api`. In Docker: `http://localhost/api`. Local dev: `http://localhost:8000/api`.
 
 | Method | Path                         | Description                              |
 |--------|------------------------------|------------------------------------------|
-| GET    | `/api/blocks`                | List all blocks with traversal times     |
-| PATCH  | `/api/blocks/{id}`           | Update a block's traversal time          |
 | POST   | `/api/services`              | Create a new service (empty route)       |
-| GET    | `/api/services`              | List services (summary: start_time, origin, destination) |
-| GET    | `/api/services/{id}`         | Get service detail with route, timetable, and graph |
+| GET    | `/api/services`              | List services (summary view)             |
+| GET    | `/api/services/{id}`         | Get service detail with route, timetable, graph |
 | PATCH  | `/api/services/{id}/route`   | Update route (validates + detects conflicts) |
 | DELETE | `/api/services/{id}`         | Delete a service                         |
-| POST   | `/api/routes/validate`       | Validate stops list without persisting   |
+| POST   | `/api/routes/validate`       | Validate route without saving            |
+| GET    | `/api/blocks`                | List all blocks with traversal times     |
+| PATCH  | `/api/blocks/{id}`           | Update a block's traversal time          |
 | GET    | `/api/vehicles`              | List all vehicles                        |
+| POST   | `/api/schedules/generate`    | Auto-generate a conflict-free schedule   |
 
 ### Service Lifecycle
 
-1. **Create** — `POST /api/services` with name + vehicle_id. Returns a service with empty path/timetable.
-2. **Define route** — `PATCH /api/services/{id}/route` with stops (`node_id` — platform or yard UUIDs), dwell times, and start time. The backend:
-   - Validates all stops exist (platforms and yard)
-   - Uses BFS to find blocks between consecutive stops
-   - Computes arrival/departure times from block traversal times and dwell times
-   - Runs full conflict detection against all other services
-   - Returns **409** with detailed conflicts if any are found, otherwise persists and returns **200**
-3. **Delete** — `DELETE /api/services/{id}`
+1. **Create** -- `POST /api/services` with name + vehicle_id. Returns a service with empty route.
+2. **Define route** -- `PATCH /api/services/{id}/route` with stops (platform/yard UUIDs), dwell times, and start time. The backend validates connectivity, computes the timetable via BFS, runs conflict detection against all other services, and either persists (200) or returns conflicts (409).
+3. **Delete** -- `DELETE /api/services/{id}`.
+
+### Two-Phase Validation
+
+| Phase              | Endpoint                    | Checks                                        |
+|--------------------|-----------------------------|------------------------------------------------|
+| During editing     | `POST /api/routes/validate` | Route connectivity + single-service battery    |
+| On save            | `PATCH /api/services/{id}/route` | Full cross-service conflicts (vehicle, block, interlocking, battery) |
+
+Why split? A half-built route during editing will almost always conflict with something. Scoping validation to what's useful at each phase gives relevant feedback without noise.
 
 ### Conflict Detection (409 Response)
 
-When updating a route, the system checks for these conflict types:
+When saving a route triggers conflicts, the response includes structured details:
 
-| Conflict Type          | Description                                                     |
-|------------------------|-----------------------------------------------------------------|
-| Vehicle time overlap   | Same vehicle assigned to services with overlapping time windows |
-| Location discontinuity | Vehicle's last position doesn't match next service's start      |
-| Block occupancy        | Two services occupy the same block at overlapping times         |
-| Interlocking           | Blocks in the same interlocking group occupied simultaneously   |
-| Low battery            | Vehicle battery drops below 30 outside the yard                 |
-| Insufficient charge    | Vehicle departs yard with battery below 80                      |
-
-Conflict response includes structured details (block IDs, overlap windows, reasons) so the frontend can display actionable information.
+| Conflict Type        | Description                                                  |
+|----------------------|--------------------------------------------------------------|
+| Vehicle overlap      | Same vehicle in services with overlapping time windows       |
+| Block occupancy      | Two services occupy the same block at overlapping times      |
+| Interlocking         | Blocks in same interlocking group occupied simultaneously    |
+| Low battery          | Battery drops below 30 outside the yard                      |
+| Insufficient charge  | Vehicle departs yard with battery below 80                   |
 
 ### Design Principles
 
-- **Nouns as paths** (`/services`, `/blocks`) rather than verbs
-- **HTTP methods** map to operations (GET=read, POST=create, PATCH=update, DELETE=remove)
-- **Route update is a sub-resource** (`/services/{id}/route`) — distinct operation with different validation and side effects than updating service metadata
-- **409 for conflicts** rather than 400 — the request is valid in isolation; the conflict arises from the current state of other services
+- **Nouns as paths** (`/services`, `/blocks`), HTTP methods for operations
+- **Route update as sub-resource** (`/services/{id}/route`) -- distinct validation logic from metadata updates
+- **409 for conflicts** -- the request is valid in isolation; conflict arises from current state
+
+---
+
+## Architecture
+
+### Hexagonal Architecture (Ports & Adapters)
+
+```
+  api/ --> application/ --> domain/ <-- infra/
+  (inbound)  (use cases)     (core)    (outbound)
+```
+
+Dependencies point inward. Nothing in `domain/` imports from the outside. Enforced by [`import-linter`](https://github.com/seddonym/import-linter) at CI time.
+
+| Layer            | Role                     | Contents                                                 |
+|------------------|--------------------------|----------------------------------------------------------|
+| **`domain/`**    | Core business rules      | Entities, value objects, repository interfaces, domain services |
+| **`application/`** | Use-case orchestration | Coordinates domain + repos; workflow (build -> detect -> persist) |
+| **`api/`**       | Inbound adapter          | FastAPI routes, Pydantic schemas, DI                     |
+| **`infra/`**     | Outbound adapter         | PostgreSQL repositories, Alembic migrations, seed data   |
+
+### Repository Pattern
+
+Each aggregate defines an abstract interface in `domain/` (the **port**). Two implementations exist:
+
+- **PostgreSQL** (`infra/postgres/`) -- production adapter
+- **In-memory** (`tests/fakes/`) -- fast test double, no DB needed
+
+FastAPI `Depends()` wires PostgreSQL at runtime. Tests inject in-memory repos directly.
 
 ---
 
 ## Design Trade-offs
 
-### Domain & Behavior
+### 1. SQLAlchemy Core + Manual Mapper vs ORM
 
-#### 1. Two-Phase Validation: Light Check During Editing, Full Check on Save
+**Chose:** SQLAlchemy Core with hand-written `_to_entity()` / `_to_table()` mapper methods. No ORM, no `Session.add()`.
 
-**Choice:** Conflict detection is split into two scopes:
-- **During editing** — route connectivity (can the path be built?) and single-service battery simulation only. No cross-service checks.
-- **On save** (`PATCH /api/services/{id}/route`) — full cross-service conflict detection: vehicle overlap, block occupancy, interlocking, and battery conflicts against all existing services.
+**Why:** Domain entities must be pure Python dataclasses with zero SQLAlchemy imports. ORM mapping (even imperative) leaks persistence concerns via session management, identity maps, and change tracking. With Core + manual mapper, persistence is fully explicit and the domain stays clean.
 
-**Why:** Checking all services on every stop addition is wasteful and confusing — a half-built route will almost always conflict with something. By scoping validation to what's useful at each phase, the user gets relevant feedback without noise.
+**Trade-off:** More boilerplate per repository. Acceptable because the mapping is straightforward, co-located with the SQL, and the only place where schema changes need updating.
 
-**Trade-off:** The user doesn't learn about cross-service conflicts until they try to save. Acceptable because the conflict response is detailed enough to guide fixes, and the route can be re-edited immediately.
+### 2. BFS Route Inference vs Manual Path Specification
 
-#### 2. BFS Route Inference vs Manual Full-Path Specification
+**Chose:** Users select only stops (platforms/yard); the system infers intermediate blocks via BFS.
 
-**Choice:** Users select only stops (platforms/yard); the system uses BFS to find intermediate blocks automatically.
+**Why:** The track topology has typically one valid block chain between stops. Requiring manual block-by-block input would be tedious and error-prone.
 
-**Why:** The track network has a fixed topology where there's typically one valid block chain between any two stops. Requiring users to manually specify every block would be tedious and error-prone. BFS guarantees a valid connected path and simplifies the API contract (just node IDs and dwell times).
+**Trade-off:** BFS picks shortest path, removing user choice. In this track map, most pairs have exactly one path, so no choice is lost.
 
-**Trade-off:** BFS picks the shortest path, removing user choice if multiple routes exist. In this track map, most stop pairs have a single path, so no choice is lost.
+### 3. JSONB Aggregate Storage vs Normalized Join Tables
 
-### Persistence & Data
+**Chose:** Store service `path` and `timetable` as JSONB arrays on the service row.
 
-#### 3. JSONB Aggregate Storage vs Normalized Join Tables
+**Why:** A service is always loaded/saved as a whole. JSONB avoids N+1 queries and simplifies the repository. Conflict detection already loads all services anyway.
 
-**Choice:** Store `path` and `timetable` as JSONB arrays on the `services` row rather than in separate `service_path_nodes` and `service_timetable_entries` tables.
+**Trade-off:** Cross-service queries on individual nodes require JSONB scanning. Acceptable at this scale.
 
-**Why:** A service is always loaded and persisted as a whole — path and timetable are never queried independently. JSONB keeps reads and writes as single-row operations, avoids N+1 query patterns, and simplifies the repository layer. The `save()` method uses upsert, so there's no need to diff or reconcile child rows.
+### 4. Dual Repository Strategy
 
-**Trade-off:** Cross-service queries (e.g., "which services pass through block B3?") require scanning JSONB across all rows. Acceptable because conflict detection already loads all services into memory.
+**Chose:** Every repository interface has both in-memory and PostgreSQL implementations.
 
-#### 5. SQLAlchemy Core + Manual Mapper vs ORM
+**Why:** In-memory repos enable sub-millisecond application tests without DB setup. PostgreSQL repos are verified by dedicated integration tests.
 
-**Choice:** Use SQLAlchemy Core (`select()`, `insert()`, `update()` on `Table` objects) with hand-written `_to_entity()` / `_to_table()` mapper methods in each repository. No declarative models, no imperative mapping, no `Session.add()`.
-
-**Why:** The domain follows DDD with rich entities that must remain free of persistence concerns. SQLAlchemy ORM mapping (even imperative) leaks into the domain via session management, identity maps, and change tracking. With Core + manual mapper:
-- Domain entities have zero SQLAlchemy imports — just `@dataclass` classes
-- Persistence is fully explicit: `save()` uses upsert, reads use `select()`, no hidden queries
-- No identity map, no lazy loading, no change tracking
-- Mirrors the QueryDSL SQL + Flyway pattern: schema-first tables, explicit mapper at the repository boundary
-
-**Trade-off:** More boilerplate per repository (`_to_entity()` / `_to_table()` methods). Acceptable because the mapping is straightforward, co-located with the SQL, and the only place where schema changes need updating.
-
-### Infrastructure
-
-#### 4. Dual Repository Strategy (In-Memory for Tests + PostgreSQL for Production)
-
-**Choice:** Every repository interface has both an in-memory and a PostgreSQL implementation. Production always uses PostgreSQL; in-memory repos are used exclusively as test doubles in application-level tests.
-
-**Why:** In-memory repos enable fast application-level testing without database setup — domain and application tests run in milliseconds. PostgreSQL repos are exercised by dedicated integration tests marked with `@pytest.mark.postgres`. The DI container unconditionally wires PostgreSQL; test fixtures inject in-memory repos directly.
-
-**Trade-off:** Maintaining two implementations per repository adds code. Mitigated by narrow repository interfaces (5 methods or fewer) and integration tests verifying both implementations against the same contracts.
+**Trade-off:** Two implementations to maintain. Mitigated by narrow interfaces (5 methods or fewer).
 
 ---
 
 ## Assumptions
 
-### Domain Constraints
+### Domain
 
-1. **Fixed track topology** — The 14 blocks, 4 stations, 6 platforms, and their connections are seeded on startup and not user-editable.
-2. **Fixed vehicle fleet** — Three vehicles (V1, V2, V3) are pre-seeded. No UI or API to add/remove vehicles.
-3. **Battery parameters are constants** — Initial battery 80, max 100, cost 1 per block, low threshold 30, charge rate 12 seconds/unit, required 80 on departure. Per the assignment spec.
-4. **Vehicles cannot stop at blocks** — Vehicles only dwell at platforms and the yard. Blocks are pass-through segments with fixed traversal time.
-5. **Block traversal is instantaneous entry** — A vehicle occupies a block for exactly `traversal_time_seconds` from arrival. No acceleration/deceleration modeling.
-6. **Single valid path between most stops** — BFS always picks the shortest block chain. The current track map has at most one path between any stop pair, so no user choice is lost.
-7. **Services are independent runs** — No concept of "chaining" services into a vehicle's daily schedule. Conflict detection handles overlaps between independent services.
-8. **Route always starts and ends with a platform or yard** — User-specified stops are validated to be platforms or yards (`_validate_stops`), and blocks are only inserted between consecutive stops by BFS. Therefore the computed route can never begin or end with a block.
-9. **Block traversal time changes do not affect existing services** — Updating a block's `traversal_time_seconds` only modifies the block record. Existing service timetables are snapshots computed at route-save time and are not retroactively recomputed. A service only picks up updated traversal times when its route is explicitly re-saved via `PATCH /api/services/{id}/route`.
-10. **No track map modification support** — The system provides no UI or API for modifying the track network topology (adding/removing blocks, platforms, stations, or connections). The only way to change the track map is by directly modifying the database, which may break existing services whose routes and timetables reference the affected nodes.
+- **Fixed track topology** -- 14 blocks, 4 stations, 6 platforms are seeded and immutable.
+- **Fixed vehicle fleet** -- V1, V2, V3 only. No API to add/remove.
+- **Battery parameters are constants** -- Initial 80, max 100, cost 1/block, low threshold 30, charge rate 12s/unit, departure requires 80.
+- **Vehicles only dwell at platforms/yard** -- blocks are pass-through with fixed traversal time.
+- **Single valid path between most stops** -- BFS picks shortest; the track map has at most one path per pair.
+- **Services are independent** -- no chaining into a daily schedule.
+- **Traversal time changes don't retroactively update timetables** -- re-save a route to pick up new times.
 
-### Scope Boundaries
+### Scope
 
-11. **Single-user system** — No authentication, authorization, or concurrent editing support.
-12. **No concurrent editing or service versioning** — Last write wins. No optimistic locking, no version field, no conflict resolution for simultaneous edits.
-13. **No high-concurrency support** — No connection pooling tuning, no rate limiting, no caching layer.
-14. **Small number of services** — Conflict detection loads all services into memory on every route save. Suitable for dozens or hundreds of services, not thousands.
+- **Single-user system** -- no auth, no concurrent editing.
+- **Small dataset** -- conflict detection loads all services in memory. Suitable for dozens/hundreds, not thousands.
+- **Single-node monolith** -- no message queues, caching, distributed locking, or observability stack.
+- **Time in Unix epoch seconds** -- avoids timezone complexity; frontend converts for display.
 
-15. **No distributed deployment preparations** — The system is designed as a single-node monolith with no provisions for horizontal scaling or distributed operation. Specifically:
-    - **No message queue or event bus** — All communication is synchronous in-process function calls. No Kafka, RabbitMQ, or similar infrastructure for decoupling services.
-    - **No distributed caching** — No Redis or Memcached layer. All state lives in PostgreSQL or in-process memory.
-    - **No service discovery or load balancing** — Single backend instance serves all requests. No reverse proxy configuration, health check endpoints for orchestrators, or graceful shutdown handling.
-    - **No database replication or sharding** — Single PostgreSQL instance with no read replicas, no connection pooling (e.g., PgBouncer), and no partitioning strategy.
-    - **No distributed locking or consensus** — Conflict detection assumes a single process; no distributed locks (e.g., Redis-based) to coordinate concurrent writes across instances.
-    - **No observability stack** — No structured logging, distributed tracing (OpenTelemetry), or metrics export (Prometheus). Debugging relies on stdout logs.
-    - **No container orchestration readiness** — Docker Compose for local development only. No Kubernetes manifests, Helm charts, or cloud deployment configurations.
+---
 
-    This is intentional for a project of this scope — the complexity of distributed infrastructure would far outweigh any benefit given the single-user, small-dataset assumptions above.
+## Requirements Checklist
 
-### Technical Choices
+### Core Requirements
 
-16. **Time in Unix epoch seconds** — All timetable times use integer Unix timestamps. The frontend converts to/from local datetime for display. Avoids timezone complexity.
+| #   | Requirement                  | Status | Notes                                                        |
+|-----|------------------------------|--------|--------------------------------------------------------------|
+| 1   | Service Definition           | Done   | Service with ID, vehicle, path, timetable                    |
+| 2   | Schedule Management (CRUD)   | Done   | Create, list, detail, update route, delete                   |
+| 2a  | Path connectivity validation | Done   | BFS validates consecutive blocks via adjacency               |
+| 2b  | Vehicle conflict handling    | Done   | Detects overlapping time windows + location discontinuity    |
+| 3a  | Schedule Editor page         | Done   | Route editor with stop selection, dwell times, start time    |
+| 3b  | Schedule Viewer page         | Done   | Service list with summary (vehicle, origin, destination)     |
+| 3c  | Block Configuration page     | Done   | Inline traversal time editing, grouped by interlocking       |
+| 4   | Backend unit tests           | Done   | Domain, application, API, and infra test layers              |
+
+### Bonus Requirements
+
+| #     | Requirement                     | Status      | Notes                                                    |
+|-------|---------------------------------|-------------|----------------------------------------------------------|
+| B1    | Conflict Detection              | Done        | All 3 types implemented + interlocking (beyond spec)     |
+| B1.1  | Block occupancy conflict        | Done        | Sweep-line detection, returns overlap windows             |
+| B1.2  | Low battery                     | Done        | Battery simulation per service                           |
+| B1.3  | Insufficient charge on departure| Done        | Checks battery >= 80 on yard departure                   |
+| B2    | Interactive Track Map           | Done        | d3.js visualization of the full track network            |
+| B2.1  | Interactive path editing        | Done        | Click platforms/yard/blocks on map to build route         |
+| B2.2  | Schedule simulation / playback  | Not done    | --                                                       |
+| B3    | Auto-generate schedule          | Done        | Generates conflict-free schedule for given interval/range |
+
+### Technical Requirements
+
+| Requirement      | Status | Notes                                      |
+|------------------|--------|--------------------------------------------|
+| Angular frontend | Done   | Angular 21, standalone components, signals |
+| Python + FastAPI | Done   | Python 3.14, FastAPI, async                |
+| PostgreSQL       | Done   | PostgreSQL 17, Alembic migrations          |
+| Docker Compose   | Done   | Single `docker compose up` to run          |
 
 ---
 
@@ -348,39 +318,27 @@ vss/
 ├── requirement.md
 │
 ├── backend/
-│   ├── Dockerfile               # Python 3.14 + uv, runs Alembic + uvicorn
-│   ├── main.py                  # FastAPI app, CORS, error handler, /api prefix
-│   ├── pyproject.toml           # Python 3.14, uv, import-linter contracts
-│   ├── alembic.ini              # Alembic migration configuration
-│   ├── api/                     # Routes, Pydantic schemas, dependency injection
-│   ├── application/             # App services, DTOs, orchestration
-│   ├── domain/                  # Entities, value objects, repo interfaces, domain services
+│   ├── Dockerfile
+│   ├── main.py                  # FastAPI app entry point
+│   ├── pyproject.toml
+│   ├── api/                     # Routes, schemas, DI
+│   ├── application/             # App services, DTOs
+│   ├── domain/                  # Entities, domain services, repo interfaces
 │   ├── infra/postgres/          # PostgreSQL repos, Alembic migrations, seed data
 │   └── tests/
 │       ├── domain/              # Pure unit tests
 │       ├── application/         # Integration with in-memory repos
-│       ├── api/                 # PostgreSQL integration (httpx.AsyncClient)
-│       ├── infra/               # Repository contract verification
-│       └── fakes/               # In-memory repository implementations
+│       ├── api/                 # PostgreSQL integration tests
+│       ├── infra/               # Repository contract tests
+│       └── fakes/               # In-memory repo implementations
 │
 └── frontend/
-    ├── Dockerfile               # Node build → nginx alpine
+    ├── Dockerfile
     ├── nginx.conf               # Proxies /api/* to backend, SPA fallback
-    ├── angular.json
     └── src/app/
         ├── core/services/       # API client services
         ├── shared/models/       # TypeScript interfaces
         └── features/
-            ├── schedule-editor/ # Create/edit/delete services and routes
-            ├── schedule-viewer/ # Read-only timetable display
-            ├── block-config/    # Block traversal time editing
-            └── track-map/       # d3.js interactive visualization (bonus)
+            ├── schedule/        # Service list, editor, track map, auto-schedule
+            └── config/          # Block config, vehicle list, track map overview
 ```
-
-## Todo
-
-- frontend
-  - the route editor's stops queue, it should be able to drag and drop to change the order 
-    
-- backend
-  - some domain error codes don't return explicit error response, like validation and no route. they don't indicate where the error happened

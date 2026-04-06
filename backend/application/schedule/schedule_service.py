@@ -4,6 +4,7 @@ import logging
 import math
 from collections import defaultdict
 
+from domain.block.model import Block
 from domain.block.repository import BlockRepository
 from domain.domain_service.conflict.block import detect_block_conflicts
 from domain.domain_service.conflict.interlocking import detect_interlocking_conflicts
@@ -21,7 +22,7 @@ from domain.station.repository import StationRepository
 from domain.vehicle.repository import VehicleRepository
 
 from application.schedule.dto import GenerateScheduleRequest, GenerateScheduleResponse
-from application.schedule.model import SolverInput
+from application.schedule.model import RouteVariant, SolverInput
 from application.schedule.route_variant import compute_route_variants
 from application.schedule.solver import solve_schedule
 
@@ -223,7 +224,9 @@ class ScheduleAppService:
             )
 
 
-def _compute_min_departure_gap(variants, blocks) -> int:
+def _compute_min_departure_gap(
+    variants: list[RouteVariant], blocks: list[Block]
+) -> int:
     """Minimum seconds between consecutive departures.
 
     For each pair of variants, compute the set of gap values that would

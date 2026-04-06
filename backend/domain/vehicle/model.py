@@ -1,12 +1,20 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from uuid import UUID
+
+CHARGE_SECONDS_PER_PERCENT = 12
+DEPART_THRESHOLD = 80
+TRAVERSAL_DRAIN = 1
+CRITICAL_THRESHOLD = 30
+MAX_BATTERY = 100
 
 
 @dataclass(eq=False)
 class Vehicle:
     id: UUID
     name: str
-    battery: int = 80
+    battery: int = DEPART_THRESHOLD
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Vehicle) and self.id == other.id
@@ -15,13 +23,14 @@ class Vehicle:
         return hash(self.id)
 
     def charge(self, charge_seconds: int) -> None:
-        self.battery = min(self.battery + charge_seconds // 12, 100)
+        gained = charge_seconds // CHARGE_SECONDS_PER_PERCENT
+        self.battery = min(self.battery + gained, MAX_BATTERY)
 
     def can_depart(self) -> bool:
-        return self.battery >= 80
+        return self.battery >= DEPART_THRESHOLD
 
     def traverse_block(self) -> None:
-        self.battery -= 1
+        self.battery -= TRAVERSAL_DRAIN
 
     def is_battery_critical(self) -> bool:
-        return self.battery < 30
+        return self.battery < CRITICAL_THRESHOLD

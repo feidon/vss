@@ -16,5 +16,5 @@ class InMemoryStationRepository(StationRepository):
     async def find_by_id(self, id: UUID) -> Station | None:
         return self._store.get(id)
 
-    async def save(self, station: Station) -> None:
+    def seed(self, station: Station) -> None:
         self._store[station.id] = station

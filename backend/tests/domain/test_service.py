@@ -9,6 +9,12 @@ from domain.service.model import Service, TimetableEntry
 _id_counter = count(1)
 
 
+@pytest.fixture(autouse=True)
+def _reset_id_counter():
+    global _id_counter
+    _id_counter = count(1)
+
+
 def make_node() -> Node:
     return Node(id=uuid7(), type=NodeType.BLOCK)
 

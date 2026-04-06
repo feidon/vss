@@ -3,7 +3,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from application.schedule.dto import GenerateScheduleResponse
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
 
 class GenerateScheduleRequestSchema(BaseModel):
@@ -11,13 +11,6 @@ class GenerateScheduleRequestSchema(BaseModel):
     start_time: int
     end_time: int
     dwell_time_seconds: int = Field(gt=0)
-
-    @model_validator(mode="after")
-    def validate_time_range(self):
-        if self.end_time <= self.start_time:
-            msg = "end_time must be greater than start_time"
-            raise ValueError(msg)
-        return self
 
 
 class GenerateScheduleResponseSchema(BaseModel):

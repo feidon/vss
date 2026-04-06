@@ -36,3 +36,9 @@ class InMemoryServiceRepository(ServiceRepository):
     async def delete_all(self) -> None:
         self._store.clear()
         self._counter = 0
+
+    def seed(self, service: Service) -> None:
+        if service.id is None:
+            raise ValueError("Seeded service must have an ID")
+        self._store[service.id] = service
+        self._counter = max(self._counter, service.id)

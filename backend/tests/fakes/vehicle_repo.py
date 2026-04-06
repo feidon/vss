@@ -22,5 +22,5 @@ class InMemoryVehicleRepository(VehicleRepository):
             new_vehicle = Vehicle(id=uuid7(), name=f"V{current_number + i + 1}")
             self._store[new_vehicle.id] = new_vehicle
 
-    async def save(self, vehicle: Vehicle) -> None:
+    def seed(self, vehicle: Vehicle) -> None:
         self._store[vehicle.id] = vehicle

@@ -45,6 +45,23 @@ class GraphAppService:
             junctions=junctions,
         )
 
+    async def get_node_names(self) -> dict[UUID, str]:
+        """Return a map of node ID → display name for all stations, platforms, and blocks.
+
+        Lighter-weight than ``get_graph()`` — skips connections, vehicles, layout,
+        and edge/junction computation.
+        """
+        stations = await self._station_repo.find_all()
+        blocks = await self._block_repo.find_all()
+        names: dict[UUID, str] = {}
+        for station in stations:
+            names[station.id] = station.name
+            for platform in station.platforms:
+                names[platform.id] = platform.name
+        for block in blocks:
+            names[block.id] = block.name
+        return names
+
 
 def _build_edges_and_junctions(
     blocks: list[Block],

@@ -25,11 +25,11 @@ def _make_app(num_vehicles: int | None = None):
     """
     block_repo = InMemoryBlockRepository()
     for b in create_blocks():
-        block_repo._store[b.id] = b
+        block_repo.seed(b)
 
     station_repo = InMemoryStationRepository()
     for s in create_stations():
-        station_repo._store[s.id] = s
+        station_repo.seed(s)
 
     connection_repo = InMemoryConnectionRepository(create_connections())
 
@@ -38,7 +38,7 @@ def _make_app(num_vehicles: int | None = None):
         create_vehicles() if num_vehicles is None else create_vehicles()[:num_vehicles]
     )
     for v in seed:
-        vehicle_repo._store[v.id] = v
+        vehicle_repo.seed(v)
 
     service_repo = InMemoryServiceRepository()
 

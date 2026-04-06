@@ -25,18 +25,18 @@ from tests.fakes.vehicle_repo import InMemoryVehicleRepository
 def _make_app():
     block_repo = InMemoryBlockRepository()
     for b in create_blocks():
-        block_repo._store[b.id] = b
+        block_repo.seed(b)
 
     station_repo = InMemoryStationRepository()
     for s in create_stations():
-        station_repo._store[s.id] = s
+        station_repo.seed(s)
 
     connection_repo = InMemoryConnectionRepository(create_connections())
     vehicle_repo = InMemoryVehicleRepository()
     service_repo = InMemoryServiceRepository()
 
     for v in create_vehicles():
-        vehicle_repo._store[v.id] = v
+        vehicle_repo.seed(v)
 
     return ServiceAppService(
         service_repo=service_repo,
@@ -103,7 +103,7 @@ class TestValidateRoute:
 
         # Replace V1 with a low-battery vehicle
         vid = VEHICLE_ID_BY_NAME["V1"]
-        vehicle_repo._store[vid] = Vehicle(id=vid, name="V1", battery=30)
+        vehicle_repo.seed(Vehicle(id=vid, name="V1", battery=30))
 
         # P1A -> P2A -> P3A uses 4 blocks, battery starts at 30 which is already critical threshold
         stops = [

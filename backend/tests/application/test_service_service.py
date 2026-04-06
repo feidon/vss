@@ -32,7 +32,7 @@ def seed_vehicle(
     vehicle_repo: InMemoryVehicleRepository, vid: UUID | None = None
 ) -> Vehicle:
     vehicle = Vehicle(id=vid or uuid7(), name="V1")
-    vehicle_repo._store[vehicle.id] = vehicle
+    vehicle_repo.seed(vehicle)
     return vehicle
 
 

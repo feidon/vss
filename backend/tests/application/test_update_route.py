@@ -26,11 +26,11 @@ from tests.fakes.vehicle_repo import InMemoryVehicleRepository
 def _make_app():
     block_repo = InMemoryBlockRepository()
     for b in create_blocks():
-        block_repo._store[b.id] = b
+        block_repo.seed(b)
 
     station_repo = InMemoryStationRepository()
     for s in create_stations():
-        station_repo._store[s.id] = s
+        station_repo.seed(s)
 
     connection_repo = InMemoryConnectionRepository(create_connections())
     vehicle_repo = InMemoryVehicleRepository()
@@ -47,7 +47,7 @@ def _make_app():
 
 def seed_vehicle(vehicle_repo, vid=None, battery=100):
     v = Vehicle(id=vid or uuid7(), name="V1", battery=battery)
-    vehicle_repo._store[v.id] = v
+    vehicle_repo.seed(v)
     return v
 
 

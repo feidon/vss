@@ -6,6 +6,7 @@ Takes SolverInput, returns SolverOutput (possibly with empty assignments).
 
 from __future__ import annotations
 
+import bisect
 from collections import defaultdict
 from uuid import UUID
 
@@ -120,9 +121,16 @@ def _find_conflict(
 def _check_overlap(
     enter: int, exit_: int, existing: list[tuple[int, int]]
 ) -> int | None:
-    """Return the exit time of the first overlapping occupancy, or None."""
+    """Return the exit time of the first overlapping occupancy, or None.
+
+    ``existing`` is kept sorted by enter time. We break early as soon as
+    an occupancy starts at or after our requested exit — no later
+    occupancy can overlap.
+    """
     for ex_enter, ex_exit in existing:
-        if enter < ex_exit and exit_ > ex_enter:
+        if ex_enter >= exit_:
+            break
+        if ex_exit > enter:
             return ex_exit
     return None
 
@@ -131,6 +139,7 @@ def _record_occupancies(
     depart: int, variant: RouteVariant, occupancies: dict[UUID, list[tuple[int, int]]]
 ) -> None:
     for bt in variant.block_timings:
-        occupancies[bt.block_id].append(
-            (depart + bt.enter_offset, depart + bt.exit_offset)
+        bisect.insort(
+            occupancies[bt.block_id],
+            (depart + bt.enter_offset, depart + bt.exit_offset),
         )

@@ -20,6 +20,10 @@ def compute_route_variants(
     connections: frozenset[NodeConnection],
     dwell_time_seconds: int,
 ) -> list[RouteVariant]:
+    # Platform names below are hardcoded to the fixed 14-block network
+    # described in CLAUDE.md (stations S1/S2/S3 with platforms P1A/P1B,
+    # P2A/P2B, P3A/P3B). If the network topology changes, this function
+    # must be updated.
     yard = next(s for s in stations if s.is_yard)
     platform_by_name_dict = {p.name: p for s in stations for p in s.platforms}
     station_by_platform_id_dict = {p.id: s for s in stations for p in s.platforms}

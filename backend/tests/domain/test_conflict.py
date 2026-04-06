@@ -1,6 +1,7 @@
 from itertools import count
 from uuid import uuid7
 
+import pytest
 from domain.block.model import Block
 from domain.domain_service.conflict import detect_conflicts
 from domain.domain_service.conflict.model import (
@@ -14,6 +15,12 @@ from domain.service.model import Service, TimetableEntry
 from domain.vehicle.model import Vehicle
 
 _id_counter = count(1)
+
+
+@pytest.fixture(autouse=True)
+def _reset_id_counter():
+    global _id_counter
+    _id_counter = count(1)
 
 
 def make_block(block_id=None, group=1) -> Block:

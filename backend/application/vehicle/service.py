@@ -6,7 +6,7 @@ from domain.vehicle.repository import VehicleRepository
 
 class VehicleAppService:
     def __init__(self, vehicle_repo: VehicleRepository) -> None:
-        self.vehicle_repo = vehicle_repo
+        self._repo = vehicle_repo
 
     async def list_vehicles(self) -> list[Vehicle]:
-        return await self.vehicle_repo.find_all()
+        return await self._repo.find_all()
