@@ -23,7 +23,9 @@
       "Bash(docker run hello-world:*)",
       "Bash(npx openspec:*)",
       "WebSearch",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(pacman -Qi docker-buildx)",
+      "Bash(docker buildx:*)"
     ]
   },
   "enabledMcpjsonServers": [

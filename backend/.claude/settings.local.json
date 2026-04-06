@@ -41,7 +41,8 @@
       "Bash(cp:*)",
       "Bash(wc:*)",
       "Bash(mv /home/feidon/Documents/vss/openspec/changes/seed-block-geometry /home/feidon/Documents/vss/openspec/changes/archive/2026-04-04-seed-block-geometry)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(PYTHONPATH=. uv run:*)"
     ]
   },
   "enabledMcpjsonServers": [
