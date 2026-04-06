@@ -13,7 +13,6 @@ Open **http://localhost** once all services are ready. That's it.
 ### Prerequisites
 
 - Docker & Docker Compose
-- **BuildKit / buildx** — `backend/Dockerfile` uses `# syntax=docker/dockerfile:1` and a `RUN --mount=type=cache` directive, both of which require the BuildKit builder. Docker Desktop and recent Docker Engine releases ship buildx by default. On Arch/CachyOS install it explicitly: `sudo pacman -S docker-buildx`. Verify with `docker buildx version`.
 
 ### What Happens on Startup
 
