@@ -82,6 +82,26 @@ describe('BlockConfigComponent', () => {
     expect(component.editingBlockId()).toBeNull();
   });
 
+  it('should send only one PATCH when Enter triggers save followed by blur on input removal', () => {
+    const fixture = createAndLoad([GROUPED_BLOCK]);
+    const component = fixture.componentInstance;
+
+    component.startEdit(GROUPED_BLOCK);
+    component.editValue.set(60);
+    fixture.detectChanges();
+
+    // Simulate the real-world sequence: Enter key triggers save, then the input
+    // is removed from the DOM (via editingBlockId=null), which fires blur on the
+    // previously focused input → onBlur is called again.
+    component.onKeydown(new KeyboardEvent('keydown', { key: 'Enter' }), GROUPED_BLOCK);
+    component.onBlur(GROUPED_BLOCK);
+    fixture.detectChanges();
+
+    const reqs = httpTesting.match((r) => r.url.endsWith(`/blocks/${GROUPED_BLOCK.id}`));
+    expect(reqs.length).toBe(1);
+    reqs[0].flush({ id: GROUPED_BLOCK.id });
+  });
+
   it('should keep edit open on blur with invalid value', () => {
     const fixture = createAndLoad([GROUPED_BLOCK]);
     const component = fixture.componentInstance;

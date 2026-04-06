@@ -207,6 +207,12 @@ export class BlockConfigComponent implements OnInit {
   }
 
   private save(block: BlockResponse): void {
+    // Guard against re-entry: when save() clears editingBlockId, the input is
+    // removed from the DOM, which fires blur → onBlur → save() again. Bail out
+    // if we're no longer editing this block.
+    if (this.editingBlockId() !== block.id) {
+      return;
+    }
     const value = this.editValue();
     if (!Number.isInteger(value) || value < 1) {
       this.validationError.set('Must be a positive integer (≥ 1).');
