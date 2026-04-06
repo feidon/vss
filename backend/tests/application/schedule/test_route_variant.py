@@ -45,7 +45,9 @@ class TestComputeRouteVariants:
             connections=create_connections(),
             dwell_time_seconds=30,
         )
-        v0 = next(v for v in variants if v.s1_out == 0 and v.s3 == 0 and v.s1_ret == 0)
+        # Variant 0 corresponds to the first product() tuple — the
+        # all-first-platform combination (P1A out, P3A turn, P1A ret).
+        v0 = variants[0]
         block_ids = {bt.block_id for bt in v0.block_timings}
         assert BLOCK_ID_BY_NAME["B1"] in block_ids
         assert BLOCK_ID_BY_NAME["B3"] in block_ids

@@ -1,5 +1,6 @@
 import pytest
 from application.schedule.dto import GenerateScheduleRequest
+from application.schedule.network_layout import SECONDS_TO_RECHARGE_PER_BLOCK
 from application.schedule.schedule_service import ScheduleAppService
 from domain.error import DomainError, ErrorCode
 from domain.network.model import NodeType
@@ -232,7 +233,7 @@ class TestScheduleAppService:
                 next_start = trips[i + 1].timetable[0].arrival
                 yard_dwell = next_start - prev_end
                 num_blocks = sum(1 for n in trips[i].route if n.type == NodeType.BLOCK)
-                min_dwell = num_blocks * 12
+                min_dwell = num_blocks * SECONDS_TO_RECHARGE_PER_BLOCK
                 assert yard_dwell >= min_dwell, (
                     f"Yard dwell {yard_dwell}s < min {min_dwell}s for {num_blocks} blocks"
                 )

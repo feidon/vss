@@ -3,6 +3,10 @@ from collections import defaultdict
 from uuid import UUID
 
 from application.schedule.model import SolverInput
+from application.schedule.network_layout import (
+    FLEET_BUFFER,
+    SECONDS_TO_RECHARGE_PER_BLOCK,
+)
 from application.schedule.route_variant import compute_route_variants
 from application.schedule.solver import solve_schedule
 from infra.seed import (
@@ -29,9 +33,9 @@ def _build_input(
     )
 
     cycle_times = [v.cycle_time for v in variants]
-    min_yard_dwells = [v.num_blocks * 12 for v in variants]
+    min_yard_dwells = [v.num_blocks * SECONDS_TO_RECHARGE_PER_BLOCK for v in variants]
     max_turnaround = max(c + y for c, y in zip(cycle_times, min_yard_dwells))
-    num_vehicles = math.ceil(max_turnaround / interval) + 1
+    num_vehicles = math.ceil(max_turnaround / interval) + FLEET_BUFFER
 
     interlocking_groups: dict[int, list] = {}
     for b in blocks:
@@ -148,7 +152,7 @@ class TestGreedySolver:
                 curr = trips[i + 1]
                 prev_var = inp.variants[prev.variant_index]
                 cycle_end = prev.depart_time + prev_var.cycle_time
-                yard_dwell = prev_var.num_blocks * 12
+                yard_dwell = prev_var.num_blocks * SECONDS_TO_RECHARGE_PER_BLOCK
                 assert curr.depart_time >= cycle_end + yard_dwell, (
                     f"V{prev.vehicle_index}: next trip at {curr.depart_time} "
                     f"but earliest available at {cycle_end + yard_dwell}"

@@ -26,12 +26,15 @@ class StationArrival:
 
 @dataclass(frozen=True)
 class RouteVariant:
-    """One of the 8 possible route patterns through the network."""
+    """One route pattern through the network with pre-computed timings.
+
+    Produced by ``compute_route_variants`` and consumed by the solver.
+    The solver treats variants as opaque data — it does not need to know
+    which decision points produced any particular variant, only the
+    block timings, cycle time, and stop sequence.
+    """
 
     index: int
-    s1_out: int  # 0=P1A, 1=P1B
-    s3: int  # 0=P3A, 1=P3B
-    s1_ret: int  # 0=P1A, 1=P1B
     stop_ids: list[UUID]  # ordered platform/yard IDs for build_full_route
     block_timings: list[BlockTiming]
     station_arrivals: list[StationArrival]  # 2 per station (outbound + return)

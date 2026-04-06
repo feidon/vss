@@ -23,6 +23,10 @@ from domain.vehicle.repository import VehicleRepository
 
 from application.schedule.dto import GenerateScheduleRequest, GenerateScheduleResponse
 from application.schedule.model import RouteVariant, SolverInput
+from application.schedule.network_layout import (
+    FLEET_BUFFER,
+    SECONDS_TO_RECHARGE_PER_BLOCK,
+)
 from application.schedule.route_variant import compute_route_variants
 from application.schedule.solver import solve_schedule
 
@@ -83,9 +87,11 @@ class ScheduleAppService:
 
         # 5. Compute num_vehicles
         cycle_times = [v.cycle_time for v in variants]
-        min_yard_dwells = [v.num_blocks * 12 for v in variants]
+        min_yard_dwells = [
+            v.num_blocks * SECONDS_TO_RECHARGE_PER_BLOCK for v in variants
+        ]
         max_turnaround = max(c + y for c, y in zip(cycle_times, min_yard_dwells))
-        num_vehicles = math.ceil(max_turnaround / effective_interval) + 1
+        num_vehicles = math.ceil(max_turnaround / effective_interval) + FLEET_BUFFER
 
         if num_vehicles > len(vehicles):
             await self._vehicle_repo.add_by_number(num_vehicles - len(vehicles))

@@ -12,6 +12,7 @@ from application.schedule.model import (
     RouteVariant,
     StationArrival,
 )
+from application.schedule.network_layout import build_network_layout
 
 
 def compute_route_variants(
@@ -20,25 +21,28 @@ def compute_route_variants(
     connections: frozenset[NodeConnection],
     dwell_time_seconds: int,
 ) -> list[RouteVariant]:
-    # Platform names below are hardcoded to the fixed 14-block network
-    # described in CLAUDE.md (stations S1/S2/S3 with platforms P1A/P1B,
-    # P2A/P2B, P3A/P3B). If the network topology changes, this function
-    # must be updated.
-    yard = next(s for s in stations if s.is_yard)
-    platform_by_name_dict = {p.name: p for s in stations for p in s.platforms}
+    layout = build_network_layout(stations)
     station_by_platform_id_dict = {p.id: s for s in stations for p in s.platforms}
     variants: list[RouteVariant] = []
 
-    for index, (s1_out, s3_choice, s1_ret) in enumerate(product(range(2), repeat=3)):
-        out_p1 = platform_by_name_dict["P1B" if s1_out else "P1A"]
-        p2a = platform_by_name_dict["P2A"]
-        s3_plat = platform_by_name_dict["P3B" if s3_choice else "P3A"]
-        p2b = platform_by_name_dict["P2B"]
-        ret_p1 = platform_by_name_dict["P1B" if s1_ret else "P1A"]
+    combinations = product(
+        layout.endpoint_platforms,  # outbound S1 choice
+        layout.turnaround_platforms,  # turnaround S3 choice
+        layout.endpoint_platforms,  # return S1 choice
+    )
 
-        stop_ids = [yard.id, out_p1.id, p2a.id, s3_plat.id, p2b.id, ret_p1.id, yard.id]
+    for index, (out_ep, turn, ret_ep) in enumerate(combinations):
+        stop_ids = [
+            layout.yard.id,
+            out_ep.id,
+            layout.middle_outbound.id,
+            turn.id,
+            layout.middle_return.id,
+            ret_ep.id,
+            layout.yard.id,
+        ]
         dwell_by_stop = {sid: dwell_time_seconds for sid in stop_ids}
-        dwell_by_stop[yard.id] = 0  # yard dwell handled by solver
+        dwell_by_stop[layout.yard.id] = 0  # yard dwell handled by solver
 
         route, timetable = build_full_route(
             stop_ids, dwell_by_stop, 0, connections, stations, blocks
@@ -73,9 +77,6 @@ def compute_route_variants(
         variants.append(
             RouteVariant(
                 index=index,
-                s1_out=s1_out,
-                s3=s3_choice,
-                s1_ret=s1_ret,
                 stop_ids=stop_ids,
                 block_timings=block_timings,
                 station_arrivals=station_arrivals,

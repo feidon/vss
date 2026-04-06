@@ -261,6 +261,7 @@ FastAPI `Depends()` wires PostgreSQL at runtime. Tests inject in-memory repos di
 - **Single valid path between most stops** -- BFS picks shortest; the track map has at most one path per pair.
 - **Services are independent** -- no chaining into a daily schedule.
 - **Traversal time changes don't retroactively update timetables** -- re-save a route to pick up new times.
+- **Fleet sizing includes a 1-vehicle tolerance buffer** -- `num_vehicles = ceil(max_turnaround / interval) + 1`. The `+1` absorbs rounding and timing slack so the scheduler never leaves a departure slot empty due to a fractionally-unavailable vehicle. Defined as `FLEET_BUFFER` in `backend/application/schedule/network_layout.py`.
 
 ### Scope
 

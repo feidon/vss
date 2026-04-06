@@ -16,6 +16,7 @@ from application.schedule.model import (
     SolverOutput,
     TripAssignment,
 )
+from application.schedule.network_layout import SECONDS_TO_RECHARGE_PER_BLOCK
 
 
 def solve_schedule(inp: SolverInput) -> SolverOutput:
@@ -48,7 +49,7 @@ def solve_schedule(inp: SolverInput) -> SolverOutput:
             )
             if conflict_end is None:
                 _record_occupancies(depart, variant, occupancies)
-                yard_dwell = variant.num_blocks * 12
+                yard_dwell = variant.num_blocks * SECONDS_TO_RECHARGE_PER_BLOCK
                 vehicle_available[vehicle] = depart + variant.cycle_time + yard_dwell
                 assignments.append(
                     TripAssignment(
