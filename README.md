@@ -23,7 +23,7 @@ Open **http://localhost** once all services are ready. That's it.
 
 | Service    | Port (internal) | Port (exposed) | Description                |
 |------------|-----------------|----------------|----------------------------|
-| `postgres` | 5432            | 5432           | PostgreSQL 17              |
+| `postgres` | 5432            | --             | PostgreSQL 17              |
 | `backend`  | 8000            | --             | Python 3.14 + FastAPI      |
 | `frontend` | 80              | 80             | Angular 21 SPA via nginx   |
 
