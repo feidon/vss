@@ -124,7 +124,7 @@ async def test_conflict_error_returns_409_with_conflicts_in_context():
     assert len(ctx["interlocking_conflicts"]) == 1
     assert ctx["interlocking_conflicts"][0]["group"] == 1
     assert len(ctx["battery_conflicts"]) == 1
-    assert ctx["battery_conflicts"][0]["type"] == "LOWBATTERY"
+    assert ctx["battery_conflicts"][0]["type"] == "low_battery"
 
 
 async def test_conflict_error_with_empty_lists():

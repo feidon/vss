@@ -84,7 +84,7 @@ def _build_conflict_context(e: ConflictError) -> dict:
             for ic in c.interlocking_conflicts
         ],
         "battery_conflicts": [
-            {"type": lbc.type.name, "service_id": lbc.service_id}
+            {"type": lbc.type.value, "service_id": lbc.service_id}
             for lbc in c.battery_conflicts
         ],
     }
