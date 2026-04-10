@@ -163,6 +163,7 @@ When saving a route triggers conflicts, the response includes structured details
 | Conflict Type        | Description                                                  |
 |----------------------|--------------------------------------------------------------|
 | Vehicle overlap      | Same vehicle in services with overlapping time windows       |
+| Vehicle discontinuity| Consecutive services on same vehicle don't connect spatially |
 | Block occupancy      | Two services occupy the same block at overlapping times      |
 | Interlocking         | Blocks in same interlocking group occupied simultaneously    |
 | Low battery          | Battery drops below 30 outside the yard                      |

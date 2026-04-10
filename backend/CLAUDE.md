@@ -30,7 +30,7 @@ Enforced at CI time via `import-linter` contracts in `pyproject.toml`.
 
 ## Key Domain Services
 
-- **ConflictDetectionService**: detects vehicle, block occupancy, interlocking, and battery conflicts (sweep-line + simulation)
+- **ConflictDetectionService**: detects vehicle (time overlap + location discontinuity), block occupancy, interlocking, and battery conflicts (sweep-line + simulation)
 - **RouteFinder**: BFS pathfinding to insert intermediate blocks between platform stops
 
 Both are pure — no repository access, no I/O, no state.

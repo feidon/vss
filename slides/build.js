@@ -14,6 +14,7 @@ const {
   FaBatteryQuarter,
   FaPlug,
   FaUserCog,
+  FaUnlink,
 } = require("react-icons/fa");
 
 // =========================================================
@@ -154,7 +155,7 @@ async function build() {
   pres.author = "VSS";
   pres.title = "Vehicle Scheduling System — Visual Reference";
 
-  const TOTAL = 7;
+  const TOTAL = 8;
 
   // Pre-render icons used in slide 7
   const ICON = {
@@ -163,6 +164,7 @@ async function build() {
     interlock: await iconPng(FaLock, T.PRIMARY),
     lowBat: await iconPng(FaBatteryQuarter, T.PRIMARY),
     charge: await iconPng(FaPlug, T.PRIMARY),
+    discontinuity: await iconPng(FaUnlink, T.PRIMARY),
     operator: await iconPng(FaUserCog, "FFFFFF"),
   };
 
@@ -206,57 +208,7 @@ async function build() {
   }
 
   // ---------------------------------------------------------
-  // Slide 2 — Domain Model (ER)
-  // ---------------------------------------------------------
-  {
-    const s = pres.addSlide();
-    s.background = { color: T.BG_LIGHT };
-    addHeader(s, "Domain Model", "Core entities and how they relate");
-
-    // Uniform 2-column grid: x=1.05 / 7.25, w=5.0, h=1.45
-    const LX = 1.05, RX = 7.25, BW = 5.0, BH = 1.45;
-    const Y1 = 1.65, Y2 = 3.40, Y3 = 5.15;
-
-    // Row 1: Station 1—* Platform
-    addEntityBox(s, LX, Y1, BW, BH, "Station", [
-      "id (UUID)", "name", "is_yard : bool", "platforms[]"
-    ]);
-    addEntityBox(s, RX, Y1, BW, BH, "Platform", [
-      "id (UUID)", "name", "station_id"
-    ]);
-    addConnector(s, LX + BW, Y1 + BH / 2, RX, Y1 + BH / 2, "1   *");
-
-    // Row 2: Vehicle 1—* Service  (Service highlighted with accent color)
-    addEntityBox(s, LX, Y2, BW, BH, "Vehicle", [
-      "id (UUID)", "name", "battery"
-    ], { accent: T.SECONDARY });
-    addEntityBox(s, RX, Y2, BW, BH, "Service", [
-      "id, name, vehicle_id",
-      "route : Node[]   (ordered: Platform | Block | Yard)",
-      "timetable : TimetableEntry[]   (arr / dep per node)"
-    ], { accent: T.ACCENT, fontSize: 11 });
-    addConnector(s, LX + BW, Y2 + BH / 2, RX, Y2 + BH / 2, "1   *");
-
-    // Row 3: Block | NodeConnection
-    addEntityBox(s, LX, Y3, BW, BH, "Block", [
-      "id, name", "group   (interlocking)", "traversal_time_seconds"
-    ], { accent: T.SECONDARY });
-    addEntityBox(s, RX, Y3, BW, BH, "NodeConnection", [
-      "from_id  →  to_id     (directed graph edge)",
-      "BFS over this graph fills the route between stops"
-    ], { accent: T.SECONDARY, fontSize: 11 });
-
-    // Legend / annotation about JSONB
-    s.addText("Service.route and Service.timetable are stored as JSONB — loaded and saved as a whole.", {
-      x: 0.6, y: 6.78, w: 12.0, h: 0.3,
-      fontFace: FONT_BODY, fontSize: 10, italic: true, color: T.MUTED, margin: 0,
-      align: "center",
-    });
-    addFooter(s, 2, TOTAL);
-  }
-
-  // ---------------------------------------------------------
-  // Slide 3 — Use Cases
+  // Slide 2 — Use Cases
   // ---------------------------------------------------------
   {
     const s = pres.addSlide();
@@ -287,7 +239,7 @@ async function build() {
         domain: [
           "Aggregate read (list + expanded detail)",
           "Cascade delete",
-          "Auto-gen runs BFS + timetable + 5 conflict checks",
+          "Auto-gen runs BFS + timetable + 6 conflict checks",
         ],
         entities: "Service · Vehicle · Block",
       },
@@ -302,7 +254,7 @@ async function build() {
         domain: [
           "BFS connectivity check",
           "Compute timetable (dwell + traversal)",
-          "Detect 5 conflict types  →  409 on failure",
+          "Detect 6 conflict types  →  409 on failure",
         ],
         entities: "Service · Block · NodeConnection",
       },
@@ -445,88 +397,189 @@ async function build() {
       });
     });
 
-    addFooter(s, 3, TOTAL);
+    addFooter(s, 2, TOTAL);
   }
 
   // ---------------------------------------------------------
-  // Slide 4 — Hexagonal Architecture
+  // Slide 3 — Service Lifecycle
   // ---------------------------------------------------------
   {
     const s = pres.addSlide();
     s.background = { color: T.BG_LIGHT };
-    addHeader(s, "Hexagonal Architecture", "Ports & adapters — dependencies always point inward");
+    addHeader(s, "Service Lifecycle", "From creation to a validated, persisted route");
 
-    // Concentric layers
-    // Outer (api + infra band)
+    // Vertical flow on left side; outcome branch on right
+    const stepW = 5.5, stepH = 0.78, stepX = 0.6;
+    const startY = 1.55;
+    const gap = 0.20;
+
+    const steps = [
+      {
+        title: "POST  /api/services",
+        body: "Create with name + vehicle_id  →  empty route",
+        accent: T.PRIMARY,
+      },
+      {
+        title: "PATCH  /api/services/{id}/route",
+        body: "Send stops, dwell times, start_time",
+        accent: T.PRIMARY,
+      },
+      {
+        title: "Validate connectivity   (BFS)",
+        body: "Walk directed block graph between consecutive stops",
+        accent: T.SECONDARY,
+      },
+      {
+        title: "Compute timetable",
+        body: "Arrival / departure per node from dwell + traversal",
+        accent: T.SECONDARY,
+      },
+      {
+        title: "Conflict detection",
+        body: "Sweep against all other services in memory",
+        accent: T.SECONDARY,
+      },
+    ];
+
+    steps.forEach((step, i) => {
+      const y = startY + i * (stepH + gap);
+      // Card
+      s.addShape("rect", {
+        x: stepX, y, w: stepW, h: stepH,
+        fill: { color: T.CARD }, line: { color: T.BORDER, width: 1 },
+        shadow: shadow(),
+      });
+      // Accent bar
+      s.addShape("rect", {
+        x: stepX, y, w: 0.12, h: stepH,
+        fill: { color: step.accent }, line: { color: step.accent, width: 0 },
+      });
+      // Step number circle
+      s.addShape("ellipse", {
+        x: stepX + 0.3, y: y + 0.18, w: 0.5, h: 0.5,
+        fill: { color: step.accent }, line: { color: step.accent, width: 0 },
+      });
+      s.addText(String(i + 1), {
+        x: stepX + 0.3, y: y + 0.18, w: 0.5, h: 0.5,
+        fontFace: FONT_HEAD, fontSize: 14, bold: true, color: "FFFFFF",
+        align: "center", valign: "middle", margin: 0,
+      });
+      // Title
+      s.addText(step.title, {
+        x: stepX + 0.95, y: y + 0.08, w: stepW - 1.1, h: 0.4,
+        fontFace: FONT_HEAD, fontSize: 14, bold: true, color: T.TEXT, margin: 0,
+      });
+      // Body
+      s.addText(step.body, {
+        x: stepX + 0.95, y: y + 0.45, w: stepW - 1.1, h: 0.35,
+        fontFace: FONT_BODY, fontSize: 11, color: T.MUTED, margin: 0,
+      });
+
+      // Down arrow between steps
+      if (i < steps.length - 1) {
+        s.addShape("line", {
+          x: stepX + 0.55, y: y + stepH + 0.02, w: 0, h: gap - 0.04,
+          line: { color: T.MUTED, width: 1.5, endArrowType: "triangle" },
+        });
+      }
+    });
+
+    // Outcome cards (right side)
+    const outX = 6.85;
+    const outW = 6.0;
+    const okY = 1.6, okH = 2.10;
+    const errY = 4.00, errH = 2.70;
+    const lastStepCenterY = startY + (steps.length - 1) * (stepH + gap) + stepH / 2;
+
+    // OK card
     s.addShape("rect", {
-      x: 1.6, y: 1.85, w: 10.1, h: 4.65,
-      fill: { color: T.CARD }, line: { color: T.PRIMARY, width: 1.5 },
+      x: outX, y: okY, w: outW, h: okH,
+      fill: { color: T.CARD }, line: { color: T.GREEN, width: 2 },
       shadow: shadow(),
     });
-    s.addText("api/    (inbound adapter)", {
-      x: 1.7, y: 1.95, w: 5.0, h: 0.35,
-      fontFace: FONT_BODY, fontSize: 12, bold: true, color: T.PRIMARY, margin: 0,
-    });
-    s.addText("infra/    (outbound adapter)", {
-      x: 6.6, y: 1.95, w: 5.0, h: 0.35,
-      fontFace: FONT_BODY, fontSize: 12, bold: true, color: T.PRIMARY, align: "right", margin: 0,
-    });
-
-    // Middle - application
     s.addShape("rect", {
-      x: 2.6, y: 2.55, w: 8.1, h: 3.25,
-      fill: { color: "E0F2F1" }, line: { color: T.SECONDARY, width: 1.5 },
+      x: outX, y: okY, w: outW, h: 0.42,
+      fill: { color: T.GREEN }, line: { color: T.GREEN, width: 0 },
     });
-    s.addText("application/    (use cases · workflow)", {
-      x: 2.7, y: 2.63, w: 7.9, h: 0.35,
-      fontFace: FONT_BODY, fontSize: 12, bold: true, color: T.SECONDARY, margin: 0,
-    });
-
-    // Inner - domain
-    s.addShape("rect", {
-      x: 4.5, y: 3.4, w: 4.3, h: 1.95,
-      fill: { color: T.PRIMARY }, line: { color: T.PRIMARY, width: 0 },
-      shadow: shadow(),
-    });
-    s.addText("domain/", {
-      x: 4.5, y: 3.5, w: 4.3, h: 0.45,
-      fontFace: FONT_HEAD, fontSize: 18, bold: true, color: "FFFFFF",
-      align: "center", margin: 0,
+    s.addText("200  OK    ·    Persist", {
+      x: outX + 0.15, y: okY + 0.02, w: outW - 0.3, h: 0.38,
+      fontFace: FONT_HEAD, fontSize: 14, bold: true, color: "FFFFFF",
+      margin: 0, valign: "middle",
     });
     s.addText([
-      { text: "Entities · Value Objects", options: { breakLine: true } },
-      { text: "Repository Interfaces", options: { breakLine: true } },
-      { text: "Domain Services", options: {} },
+      { text: "Service stored with route + timetable.", options: { breakLine: true } },
+      { text: "Conflict detection passed.", options: {} },
     ], {
-      x: 4.5, y: 3.95, w: 4.3, h: 1.3,
-      fontFace: FONT_BODY, fontSize: 12, color: "CADCFC",
-      align: "center", margin: 0,
+      x: outX + 0.2, y: okY + 0.55, w: outW - 0.4, h: okH - 0.7,
+      fontFace: FONT_BODY, fontSize: 13, color: T.TEXT, margin: 0,
     });
 
-    // Inward arrows
-    // Left: api → application → domain
+    // 409 card
+    s.addShape("rect", {
+      x: outX, y: errY, w: outW, h: errH,
+      fill: { color: T.CARD }, line: { color: T.RED, width: 2 },
+      shadow: shadow(),
+    });
+    s.addShape("rect", {
+      x: outX, y: errY, w: outW, h: 0.42,
+      fill: { color: T.RED }, line: { color: T.RED, width: 0 },
+    });
+    s.addText("409  Conflict", {
+      x: outX + 0.15, y: errY + 0.02, w: outW - 0.3, h: 0.38,
+      fontFace: FONT_HEAD, fontSize: 14, bold: true, color: "FFFFFF",
+      margin: 0, valign: "middle",
+    });
+    s.addText([
+      { text: "Returned with structured details:", options: { breakLine: true } },
+      { text: "  ·  vehicle overlap", options: { breakLine: true } },
+      { text: "  ·  vehicle discontinuity", options: { breakLine: true } },
+      { text: "  ·  block occupancy", options: { breakLine: true } },
+      { text: "  ·  interlocking", options: { breakLine: true } },
+      { text: "  ·  low battery", options: { breakLine: true } },
+      { text: "  ·  insufficient charge", options: { breakLine: true } },
+      { text: " ", options: { breakLine: true } },
+      { text: "Request was valid in isolation; conflict arose from current state.", options: { italic: true } },
+    ], {
+      x: outX + 0.2, y: errY + 0.5, w: outW - 0.4, h: errH - 0.6,
+      fontFace: FONT_BODY, fontSize: 11, color: T.TEXT, margin: 0,
+    });
+
+    // Branch from step 5 right edge → junction → OK / 409
+    const branchX = stepX + stepW + 0.05;            // start arrow x
+    const junctionX = outX - 0.25;                    // vertical line x
+    const okCenterY = okY + okH / 2;
+    const errCenterY = errY + errH / 2;
+
+    // Horizontal arrow from last step right edge into junction column
     s.addShape("line", {
-      x: 2.0, y: 4.4, w: 2.4, h: 0,
-      line: { color: T.PRIMARY, width: 2.5, endArrowType: "triangle" },
+      x: branchX, y: lastStepCenterY,
+      w: junctionX - branchX, h: 0,
+      line: { color: T.MUTED, width: 1.5 },
     });
-    // Right: infra → domain (port)
+    // Vertical dashed line spanning OK center → last step center
     s.addShape("line", {
-      x: 11.3, y: 4.4, w: -2.4, h: 0,
-      line: { color: T.PRIMARY, width: 2.5, endArrowType: "triangle" },
+      x: junctionX, y: okCenterY,
+      w: 0, h: lastStepCenterY - okCenterY,
+      line: { color: T.MUTED, width: 1.25, dashType: "dash" },
+    });
+    // Arrow into OK card
+    s.addShape("line", {
+      x: junctionX, y: okCenterY,
+      w: outX - junctionX, h: 0,
+      line: { color: T.GREEN, width: 1.75, endArrowType: "triangle" },
+    });
+    // Arrow into 409 card (branch off the same vertical line)
+    s.addShape("line", {
+      x: junctionX, y: errCenterY,
+      w: outX - junctionX, h: 0,
+      line: { color: T.RED, width: 1.75, endArrowType: "triangle" },
     });
 
-    // Caption (positioned safely above footer)
-    s.addText("Nothing in domain/ imports anything outside it. Enforced by import-linter at CI time.", {
-      x: 1.6, y: 6.65, w: 10.1, h: 0.30,
-      fontFace: FONT_BODY, fontSize: 11, italic: true, color: T.MUTED,
-      align: "center", margin: 0,
-    });
-
-    addFooter(s, 4, TOTAL);
+    addFooter(s, 3, TOTAL);
   }
 
   // ---------------------------------------------------------
-  // Slide 5 — Route Building Flow
+  // Slide 4 — Route Building Flow
   // ---------------------------------------------------------
   {
     const s = pres.addSlide();
@@ -685,197 +738,22 @@ async function build() {
     addRowLabel("B5", 2); addSeg("30s", 90, 120, 2, T.SECONDARY);
     addRowLabel("P2A", 3); addSeg("dwell 45s", 120, 165, 3, T.PRIMARY);
 
-    addFooter(s, 5, TOTAL);
+    addFooter(s, 4, TOTAL);
   }
 
   // ---------------------------------------------------------
-  // Slide 6 — Service Lifecycle
+  // Slide 5 — Conflict Types
   // ---------------------------------------------------------
   {
     const s = pres.addSlide();
     s.background = { color: T.BG_LIGHT };
-    addHeader(s, "Service Lifecycle", "From creation to a validated, persisted route");
-
-    // Vertical flow on left side; outcome branch on right
-    const stepW = 5.5, stepH = 0.78, stepX = 0.6;
-    const startY = 1.55;
-    const gap = 0.20;
-
-    const steps = [
-      {
-        title: "POST  /api/services",
-        body: "Create with name + vehicle_id  →  empty route",
-        accent: T.PRIMARY,
-      },
-      {
-        title: "PATCH  /api/services/{id}/route",
-        body: "Send stops, dwell times, start_time",
-        accent: T.PRIMARY,
-      },
-      {
-        title: "Validate connectivity   (BFS)",
-        body: "Walk directed block graph between consecutive stops",
-        accent: T.SECONDARY,
-      },
-      {
-        title: "Compute timetable",
-        body: "Arrival / departure per node from dwell + traversal",
-        accent: T.SECONDARY,
-      },
-      {
-        title: "Conflict detection",
-        body: "Sweep against all other services in memory",
-        accent: T.SECONDARY,
-      },
-    ];
-
-    steps.forEach((step, i) => {
-      const y = startY + i * (stepH + gap);
-      // Card
-      s.addShape("rect", {
-        x: stepX, y, w: stepW, h: stepH,
-        fill: { color: T.CARD }, line: { color: T.BORDER, width: 1 },
-        shadow: shadow(),
-      });
-      // Accent bar
-      s.addShape("rect", {
-        x: stepX, y, w: 0.12, h: stepH,
-        fill: { color: step.accent }, line: { color: step.accent, width: 0 },
-      });
-      // Step number circle
-      s.addShape("ellipse", {
-        x: stepX + 0.3, y: y + 0.18, w: 0.5, h: 0.5,
-        fill: { color: step.accent }, line: { color: step.accent, width: 0 },
-      });
-      s.addText(String(i + 1), {
-        x: stepX + 0.3, y: y + 0.18, w: 0.5, h: 0.5,
-        fontFace: FONT_HEAD, fontSize: 14, bold: true, color: "FFFFFF",
-        align: "center", valign: "middle", margin: 0,
-      });
-      // Title
-      s.addText(step.title, {
-        x: stepX + 0.95, y: y + 0.08, w: stepW - 1.1, h: 0.4,
-        fontFace: FONT_HEAD, fontSize: 14, bold: true, color: T.TEXT, margin: 0,
-      });
-      // Body
-      s.addText(step.body, {
-        x: stepX + 0.95, y: y + 0.45, w: stepW - 1.1, h: 0.35,
-        fontFace: FONT_BODY, fontSize: 11, color: T.MUTED, margin: 0,
-      });
-
-      // Down arrow between steps
-      if (i < steps.length - 1) {
-        s.addShape("line", {
-          x: stepX + 0.55, y: y + stepH + 0.02, w: 0, h: gap - 0.04,
-          line: { color: T.MUTED, width: 1.5, endArrowType: "triangle" },
-        });
-      }
-    });
-
-    // Outcome cards (right side)
-    const outX = 6.85;
-    const outW = 6.0;
-    const okY = 1.6, okH = 2.10;
-    const errY = 4.00, errH = 2.70;
-    const lastStepCenterY = startY + (steps.length - 1) * (stepH + gap) + stepH / 2;
-
-    // OK card
-    s.addShape("rect", {
-      x: outX, y: okY, w: outW, h: okH,
-      fill: { color: T.CARD }, line: { color: T.GREEN, width: 2 },
-      shadow: shadow(),
-    });
-    s.addShape("rect", {
-      x: outX, y: okY, w: outW, h: 0.42,
-      fill: { color: T.GREEN }, line: { color: T.GREEN, width: 0 },
-    });
-    s.addText("200  OK    ·    Persist", {
-      x: outX + 0.15, y: okY + 0.02, w: outW - 0.3, h: 0.38,
-      fontFace: FONT_HEAD, fontSize: 14, bold: true, color: "FFFFFF",
-      margin: 0, valign: "middle",
-    });
-    s.addText([
-      { text: "Service stored with route + timetable.", options: { breakLine: true } },
-      { text: "Conflict detection passed.", options: {} },
-    ], {
-      x: outX + 0.2, y: okY + 0.55, w: outW - 0.4, h: okH - 0.7,
-      fontFace: FONT_BODY, fontSize: 13, color: T.TEXT, margin: 0,
-    });
-
-    // 409 card
-    s.addShape("rect", {
-      x: outX, y: errY, w: outW, h: errH,
-      fill: { color: T.CARD }, line: { color: T.RED, width: 2 },
-      shadow: shadow(),
-    });
-    s.addShape("rect", {
-      x: outX, y: errY, w: outW, h: 0.42,
-      fill: { color: T.RED }, line: { color: T.RED, width: 0 },
-    });
-    s.addText("409  Conflict", {
-      x: outX + 0.15, y: errY + 0.02, w: outW - 0.3, h: 0.38,
-      fontFace: FONT_HEAD, fontSize: 14, bold: true, color: "FFFFFF",
-      margin: 0, valign: "middle",
-    });
-    s.addText([
-      { text: "Returned with structured details:", options: { breakLine: true } },
-      { text: "  ·  vehicle overlap", options: { breakLine: true } },
-      { text: "  ·  block occupancy", options: { breakLine: true } },
-      { text: "  ·  interlocking", options: { breakLine: true } },
-      { text: "  ·  low battery", options: { breakLine: true } },
-      { text: "  ·  insufficient charge", options: { breakLine: true } },
-      { text: " ", options: { breakLine: true } },
-      { text: "Request was valid in isolation; conflict arose from current state.", options: { italic: true } },
-    ], {
-      x: outX + 0.2, y: errY + 0.5, w: outW - 0.4, h: errH - 0.6,
-      fontFace: FONT_BODY, fontSize: 11, color: T.TEXT, margin: 0,
-    });
-
-    // Branch from step 5 right edge → junction → OK / 409
-    const branchX = stepX + stepW + 0.05;            // start arrow x
-    const junctionX = outX - 0.25;                    // vertical line x
-    const okCenterY = okY + okH / 2;
-    const errCenterY = errY + errH / 2;
-
-    // Horizontal arrow from last step right edge into junction column
-    s.addShape("line", {
-      x: branchX, y: lastStepCenterY,
-      w: junctionX - branchX, h: 0,
-      line: { color: T.MUTED, width: 1.5 },
-    });
-    // Vertical dashed line spanning OK center → last step center
-    s.addShape("line", {
-      x: junctionX, y: okCenterY,
-      w: 0, h: lastStepCenterY - okCenterY,
-      line: { color: T.MUTED, width: 1.25, dashType: "dash" },
-    });
-    // Arrow into OK card
-    s.addShape("line", {
-      x: junctionX, y: okCenterY,
-      w: outX - junctionX, h: 0,
-      line: { color: T.GREEN, width: 1.75, endArrowType: "triangle" },
-    });
-    // Arrow into 409 card (branch off the same vertical line)
-    s.addShape("line", {
-      x: junctionX, y: errCenterY,
-      w: outX - junctionX, h: 0,
-      line: { color: T.RED, width: 1.75, endArrowType: "triangle" },
-    });
-
-    addFooter(s, 6, TOTAL);
-  }
-
-  // ---------------------------------------------------------
-  // Slide 7 — Conflict Types
-  // ---------------------------------------------------------
-  {
-    const s = pres.addSlide();
-    s.background = { color: T.BG_LIGHT };
-    addHeader(s, "Conflict Detection — 5 Types", "Returned in the 409 response when a route is saved");
+    addHeader(s, "Conflict Detection — 6 Types", "Returned in the 409 response when a route is saved");
 
     const cards = [
       { icon: ICON.overlap, title: "Vehicle Overlap",
         body: "Same vehicle in two services with overlapping time windows." },
+      { icon: ICON.discontinuity, title: "Vehicle Discontinuity",
+        body: "Consecutive services on same vehicle don't connect spatially." },
       { icon: ICON.block, title: "Block Occupancy",
         body: "Two services occupy the same block at overlapping times." },
       { icon: ICON.interlock, title: "Interlocking",
@@ -886,7 +764,7 @@ async function build() {
         body: "Vehicle departs the yard with battery below 80." },
     ];
 
-    // 3 + 2 layout, second row centered
+    // 3 + 3 layout
     const cardW = 3.95, cardH = 2.3, gapX = 0.25;
     const row1Y = 1.85, row2Y = row1Y + cardH + 0.35;
 
@@ -926,12 +804,163 @@ async function build() {
     drawCard(cards[1], row1Start + 1 * (cardW + gapX), row1Y);
     drawCard(cards[2], row1Start + 2 * (cardW + gapX), row1Y);
 
-    // Row 2 (2 cards centered)
-    const row2Start = (13.3 - (2 * cardW + gapX)) / 2;
-    drawCard(cards[3], row2Start + 0 * (cardW + gapX), row2Y);
-    drawCard(cards[4], row2Start + 1 * (cardW + gapX), row2Y);
+    // Row 2 (3 cards)
+    drawCard(cards[3], row1Start + 0 * (cardW + gapX), row2Y);
+    drawCard(cards[4], row1Start + 1 * (cardW + gapX), row2Y);
+    drawCard(cards[5], row1Start + 2 * (cardW + gapX), row2Y);
 
+    addFooter(s, 5, TOTAL);
+  }
+
+  // ---------------------------------------------------------
+  // Slide 6 — Hexagonal Architecture
+  // ---------------------------------------------------------
+  {
+    const s = pres.addSlide();
+    s.background = { color: T.BG_LIGHT };
+    addHeader(s, "Hexagonal Architecture", "Ports & adapters — dependencies always point inward");
+
+    // Concentric layers
+    // Outer (api + infra band)
+    s.addShape("rect", {
+      x: 1.6, y: 1.85, w: 10.1, h: 4.65,
+      fill: { color: T.CARD }, line: { color: T.PRIMARY, width: 1.5 },
+      shadow: shadow(),
+    });
+    s.addText("api/    (inbound adapter)", {
+      x: 1.7, y: 1.95, w: 5.0, h: 0.35,
+      fontFace: FONT_BODY, fontSize: 12, bold: true, color: T.PRIMARY, margin: 0,
+    });
+    s.addText("infra/    (outbound adapter)", {
+      x: 6.6, y: 1.95, w: 5.0, h: 0.35,
+      fontFace: FONT_BODY, fontSize: 12, bold: true, color: T.PRIMARY, align: "right", margin: 0,
+    });
+
+    // Middle - application
+    s.addShape("rect", {
+      x: 2.6, y: 2.55, w: 8.1, h: 3.25,
+      fill: { color: "E0F2F1" }, line: { color: T.SECONDARY, width: 1.5 },
+    });
+    s.addText("application/    (use cases · workflow)", {
+      x: 2.7, y: 2.63, w: 7.9, h: 0.35,
+      fontFace: FONT_BODY, fontSize: 12, bold: true, color: T.SECONDARY, margin: 0,
+    });
+
+    // Inner - domain
+    s.addShape("rect", {
+      x: 4.5, y: 3.4, w: 4.3, h: 1.95,
+      fill: { color: T.PRIMARY }, line: { color: T.PRIMARY, width: 0 },
+      shadow: shadow(),
+    });
+    s.addText("domain/", {
+      x: 4.5, y: 3.5, w: 4.3, h: 0.45,
+      fontFace: FONT_HEAD, fontSize: 18, bold: true, color: "FFFFFF",
+      align: "center", margin: 0,
+    });
+    s.addText([
+      { text: "Entities · Value Objects", options: { breakLine: true } },
+      { text: "Repository Interfaces", options: { breakLine: true } },
+      { text: "Domain Services", options: {} },
+    ], {
+      x: 4.5, y: 3.95, w: 4.3, h: 1.3,
+      fontFace: FONT_BODY, fontSize: 12, color: "CADCFC",
+      align: "center", margin: 0,
+    });
+
+    // Inward arrows
+    // Left: api → application → domain
+    s.addShape("line", {
+      x: 2.0, y: 4.4, w: 2.4, h: 0,
+      line: { color: T.PRIMARY, width: 2.5, endArrowType: "triangle" },
+    });
+    // Right: infra → domain (port)
+    s.addShape("line", {
+      x: 11.3, y: 4.4, w: -2.4, h: 0,
+      line: { color: T.PRIMARY, width: 2.5, endArrowType: "triangle" },
+    });
+
+    // Caption (positioned safely above footer)
+    s.addText("Nothing in domain/ imports anything outside it. Enforced by import-linter at CI time.", {
+      x: 1.6, y: 6.65, w: 10.1, h: 0.30,
+      fontFace: FONT_BODY, fontSize: 11, italic: true, color: T.MUTED,
+      align: "center", margin: 0,
+    });
+
+    addFooter(s, 6, TOTAL);
+  }
+
+  // ---------------------------------------------------------
+  // Slide 7 — Domain Model: Entities
+  // ---------------------------------------------------------
+  {
+    const s = pres.addSlide();
+    s.background = { color: T.BG_LIGHT };
+    addHeader(s, "Domain Model — Aggregates & Entities", "DDD building blocks and how they relate");
+
+    const LX = 1.05, RX = 7.25, BW = 5.0, BH = 1.45;
+    const Y1 = 1.65, Y2 = 3.40, Y3 = 5.15;
+
+    // Row 1: Station (aggregate root) 1—* Platform (child entity)
+    addEntityBox(s, LX, Y1, BW, BH, "Station   (aggregate root)", [
+      "id (UUID)", "name", "is_yard : bool", "platforms[]"
+    ]);
+    addEntityBox(s, RX, Y1, BW, BH, "Platform   (entity)", [
+      "id (UUID)", "name"
+    ], { accent: T.SECONDARY });
+    addConnector(s, LX + BW, Y1 + BH / 2, RX, Y1 + BH / 2, "1   *");
+
+    // Row 2: Vehicle (aggregate root) 1—* Service (aggregate root)
+    addEntityBox(s, LX, Y2, BW, BH, "Vehicle   (aggregate root)", [
+      "id (UUID)", "name", "battery"
+    ]);
+    addEntityBox(s, RX, Y2, BW, BH, "Service   (aggregate root)", [
+      "id, name, vehicle_id",
+      "route : Node[]   (ordered: Platform | Block | Yard)",
+      "timetable : TimetableEntry[]   (arr / dep per node)"
+    ], { accent: T.ACCENT, fontSize: 11 });
+    addConnector(s, LX + BW, Y2 + BH / 2, RX, Y2 + BH / 2, "1   *");
+
+    // Row 3: Block (aggregate root) | NodeConnection (shared kernel)
+    addEntityBox(s, LX, Y3, BW, BH, "Block   (aggregate root)", [
+      "id, name", "group   (interlocking)", "traversal_time_seconds"
+    ]);
+    addEntityBox(s, RX, Y3, BW, BH, "NodeConnection   (shared kernel)", [
+      "from_id  →  to_id     (directed graph edge)",
+      "BFS over this graph fills the route between stops"
+    ], { accent: T.MUTED, fontSize: 10 });
+
+    s.addText("Service.route and Service.timetable are stored as JSONB — loaded and saved as a whole.", {
+      x: 0.6, y: 6.78, w: 12.0, h: 0.3,
+      fontFace: FONT_BODY, fontSize: 10, italic: true, color: T.MUTED, margin: 0,
+      align: "center",
+    });
     addFooter(s, 7, TOTAL);
+  }
+
+  // ---------------------------------------------------------
+  // Slide 8 — Domain Model: Value Objects
+  // ---------------------------------------------------------
+  {
+    const s = pres.addSlide();
+    s.background = { color: T.BG_LIGHT };
+    addHeader(s, "Domain Model — Value Objects & Read Models", "Immutable types embedded in aggregates, plus query-side projections");
+
+    const LX = 1.05, RX = 7.25, BW = 5.0, BH = 1.45;
+    const Y1 = 1.65, Y2 = 3.40;
+
+    addEntityBox(s, LX, Y1, BW, BH, "Node   (value object)", [
+      "id (UUID)", "type : NodeType   (BLOCK | PLATFORM | YARD)"
+    ], { accent: T.MUTED });
+    addEntityBox(s, RX, Y1, BW, BH, "TimetableEntry   (value object)", [
+      "order", "node_id (UUID)", "arrival : EpochSeconds", "departure : EpochSeconds"
+    ], { accent: T.MUTED });
+
+    addEntityBox(s, LX, Y2, BW, BH, "LayoutData   (read model)", [
+      "positions : dict[UUID, tuple[float, float]]",
+      "junction_blocks : dict[tuple[UUID, UUID], UUID]"
+    ], { accent: T.MUTED, fontSize: 10 });
+
+    addFooter(s, 8, TOTAL);
   }
 
   const outFile = path.join(__dirname, "VSS-Visual-Reference.pptx");

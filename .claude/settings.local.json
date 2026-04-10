@@ -49,7 +49,9 @@
       "Bash(pdftoppm -jpeg -r 200 -f 2 -l 2 VSS-Visual-Reference.pdf slideHi)",
       "Bash(pdftoppm -jpeg -r 200 -f 6 -l 6 VSS-Visual-Reference.pdf slideHi)",
       "Bash(pdftoppm -jpeg -r 200 -f 4 -l 4 VSS-Visual-Reference.pdf slideHi)",
-      "Bash(pdftoppm -jpeg -r 200 -f 7 -l 7 VSS-Visual-Reference.pdf slideHi)"
+      "Bash(pdftoppm -jpeg -r 200 -f 7 -l 7 VSS-Visual-Reference.pdf slideHi)",
+      "Bash(command -v /Applications/LibreOffice.app/Contents/MacOS/soffice)",
+      "Read(//Applications/LibreOffice.app/**)"
     ]
   },
   "enabledMcpjsonServers": [
