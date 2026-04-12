@@ -21,6 +21,14 @@ class ServiceWindow:
     start: EpochSeconds
     end: EpochSeconds
 
+    @property
+    def arrival(self) -> EpochSeconds:
+        return self.start
+
+    @property
+    def departure(self) -> EpochSeconds:
+        return self.end
+
 
 @dataclass(frozen=True)
 class ServiceEndpoints:
