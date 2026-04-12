@@ -51,7 +51,10 @@
       "Bash(pdftoppm -jpeg -r 200 -f 4 -l 4 VSS-Visual-Reference.pdf slideHi)",
       "Bash(pdftoppm -jpeg -r 200 -f 7 -l 7 VSS-Visual-Reference.pdf slideHi)",
       "Bash(command -v /Applications/LibreOffice.app/Contents/MacOS/soffice)",
-      "Read(//Applications/LibreOffice.app/**)"
+      "Read(//Applications/LibreOffice.app/**)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('scripts',{}\\), indent=2\\)\\)\")",
+      "Bash(npx vitest:*)",
+      "Bash(node_modules/.bin/ng test:*)"
     ]
   },
   "enabledMcpjsonServers": [

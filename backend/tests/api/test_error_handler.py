@@ -108,7 +108,8 @@ async def test_conflict_error_returns_409_with_conflicts_in_context():
             BatteryConflict(type=BatteryConflictType.LOWBATTERY, service_id=1)
         ],
     )
-    exc = ConflictError(conflicts)
+    names = {1: "Express A", 2: "Local B"}
+    exc = ConflictError(conflicts, names)
     resp = await domain_error_handler(None, exc)
 
     assert resp.status_code == 409
@@ -119,12 +120,17 @@ async def test_conflict_error_returns_409_with_conflicts_in_context():
     ctx = detail["context"]
     assert len(ctx["vehicle_conflicts"]) == 1
     assert ctx["vehicle_conflicts"][0]["reason"] == "same vehicle"
+    assert ctx["vehicle_conflicts"][0]["service_a_name"] == "Express A"
+    assert ctx["vehicle_conflicts"][0]["service_b_name"] == "Local B"
     assert len(ctx["block_conflicts"]) == 1
     assert ctx["block_conflicts"][0]["overlap_start"] == 100
+    assert ctx["block_conflicts"][0]["service_a_name"] == "Express A"
     assert len(ctx["interlocking_conflicts"]) == 1
     assert ctx["interlocking_conflicts"][0]["group"] == 1
+    assert ctx["interlocking_conflicts"][0]["service_a_name"] == "Express A"
     assert len(ctx["battery_conflicts"]) == 1
     assert ctx["battery_conflicts"][0]["type"] == "low_battery"
+    assert ctx["battery_conflicts"][0]["service_name"] == "Express A"
 
 
 async def test_conflict_error_with_empty_lists():
@@ -134,7 +140,7 @@ async def test_conflict_error_with_empty_lists():
         interlocking_conflicts=[],
         battery_conflicts=[],
     )
-    exc = ConflictError(conflicts)
+    exc = ConflictError(conflicts, {})
     resp = await domain_error_handler(None, exc)
 
     assert resp.status_code == 409
@@ -200,7 +206,7 @@ async def test_conflict_response_schema_matches_unified_output():
             BatteryConflict(type=BatteryConflictType.LOWBATTERY, service_id=1)
         ],
     )
-    exc = ConflictError(conflicts)
+    exc = ConflictError(conflicts, {1: "S1", 2: "S2"})
     resp = await domain_error_handler(None, exc)
     body = json.loads(resp.body)
     validated = ErrorResponse.model_validate(body)

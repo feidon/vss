@@ -57,7 +57,9 @@ describe('ConflictAlertComponent', () => {
         {
           vehicle_id: 'v1',
           service_a_id: 101,
+          service_a_name: 'Express A',
           service_b_id: 102,
+          service_b_name: 'Local B',
           reason: 'Overlapping time windows',
         },
       ],
@@ -69,8 +71,8 @@ describe('ConflictAlertComponent', () => {
 
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('V1');
-    expect(text).toContain('S101');
-    expect(text).toContain('S102');
+    expect(text).toContain('Express A');
+    expect(text).toContain('Local B');
     expect(text).toContain('Overlapping time windows');
     expect(text).not.toContain('v1');
   });
@@ -82,7 +84,9 @@ describe('ConflictAlertComponent', () => {
         {
           block_id: 'b3',
           service_a_id: 101,
+          service_a_name: 'Express A',
           service_b_id: 102,
+          service_b_name: 'Local B',
           overlap_start: 1700000000,
           overlap_end: 1700000030,
         },
@@ -94,8 +98,8 @@ describe('ConflictAlertComponent', () => {
 
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('B3');
-    expect(text).toContain('S101');
-    expect(text).toContain('S102');
+    expect(text).toContain('Express A');
+    expect(text).toContain('Local B');
   });
 
   it('should display interlocking conflict with block names', () => {
@@ -108,7 +112,9 @@ describe('ConflictAlertComponent', () => {
           block_a_id: 'b7',
           block_b_id: 'b8',
           service_a_id: 101,
+          service_a_name: 'Express A',
           service_b_id: 102,
+          service_b_name: 'Local B',
           overlap_start: 1700000000,
           overlap_end: 1700000030,
         },
@@ -121,21 +127,21 @@ describe('ConflictAlertComponent', () => {
     expect(text).toContain('Group 3');
     expect(text).toContain('B7');
     expect(text).toContain('B8');
-    expect(text).toContain('S101');
-    expect(text).toContain('S102');
+    expect(text).toContain('Express A');
+    expect(text).toContain('Local B');
   });
 
-  it('should display service names with S prefix for battery conflicts', () => {
+  it('should display real service name for battery conflicts', () => {
     host.conflicts.set({
       vehicle_conflicts: [],
       block_conflicts: [],
       interlocking_conflicts: [],
-      battery_conflicts: [{ type: 'low_battery', service_id: 201 }],
+      battery_conflicts: [{ type: 'low_battery', service_id: 201, service_name: 'Night Shuttle' }],
     });
     fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent;
-    expect(text).toContain('S201');
+    expect(text).toContain('Night Shuttle');
     expect(text).toContain('insufficient battery');
   });
 
@@ -146,7 +152,9 @@ describe('ConflictAlertComponent', () => {
         {
           block_id: 'unknown-uuid',
           service_a_id: 101,
+          service_a_name: 'S101',
           service_b_id: 102,
+          service_b_name: 'S102',
           overlap_start: 1700000000,
           overlap_end: 1700000030,
         },
@@ -163,7 +171,7 @@ describe('ConflictAlertComponent', () => {
   it('should fall back to raw ID when vehicle not found in graph', () => {
     host.conflicts.set({
       vehicle_conflicts: [
-        { vehicle_id: 'unknown-vehicle', service_a_id: 101, service_b_id: 102, reason: 'Overlap' },
+        { vehicle_id: 'unknown-vehicle', service_a_id: 101, service_a_name: 'S101', service_b_id: 102, service_b_name: 'S102', reason: 'Overlap' },
       ],
       block_conflicts: [],
       interlocking_conflicts: [],

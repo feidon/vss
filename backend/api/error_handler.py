@@ -32,7 +32,7 @@ async def domain_error_handler(request: Request, exc: Exception) -> JSONResponse
     status = STATUS_MAP.get(exc.code, HTTP_400_BAD_REQUEST)
 
     if isinstance(exc, ConflictError):
-        context = _build_conflict_context(exc)
+        context = _build_conflict_context(exc, exc.service_names)
     else:
         context = exc.context or {}
 
@@ -49,14 +49,16 @@ async def domain_error_handler(request: Request, exc: Exception) -> JSONResponse
     return JSONResponse(status_code=status, content={"detail": detail})
 
 
-def _build_conflict_context(e: ConflictError) -> dict:
+def _build_conflict_context(e: ConflictError, names: dict[int, str]) -> dict:
     c = e.conflicts
     return {
         "vehicle_conflicts": [
             {
                 "vehicle_id": str(vc.vehicle_id),
                 "service_a_id": vc.service_a_id,
+                "service_a_name": names.get(vc.service_a_id, str(vc.service_a_id)),
                 "service_b_id": vc.service_b_id,
+                "service_b_name": names.get(vc.service_b_id, str(vc.service_b_id)),
                 "reason": vc.reason,
             }
             for vc in c.vehicle_conflicts
@@ -65,7 +67,9 @@ def _build_conflict_context(e: ConflictError) -> dict:
             {
                 "block_id": str(bc.block_id),
                 "service_a_id": bc.service_a_id,
+                "service_a_name": names.get(bc.service_a_id, str(bc.service_a_id)),
                 "service_b_id": bc.service_b_id,
+                "service_b_name": names.get(bc.service_b_id, str(bc.service_b_id)),
                 "overlap_start": bc.overlap_start,
                 "overlap_end": bc.overlap_end,
             }
@@ -77,14 +81,20 @@ def _build_conflict_context(e: ConflictError) -> dict:
                 "block_a_id": str(ic.block_a_id),
                 "block_b_id": str(ic.block_b_id),
                 "service_a_id": ic.service_a_id,
+                "service_a_name": names.get(ic.service_a_id, str(ic.service_a_id)),
                 "service_b_id": ic.service_b_id,
+                "service_b_name": names.get(ic.service_b_id, str(ic.service_b_id)),
                 "overlap_start": ic.overlap_start,
                 "overlap_end": ic.overlap_end,
             }
             for ic in c.interlocking_conflicts
         ],
         "battery_conflicts": [
-            {"type": lbc.type.value, "service_id": lbc.service_id}
+            {
+                "type": lbc.type.value,
+                "service_id": lbc.service_id,
+                "service_name": names.get(lbc.service_id, str(lbc.service_id)),
+            }
             for lbc in c.battery_conflicts
         ],
     }

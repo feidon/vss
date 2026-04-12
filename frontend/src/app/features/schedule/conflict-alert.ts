@@ -82,7 +82,7 @@ interface ConflictSection {
               <li class="flex items-start gap-2 text-signal-caution/70">
                 <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-signal-caution/50"></span>
                 <span class="font-display">
-                  S{{ c.service_id }} -
+                  {{ c.service_name }} -
                   {{
                     c.type === 'low_battery'
                       ? 'insufficient battery to complete the route'
@@ -130,7 +130,7 @@ export class ConflictAlertComponent {
         title: 'Vehicle Conflicts',
         items: c.vehicle_conflicts.map(
           (v: VehicleConflict) =>
-            `${this.vehicleName(v.vehicle_id)} - S${v.service_a_id} & S${v.service_b_id}: ${v.reason}`,
+            `${this.vehicleName(v.vehicle_id)} - ${v.service_a_name} & ${v.service_b_name}: ${v.reason}`,
         ),
       });
     }
@@ -140,7 +140,7 @@ export class ConflictAlertComponent {
         title: 'Block Conflicts',
         items: c.block_conflicts.map(
           (b: BlockConflict) =>
-            `${this.nodeName(b.block_id)} - S${b.service_a_id} & S${b.service_b_id} (${epochPipe.transform(b.overlap_start)} – ${epochPipe.transform(b.overlap_end)})`,
+            `${this.nodeName(b.block_id)} - ${b.service_a_name} & ${b.service_b_name} (${epochPipe.transform(b.overlap_start)} – ${epochPipe.transform(b.overlap_end)})`,
         ),
       });
     }
@@ -150,7 +150,7 @@ export class ConflictAlertComponent {
         title: 'Interlocking Conflicts',
         items: c.interlocking_conflicts.map(
           (ic: InterlockingConflict) =>
-            `Group ${ic.group} - ${this.nodeName(ic.block_a_id)} & ${this.nodeName(ic.block_b_id)}, S${ic.service_a_id} & S${ic.service_b_id} (${epochPipe.transform(ic.overlap_start)} – ${epochPipe.transform(ic.overlap_end)})`,
+            `Group ${ic.group} - ${this.nodeName(ic.block_a_id)} & ${this.nodeName(ic.block_b_id)}, ${ic.service_a_name} & ${ic.service_b_name} (${epochPipe.transform(ic.overlap_start)} – ${epochPipe.transform(ic.overlap_end)})`,
         ),
       });
     }

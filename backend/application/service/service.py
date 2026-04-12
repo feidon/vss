@@ -95,7 +95,8 @@ class ServiceAppService:
         )
 
         if conflicts.has_conflicts:
-            raise ConflictError(conflicts)
+            service_names = {s.id: s.name for s in all_services if s.id is not None}
+            raise ConflictError(conflicts, service_names)
 
         await self._service_repo.update(service)
         return service

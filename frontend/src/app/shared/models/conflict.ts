@@ -1,14 +1,18 @@
 export interface VehicleConflict {
   readonly vehicle_id: string;
   readonly service_a_id: number;
+  readonly service_a_name: string;
   readonly service_b_id: number;
+  readonly service_b_name: string;
   readonly reason: string;
 }
 
 export interface BlockConflict {
   readonly block_id: string;
   readonly service_a_id: number;
+  readonly service_a_name: string;
   readonly service_b_id: number;
+  readonly service_b_name: string;
   readonly overlap_start: number;
   readonly overlap_end: number;
 }
@@ -18,7 +22,9 @@ export interface InterlockingConflict {
   readonly block_a_id: string;
   readonly block_b_id: string;
   readonly service_a_id: number;
+  readonly service_a_name: string;
   readonly service_b_id: number;
+  readonly service_b_name: string;
   readonly overlap_start: number;
   readonly overlap_end: number;
 }
@@ -26,6 +32,7 @@ export interface InterlockingConflict {
 export interface BatteryConflict {
   readonly type: 'low_battery' | 'insufficient_charge';
   readonly service_id: number;
+  readonly service_name: string;
 }
 
 export interface ConflictResponse {
